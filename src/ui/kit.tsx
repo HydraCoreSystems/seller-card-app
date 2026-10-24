@@ -11,6 +11,7 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const colors = {
   bg: '#F6F4EE',
@@ -27,12 +28,17 @@ export const colors = {
 };
 
 export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+  // Android draws edge to edge, so keep buttons clear of the system navigation bar.
+  const { bottom } = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.screen, !footer && { paddingBottom: 40 + bottom }]}
+        keyboardShouldPersistTaps="handled"
+      >
         {children}
       </ScrollView>
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, { paddingBottom: 12 + bottom }]}>{footer}</View> : null}
     </View>
   );
 }
