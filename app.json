@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "Seller Card App",
+    "slug": "seller-card-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gatheringmoss.sellercard",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take plant photos for your listings.",
+        "NSPhotoLibraryUsageDescription": "Pick plant photos for your listings.",
+        "NSPhotoLibraryAddUsageDescription": "Save stamped photos so you can attach them to posts."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E4EEDF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.gatheringmoss.sellercard",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pick plant photos for your listings.",
+          "cameraPermission": "Take plant photos for your listings."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Save stamped photos so you can attach them to posts.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": [
+            "photo"
+          ]
+        }
+      ]
+    ],
+    "scheme": "sellercard"
+  }
+}
