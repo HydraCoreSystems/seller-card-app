@@ -1,9 +1,9 @@
 import * as Clipboard from 'expo-clipboard';
 import { useState, type ReactNode } from 'react';
 import {
+  Animated,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,6 +11,7 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const colors = {
@@ -32,12 +33,15 @@ export function Screen({ children, footer }: { children: ReactNode; footer?: Rea
   const { bottom } = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[styles.screen, !footer && { paddingBottom: 40 + bottom }]}
         keyboardShouldPersistTaps="handled"
+        // Clears the fixed footer bar (which sits outside the scroll content, on top of
+        // the keyboard) so a focused field isn't hidden behind it either.
+        bottomOffset={footer ? 70 : 20}
       >
         {children}
-      </ScrollView>
+      </KeyboardAwareScrollView>
       {footer ? <View style={[styles.footer, { paddingBottom: 12 + bottom }]}>{footer}</View> : null}
     </View>
   );
@@ -83,32 +87,38 @@ export function Button({
   disabled?: boolean;
   style?: ViewStyle;
 }) {
+  const [scale] = useState(() => new Animated.Value(1));
+  const animateTo = (v: number) =>
+    Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.btn,
-        kind === 'primary' && { backgroundColor: pressed ? colors.mossDark : colors.moss },
-        kind === 'secondary' && { backgroundColor: pressed ? colors.mossTint : colors.card, borderColor: colors.moss, borderWidth: 1.5 },
-        kind === 'quiet' && { backgroundColor: 'transparent', paddingHorizontal: 8 },
-        kind === 'danger' && { backgroundColor: 'transparent', borderColor: colors.danger, borderWidth: 1 },
-        disabled && { opacity: 0.4 },
-        style,
-      ]}
-    >
-      <Text
-        style={[
-          styles.btnText,
-          kind === 'primary' && { color: '#fff' },
-          (kind === 'secondary' || kind === 'quiet') && { color: colors.moss },
-          kind === 'danger' && { color: colors.danger },
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        onPressIn={() => animateTo(0.96)}
+        onPressOut={() => animateTo(1)}
+        disabled={disabled}
+        style={({ pressed }) => [
+          styles.btn,
+          kind === 'primary' && { backgroundColor: pressed ? colors.mossDark : colors.moss },
+          kind === 'secondary' && { backgroundColor: pressed ? colors.mossTint : colors.card, borderColor: colors.moss, borderWidth: 1.5 },
+          kind === 'quiet' && { backgroundColor: 'transparent', paddingHorizontal: 8 },
+          kind === 'danger' && { backgroundColor: 'transparent', borderColor: colors.danger, borderWidth: 1 },
+          disabled && { opacity: 0.4 },
         ]}
       >
-        {title}
-      </Text>
-    </Pressable>
+        <Text
+          style={[
+            styles.btnText,
+            kind === 'primary' && { color: '#fff' },
+            (kind === 'secondary' || kind === 'quiet') && { color: colors.moss },
+            kind === 'danger' && { color: colors.danger },
+          ]}
+        >
+          {title}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -150,6 +160,44 @@ export function Choice<T extends string>({
   );
 }
 
+export function Checkboxes<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label?: string;
+  value: T[];
+  options: { value: T; label: string }[];
+  onChange: (v: T[]) => void;
+}) {
+  const toggle = (v: T) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+  return (
+    <View style={{ marginBottom: 14 }}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <View style={{ gap: 10 }}>
+        {options.map((o) => {
+          const on = value.includes(o.value);
+          return (
+            <Pressable
+              key={String(o.value)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
+              onPress={() => toggle(o.value)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+            >
+              <View style={[styles.checkbox, on && styles.checkboxOn]}>
+                {on ? <Text style={styles.checkboxMark}>✓</Text> : null}
+              </View>
+              <Text style={styles.chipText}>{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export function Panel({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[styles.panel, style]}>{children}</View>;
 }
@@ -173,7 +221,7 @@ export function CardText({ text, copyKey, label = 'Copy text' }: { text: string;
         {text}
       </Text>
       <Button
-        title={copied === copyKey ? 'Copied' : label}
+        title={copied === copyKey ? '✓ Copied' : label}
         onPress={() => copy(copyKey, text)}
         style={{ marginTop: 10 }}
       />
@@ -191,6 +239,15 @@ export function Thumb({ uri, size = 56 }: { uri: string | null; size?: number })
   }
   return <Image source={{ uri }} style={[styles.thumb, { width: size, height: size }]} />;
 }
+
+// A soft lift so cards read as raised, not just outlined boxes.
+const cardShadow = {
+  shadowColor: '#1F2A1F',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
+  elevation: 2,
+};
 
 export const styles = StyleSheet.create({
   screen: { padding: 16, paddingBottom: 40, maxWidth: 720, width: '100%', alignSelf: 'center' },
@@ -228,6 +285,7 @@ export const styles = StyleSheet.create({
     borderColor: colors.line,
     padding: 14,
     marginBottom: 12,
+    ...cardShadow,
   },
   cardText: {
     backgroundColor: colors.card,
@@ -236,6 +294,7 @@ export const styles = StyleSheet.create({
     borderColor: colors.line,
     padding: 14,
     marginBottom: 12,
+    ...cardShadow,
   },
   cardBody: { fontSize: 15, lineHeight: 22, color: colors.ink },
   thumb: {
@@ -244,4 +303,16 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: colors.moss, borderColor: colors.moss },
+  checkboxMark: { color: '#fff', fontSize: 13, fontWeight: '700' },
 });

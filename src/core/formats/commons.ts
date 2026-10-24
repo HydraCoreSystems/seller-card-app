@@ -1,7 +1,7 @@
 import { ORIGIN_LINE } from '../brand';
 import { formatPrice, formatSaleTime, joinLines } from '../text';
 import type { Lot, Profile, Sale, SaleKind } from '../types';
-import { lotName } from './parts';
+import { lotName, shippingLine } from './parts';
 import type { CardFormat } from './types';
 
 // The room's name appears only inside this format, never on generic output.
@@ -36,7 +36,7 @@ function closesText(sale: Pick<Sale, 'kind' | 'closes'>, profile: Profile): stri
 
 function termsLines(profile: Profile, crossListing: string) {
   return [
-    profile.shipping.trim() ? `Shipping: ${profile.shipping.trim()}` : null,
+    shippingLine(profile),
     profile.payment.trim() ? `Payment: ${profile.payment.trim()}` : null,
     alsoListed(crossListing),
   ];

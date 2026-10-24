@@ -8,6 +8,8 @@ export interface Profile {
   sellerNumber: string;
   /** Shipping method and cost, in the seller's own words. */
   shipping: string;
+  /** Days plants ship, as day indices (0 Sunday through 6 Saturday). */
+  shippingDays: number[];
   /** Payment methods accepted, in the seller's own words. */
   payment: string;
   /** Short time zone label shown on cards, like "Central". */

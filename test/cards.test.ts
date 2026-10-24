@@ -12,6 +12,7 @@ const profile: Profile = {
   sellerName: 'Gathering Moss',
   sellerNumber: '12',
   shipping: 'USPS Priority, $12 flat, ships Mondays',
+  shippingDays: [],
   payment: 'PayPal Goods and Services, Venmo',
   timeZone: 'Central',
   claimRules: 'First clear claim wins. Pay within 24 hours.',
@@ -128,6 +129,18 @@ describe('every format', () => {
     const s = sale('sale');
     const lot = { ...s.lots[0], name: 'Hoya', noid: true };
     expect(getFormat('generic').listing({ profile, sale: s, lot })).toContain('Hoya NOID (no confirmed name)');
+  });
+
+  it('folds picked ship days into the printed shipping line, with no dashes', () => {
+    const s = sale('sale');
+    const noNote = { ...profile, shipping: '', shippingDays: [1, 3] };
+    const withNote = { ...profile, shipping: 'USPS Priority, $12 flat', shippingDays: [5, 1, 3] };
+    const noDays = { ...profile, shippingDays: [] };
+    expect(getFormat('generic').announcement({ profile: noNote, sale: s })).toContain('Shipping: Ships Mon and Wed.');
+    const withNoteText = getFormat('generic').announcement({ profile: withNote, sale: s });
+    expect(withNoteText).toContain('Shipping: USPS Priority, $12 flat. Ships Mon, Wed, and Fri.');
+    expect(withNoteText).not.toMatch(DASH_PATTERN);
+    expect(getFormat('generic').announcement({ profile: noDays, sale: s })).toContain(`Shipping: ${profile.shipping}`);
   });
 });
 

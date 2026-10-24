@@ -1,6 +1,7 @@
 import type { SaleTime } from './types';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -101,4 +102,11 @@ export function joinLines(lines: (string | null | undefined | false)[]): string 
   }
   while (out.length && out[out.length - 1] === '') out.pop();
   return out.join('\n');
+}
+
+/** "Mon", "Mon and Wed", or "Mon, Wed, and Thu". */
+export function joinWords(words: string[]): string {
+  if (words.length <= 1) return words[0] ?? '';
+  if (words.length === 2) return `${words[0]} and ${words[1]}`;
+  return `${words.slice(0, -1).join(', ')}, and ${words[words.length - 1]}`;
 }

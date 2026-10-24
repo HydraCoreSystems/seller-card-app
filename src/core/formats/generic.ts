@@ -1,6 +1,6 @@
 import { ORIGIN_LINE } from '../brand';
 import { joinLines } from '../text';
-import { closesLine, labeled, lotName, opensLine, priceLine, sellerLine } from './parts';
+import { closesLine, labeled, lotName, opensLine, priceLine, sellerLine, shippingLine } from './parts';
 import type { CardFormat } from './types';
 
 /** A neutral buy sell trade format that works in any room. */
@@ -19,7 +19,7 @@ export const generic: CardFormat = {
       closesLine(sale, profile),
       auction ? labeled('How the close is called', sale.closeCall) : null,
       '',
-      labeled('Shipping', profile.shipping),
+      shippingLine(profile),
       labeled('Payment', profile.payment),
       labeled(auction ? 'Bidding rules' : 'Claim rules', sale.claimRules),
       labeled('Also listed in', sale.crossListing),
@@ -48,7 +48,7 @@ export const generic: CardFormat = {
       lot.description.trim() || null,
       '',
       `Seller: ${sellerLine(profile)}`,
-      labeled('Shipping', profile.shipping),
+      shippingLine(profile),
       labeled('Payment', profile.payment),
       labeled(sale.kind === 'auction' ? 'Bidding rules' : 'Claim rules', claimRules),
       '',

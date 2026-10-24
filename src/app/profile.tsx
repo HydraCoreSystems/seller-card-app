@@ -2,11 +2,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FORMAT_LIST } from '../core/formats';
 import { ORIGIN_LINE } from '../core/brand';
+import { SHORT_DAYS } from '../core/text';
 import type { FormatId, Profile } from '../core/types';
 import { EMPTY_PROFILE, useStore } from '../lib/store';
-import { Button, Choice, Field, H, Note, Screen } from '../ui/kit';
+import { Button, Checkboxes, Choice, Field, H, Note, Screen } from '../ui/kit';
 
 const ZONES = ['Eastern', 'Central', 'Mountain', 'Pacific', 'Alaska', 'Hawaii'];
+const DAY_OPTIONS = SHORT_DAYS.map((label, value) => ({ value, label }));
 
 export default function ProfileScreen() {
   const store = useStore();
@@ -48,8 +50,14 @@ export default function ProfileScreen() {
         label="Shipping"
         value={p.shipping}
         onChangeText={set('shipping')}
-        placeholder="USPS Priority, $12 flat, ships Mondays"
+        placeholder="USPS Priority, $12 flat"
         multiline
+      />
+      <Checkboxes
+        label="Ships on"
+        value={p.shippingDays}
+        options={DAY_OPTIONS}
+        onChange={set('shippingDays')}
       />
       <Field
         label="Payment"

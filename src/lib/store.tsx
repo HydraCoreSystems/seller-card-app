@@ -8,6 +8,7 @@ export const EMPTY_PROFILE: Profile = {
   sellerName: '',
   sellerNumber: '',
   shipping: '',
+  shippingDays: [],
   payment: '',
   timeZone: '',
   claimRules: '',
@@ -42,7 +43,11 @@ const StoreContext = createContext<Store | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<Data>(() => ({
-    profile: loadJson<Profile | null>(KEYS.profile, null),
+    // Merged with EMPTY_PROFILE so a profile saved before a new field existed still gets a default for it.
+    profile: (() => {
+      const saved = loadJson<Profile | null>(KEYS.profile, null);
+      return saved ? { ...EMPTY_PROFILE, ...saved } : null;
+    })(),
     plants: loadJson<Plant[]>(KEYS.plants, []),
     sales: loadJson<Sale[]>(KEYS.sales, []),
     records: loadJson<SaleRecord[]>(KEYS.records, []),

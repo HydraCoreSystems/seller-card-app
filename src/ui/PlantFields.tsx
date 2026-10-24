@@ -2,6 +2,7 @@ import { Image, Text, View } from 'react-native';
 import { formatPrice, parsePrice } from '../core/text';
 import { pickPhoto } from '../lib/photos';
 import { Button, Choice, Field, Row, colors } from './kit';
+import { ViewablePhoto } from './PhotoViewer';
 
 export interface PlantDraft {
   name: string;
@@ -42,12 +43,14 @@ export function PlantFields({
   return (
     <View>
       {draft.photoUri ? (
-        <Image
-          source={{ uri: draft.photoUri }}
-          style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, marginBottom: 10, backgroundColor: colors.mossTint }}
-          resizeMode="cover"
-          accessibilityLabel="Plant photo"
-        />
+        <ViewablePhoto uri={draft.photoUri}>
+          <Image
+            source={{ uri: draft.photoUri }}
+            style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, marginBottom: 10, backgroundColor: colors.mossTint }}
+            resizeMode="cover"
+            accessibilityLabel="Plant photo. Tap to view full size."
+          />
+        </ViewablePhoto>
       ) : null}
       <Row style={{ marginBottom: 14 }}>
         <Button title={draft.photoUri ? 'New photo' : 'Take photo'} onPress={() => takePhoto('camera')} style={{ flex: 1 }} />

@@ -4,6 +4,7 @@ import { toDay } from '../core/text';
 import type { Profile } from '../core/types';
 import { saveToGallery, stampPhoto } from '../lib/stampPhoto';
 import { Button, colors } from './kit';
+import { ViewablePhoto } from './PhotoViewer';
 
 const cache = new Map<string, Promise<string>>();
 
@@ -46,12 +47,14 @@ export function StampedPhoto({ photoUri, profile }: { photoUri: string | null; p
   return (
     <View style={{ marginBottom: 12 }}>
       {uri ? (
-        <Image
-          source={{ uri }}
-          style={{ width: '100%', aspectRatio: 3 / 4, borderRadius: 12, backgroundColor: colors.mossTint }}
-          resizeMode="contain"
-          accessibilityLabel="Stamped photo"
-        />
+        <ViewablePhoto uri={uri}>
+          <Image
+            source={{ uri }}
+            style={{ width: '100%', aspectRatio: 3 / 4, borderRadius: 12, backgroundColor: colors.mossTint }}
+            resizeMode="contain"
+            accessibilityLabel="Stamped photo. Tap to view full size."
+          />
+        </ViewablePhoto>
       ) : (
         <View style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
           {error ? <Text style={{ color: colors.danger }}>Couldn't stamp this photo.</Text> : <ActivityIndicator color={colors.moss} />}
@@ -59,7 +62,7 @@ export function StampedPhoto({ photoUri, profile }: { photoUri: string | null; p
       )}
       <Button
         kind="secondary"
-        title={saved ? 'Saved to your photos' : 'Save stamped photo'}
+        title={saved ? '✓ Saved to your photos' : 'Save stamped photo'}
         disabled={!uri}
         onPress={async () => {
           if (uri && (await saveToGallery([uri]))) setSaved(true);

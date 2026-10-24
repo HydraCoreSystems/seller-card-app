@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { ScrollView, Pressable, Text, View } from 'react-native';
-import { formatClock, parseClock, parseDay, toDay } from '../core/text';
+import { SHORT_DAYS, formatClock, parseClock, parseDay, toDay } from '../core/text';
 import type { SaleTime } from '../core/types';
 import { Field, colors, styles } from './kit';
 
-const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function nextDays(count: number): string[] {
