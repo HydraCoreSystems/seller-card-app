@@ -31,6 +31,13 @@ export default function ProfileScreen() {
       <Note>You only do this once. Every card pulls these lines in for you.</Note>
       <Field label="Seller name" value={p.sellerName} onChangeText={set('sellerName')} placeholder="Your name or shop name" />
       <Field
+        label="Your name on Facebook"
+        value={p.facebookName ?? ''}
+        onChangeText={set('facebookName')}
+        placeholder={p.sellerName || 'As it shows on your comments'}
+        hint="Leave blank if it's the same as your seller name. The claim tracker uses it to spot your lot comments."
+      />
+      <Field
         label="Seller number"
         value={p.sellerNumber}
         onChangeText={set('sellerNumber')}

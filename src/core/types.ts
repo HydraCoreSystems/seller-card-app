@@ -15,6 +15,8 @@ export interface Profile {
   /** The seller's standard claim rules, prefilled into every sale. */
   claimRules: string;
   defaultFormat: FormatId;
+  /** The seller's name as Facebook shows it, so the claim tracker can tell their comments apart. */
+  facebookName?: string;
 }
 
 export interface Plant {

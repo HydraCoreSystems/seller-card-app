@@ -1,0 +1,220 @@
+PURGE THREAD TEST DATA
+Source: Phil's October 23, 2026 purge in a Facebook buy sell room, pulled by a connector.
+Buyer names are replaced with stand ins; times, order, nesting and wording are as pulled.
+Order: chronological by the time the connector returned for each item; replies are indented under their parent comment.
+
+============================================================
+ANNOUNCEMENT POST
+Author: Phil Achleman
+Time (as returned): 2026-10-23T11:27:50.000-04:00
+------------------------------------------------------------
+Hey, gang! I'm going to run a CHEAP purge here in the next hour or so.
+Shipping cost: 8 smackers! (Yes, $8!)
+
+============================================================
+COMMENTS AND REPLIES IN THREAD ORDER
+
+[1] Gin Ames | 2026-10-23T11:30:37.000-04:00
+Following
+
+[2] Al Sayer | 2026-10-23T11:31:42.000-04:00
+F
+
+[28] Sofi Torr | 2026-10-23T12:26:38.000-04:00
+F!! Im in Bloomington 👀👀
+    Reply: (author name not returned by the connector) | 2026-10-23T12:52:03.000-04:00
+    @[100018809205797:2048:Sofi Torr] our sons at IU
+    Reply: (author name not returned by the connector) | 2026-10-23T12:52:40.000-04:00
+    @[1738965192:2048:Phil Achleman] me too!!
+
+[38] Phil Achleman | 2026-10-23T12:51:04.000-04:00
+I'm going to start here shortly. I really appreciate you all stopping by and hope find something you love!
+
+[41] Ava Stone | 2026-10-23T12:53:31.000-04:00
+F
+
+[42] Phil Achleman | 2026-10-23T12:56:49.000-04:00
+Hoya polyneura $15
+
+[43] Lin Hale | 2026-10-23T12:57:27.000-04:00
+F
+
+[44] Phil Achleman | 2026-10-23T13:00:00.000-04:00
+Hoya sp. Gunung Gading $15
+    Reply: Ava Stone | 2026-10-23T13:01:56.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Bea Lowry | 2026-10-23T13:04:54.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Cal Moss | 2026-10-23T13:16:59.000-04:00
+    @[1738965192:2048:Phil Achleman] next sold
+    Reply: Dee Park | 2026-10-23T14:10:03.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+    Reply: Eve Hart | 2026-10-23T14:47:34.000-04:00
+    @[1738965192:2048:Phil Achleman] any more?
+
+[45] Phil Achleman | 2026-10-23T13:02:36.000-04:00
+Hoya Mini Leaf Black Cat $15
+    Reply: Fay Long | 2026-10-23T13:03:10.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Bea Lowry | 2026-10-23T13:04:59.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Gus Reed | 2026-10-23T13:07:06.000-04:00
+    @[1517886630:2048:Bea Lowry] sold next
+    Reply: Dee Park | 2026-10-23T14:09:55.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+    Reply: Hal Wren | 2026-10-23T14:45:02.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[46] Phil Achleman | 2026-10-23T13:06:06.000-04:00
+Hoya soligamiana $15
+    Reply: Ivy Cole | 2026-10-23T13:08:21.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Fay Long | 2026-10-23T13:53:28.000-04:00
+    @[1738965192:2048:Phil Achleman] sold next
+    Reply: Dee Park | 2026-10-23T14:09:47.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[47] Phil Achleman | 2026-10-23T13:09:18.000-04:00
+Hoya polyneura Silver $15
+    Reply: Jo Banks | 2026-10-23T13:09:50.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Cal Moss | 2026-10-23T13:16:11.000-04:00
+    @[1738965192:2048:Phil Achleman] next sold
+    Reply: Kit Lane | 2026-10-23T13:23:58.000-04:00
+    @[1738965192:2048:Phil Achleman] any more?
+    Reply: Lu Fenn | 2026-10-23T17:45:19.000-04:00
+    @[518076519:2048:Kit Lane] I needed this one too!
+    Reply: Kit Lane | 2026-10-23T18:13:18.000-04:00
+    @[100001916304546:2048:Lu Fenn] yes! So pretty!
+
+[48] Yuri Bell | 2026-10-23T13:11:36.000-04:00
+Can you hold till the 28th?
+
+[49] Phil Achleman | 2026-10-23T13:12:00.000-04:00
+Hoya lacunosa Super Silver $15
+    Reply: Max Dale | 2026-10-23T13:56:48.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Lu Fenn | 2026-10-23T17:45:32.000-04:00
+    @[1738965192:2048:Phil Achleman] more?
+    Reply: Nia Gray | 2026-10-23T19:18:39.000-04:00
+    @[1738965192:2048:Phil Achleman] any more of these?
+
+[50] Phil Achleman | 2026-10-23T13:15:22.000-04:00
+Hoya lacunosa Asami Clone 2 $15
+    Reply: Oli Ford | 2026-10-23T13:49:23.000-04:00
+    @[1738965192:2048:Phil Achleman] sold, if you have at least insulation! Maybe a heat pack?
+
+[51] Syl Moran | 2026-10-23T13:16:36.000-04:00
+F
+
+[52] Phil Achleman | 2026-10-23T13:21:27.000-04:00
+Hoya lacunosa Leopard Skin $15
+    Reply: Jo Banks | 2026-10-23T13:22:54.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Pam Hale | 2026-10-23T13:32:14.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[53] Phil Achleman | 2026-10-23T13:23:57.000-04:00
+Hoya subquintuplinervis New Moon $15
+    Reply: Jo Banks | 2026-10-23T13:25:03.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Quinn Ash | 2026-10-23T13:30:07.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+    Reply: Rae Vance | 2026-10-23T14:12:35.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[54] Phil Achleman | 2026-10-23T13:26:47.000-04:00
+Hoya erythrostemma $15
+
+[55] Dora Tripp | 2026-10-23T13:27:48.000-04:00
+F
+
+[56] Phil Achleman | 2026-10-23T13:29:05.000-04:00
+Hoya latifolia Snow Queen $15
+    Reply: Ivy Cole | 2026-10-23T13:29:16.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Jo Banks | 2026-10-23T13:29:17.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Gus Reed | 2026-10-23T13:30:25.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Pam Hale | 2026-10-23T13:31:56.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+    Reply: Dee Park | 2026-10-23T14:09:24.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+    Reply: Sol Pike | 2026-10-23T14:10:16.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[57] Zoe Marsh | 2026-10-23T13:29:14.000-04:00
+Like please
+
+[58] Phil Achleman | 2026-10-23T13:29:18.000-04:00
+Just a bit of incentive....if by chance we sell out I'll send TWO plant pals with each purchase!! 😉🌱🌱🌱🌱
+
+[61] Phil Achleman | 2026-10-23T13:33:02.000-04:00
+Hoya RHM25145 $15
+    Reply: Jo Banks | 2026-10-23T13:33:23.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Bea Lowry | 2026-10-23T13:35:24.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Tess Kerr | 2026-10-23T14:30:49.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[63] Phil Achleman | 2026-10-23T13:35:53.000-04:00
+Hoya sp. Limau $15
+    Reply: Jo Banks | 2026-10-23T13:36:09.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+
+[64] Phil Achleman | 2026-10-23T13:39:38.000-04:00
+Hoya burmanica $15
+    Reply: Uma Price | 2026-10-23T15:27:34.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Uma Price | 2026-10-23T15:28:12.000-04:00
+    Wrote sold on the wrong one. Sorry!  Do not want this one. I wanted Dr. Ibok
+    Reply: Phil Achleman | 2026-10-23T15:57:20.000-04:00
+    @[100073509576143:2048:Uma Price] this is still available!
+    Reply: Uma Price | 2026-10-23T16:14:33.000-04:00
+    @[1738965192:2048:Phil Achleman] ok. Throw it in!  Lol
+
+[65] Phil Achleman | 2026-10-23T13:41:22.000-04:00
+Hoya Irina $15
+    Reply: Dee Park | 2026-10-23T14:09:01.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+
+[67] Phil Achleman | 2026-10-23T13:44:00.000-04:00
+Hoya Starry Night $15
+    Reply: Jo Banks | 2026-10-23T13:50:38.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Val Kim | 2026-10-23T13:56:28.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[68] Phil Achleman | 2026-10-23T13:47:07.000-04:00
+Hoya pubicalyx Pink Silver Ghost $15
+    Reply: Max Dale | 2026-10-23T13:58:09.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+
+[69] Phil Achleman | 2026-10-23T13:49:37.000-04:00
+Hoya Dr. Ibok $15
+    Reply: Uma Price | 2026-10-23T15:28:25.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+
+[70] Phil Achleman | 2026-10-23T13:52:25.000-04:00
+Hoya Snow Cui Silver $15
+    Reply: Jo Banks | 2026-10-23T13:52:35.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+
+[71] Phil Achleman | 2026-10-23T13:55:02.000-04:00
+Hoya callistophylla Emerald $25
+    Reply: Tess Kerr | 2026-10-23T13:55:14.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Wes Ortiz | 2026-10-23T13:55:19.000-04:00
+    @[1738965192:2048:Phil Achleman] sold
+    Reply: Dee Park | 2026-10-23T14:08:42.000-04:00
+    @[1738965192:2048:Phil Achleman] next next
+    Reply: Xan Hu | 2026-10-23T15:09:45.000-04:00
+    @[1738965192:2048:Phil Achleman] next
+
+[79] Phil Achleman | 2026-10-23T15:20:44.000-04:00
+Only 3 items left! Somebody buy them up and make me give away even more stuff! 😂
+
+[82] Esti Rapp | 2026-10-23T18:11:15.000-04:00
+F

@@ -72,7 +72,7 @@ describe('every format', () => {
         it(`${kind} announcement carries the sale terms once`, () => {
           expect(outputs.announcement).toContain(profile.shipping);
           expect(outputs.announcement).toContain(profile.payment);
-          expect(outputs.announcement).toContain('Seller #12');
+          expect(outputs.announcement).toMatch(/Seller #12|Commons Seller No\. 12/);
           expect(outputs.announcement).toContain('US Hoya Market');
           expect(outputs.announcement).toContain('Sunday, October 25 at 7:00 PM Central');
         });
@@ -90,7 +90,8 @@ describe('every format', () => {
 
   it('names the Commons only inside the Commons format', () => {
     const s = sale('sale');
-    expect(getFormat('commons').announcement({ profile, sale: s })).toContain(COMMONS_NAME);
+    expect(getFormat('commons').announcement({ profile, sale: s })).toContain('Commons Seller No. 12');
+    expect(COMMONS_NAME).toContain('Commons');
     for (const text of [
       getFormat('generic').announcement({ profile, sale: s }),
       getFormat('generic').listing({ profile, sale: s, lot: s.lots[0] }),
@@ -98,6 +99,29 @@ describe('every format', () => {
     ]) {
       expect(text).not.toContain('Commons');
     }
+  });
+
+  it('fills the Commons sales card line for line', () => {
+    const s = { ...sale('sale'), crossListing: '' };
+    const lot = { ...s.lots[0], name: 'Hoya', noid: true, price: 15, description: 'Rooted cutting, 4 inch pot' };
+    expect(getFormat('commons').single({ profile, sale: s, lot, claimRules: '' })).toBe(
+      [
+        'Seller: Gathering Moss \u00B7 Commons Seller No. 12',
+        'Plant: Hoya NOID (no confirmed name)',
+        'Price: $15',
+        'Rooted cutting, 4 inch pot',
+        'Shipping: USPS Priority, $12 flat, ships Mondays',
+        'Payment: PayPal Goods and Services, Venmo',
+        'Also listed at: only here',
+        '',
+        'Claims in this thread only. First confirmed claim takes it.',
+        '',
+        ORIGIN_LINE,
+      ].join('\n'),
+    );
+    const a = sale('auction');
+    expect(getFormat('commons').listing({ profile, sale: a, lot: a.lots[0] })).toContain('Auction. Opens at $11.');
+    expect(getFormat('commons').announcement({ profile, sale: a })).toContain('Closes Monday, October 26 at 8:00 PM Central');
   });
 
   it('states NOID plainly', () => {

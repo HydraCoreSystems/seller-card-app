@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { trackClaims, type Claim } from '../../../core/claims';
+import { cleanMentions, showTime, trackClaims, type Claim } from '../../../core/claims';
 import { formatPrice, plantDisplayName, toDay } from '../../../core/text';
 import type { Lot } from '../../../core/types';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
@@ -17,20 +17,24 @@ export default function ClaimsScreen() {
   const report = useMemo(() => {
     if (!sale || !shown.trim()) return null;
     const maxLot = sale.lots.reduce((m, l) => Math.max(m, l.number), 0) || undefined;
-    return trackClaims(shown, { sellerName: store.profile?.sellerName, maxLot });
-  }, [shown, sale, store.profile?.sellerName]);
+    return trackClaims(shown, {
+      sellerName: store.profile?.facebookName?.trim() || store.profile?.sellerName,
+      lots: sale.lots.map((l) => ({ number: l.number, name: l.name })),
+      maxLot,
+    });
+  }, [shown, sale, store.profile?.facebookName, store.profile?.sellerName]);
 
   if (!sale) return <Screen><Note>This sale is gone.</Note></Screen>;
 
   const lotFor = (n: number): Lot | undefined => sale.lots.find((l) => l.number === n);
-  const record = (lot: Lot | undefined, lotNumber: number, buyer: string) => {
+  const record = (lot: Lot | undefined, lotNumber: number, buyer: string, label?: string | null) => {
     store.recordSold(
       {
         saleId: sale.id,
         lotNumber,
-        plantName: lot ? plantDisplayName(lot.name, lot.noid) : `Lot ${lotNumber}`,
+        plantName: lot ? plantDisplayName(lot.name, lot.noid) : label ?? `Lot ${lotNumber}`,
         buyer,
-        price: lot?.price ?? null,
+        price: lot?.price ?? priceIn(label),
         date: toDay(new Date()),
       },
       lot?.plantId,
@@ -73,20 +77,22 @@ export default function ClaimsScreen() {
           <Panel key={entry.lot} style={entry.tie && !done ? { borderColor: colors.warn, borderWidth: 1.5 } : undefined}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink, marginBottom: 4 }}>
               Lot {entry.lot}
-              {lot ? `: ${plantDisplayName(lot.name, lot.noid)}` : ''}
+              {lot ? `: ${plantDisplayName(lot.name, lot.noid)}` : entry.label ? `: ${entry.label}` : ''}
               {lot?.price != null ? `  ${formatPrice(lot.price)}` : ''}
             </Text>
-            {!lot ? <Note tone="warn">There's no lot {entry.lot} in this sale.</Note> : null}
             {done ? (
               <Text style={{ color: colors.moss, fontWeight: '600', marginBottom: 6 }}>Sold to {done.buyer}</Text>
             ) : entry.tie ? (
               <View style={{ backgroundColor: colors.warnTint, borderRadius: 8, padding: 10, marginBottom: 8 }}>
                 <Text style={{ color: colors.warn, fontWeight: '700' }}>Tie. Your call.</Text>
                 <Text style={{ color: colors.warn }}>
-                  These claims sit in different parts of the thread, so their order can't be read from it. Times are
-                  shown as hints.
+                  {entry.tieKind === 'minute'
+                    ? `These claims landed inside the same minute. Thread order puts ${entry.tie[0].author} first.`
+                    : 'These claims sit in different parts of the thread, so their order can\u2019t be read from it.'}
                 </Text>
               </View>
+            ) : !entry.queue.length ? (
+              <Text style={{ color: colors.soft, marginBottom: 4 }}>No claims. Still available.</Text>
             ) : null}
             {entry.queue.map((c, i) => (
               <ClaimRow
@@ -95,14 +101,24 @@ export default function ClaimsScreen() {
                 place={i + 1}
                 tied={tied.has(c.commentIndex)}
                 canPick={!done && (entry.tie ? tied.has(c.commentIndex) : i === 0)}
-                onPick={() => record(lot, entry.lot, c.author)}
+                onPick={() => record(lot, entry.lot, c.author, entry.label)}
               />
             ))}
             {entry.released.map((c) => (
-              <Text key={`r${c.commentIndex}`} style={{ color: colors.soft, textDecorationLine: 'line-through', marginTop: 4 }}>
-                {c.author} took it back
+              <Text key={`r${c.commentIndex}`} style={{ color: colors.soft, marginTop: 4 }}>
+                <Text style={{ textDecorationLine: 'line-through' }}>{c.author}</Text> took it back
               </Text>
             ))}
+            {entry.others.length ? (
+              <View style={{ marginTop: 8, borderTopWidth: 1, borderColor: colors.line, paddingTop: 6 }}>
+                <Text style={{ color: colors.soft, fontSize: 12, marginBottom: 2 }}>Also said under this lot</Text>
+                {entry.others.map((o) => (
+                  <Text key={`o${o.index}`} style={{ color: colors.soft, fontSize: 13 }}>
+                    {o.author}: {cleanMentions(o.body)}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
           </Panel>
         );
       })}
@@ -113,14 +129,19 @@ export default function ClaimsScreen() {
           <Note>They read like claims or take backs, but the app can't tell which lot they mean.</Note>
           {report.unplaced.map((c) => (
             <Panel key={c.index}>
-              <Text style={{ fontWeight: '600', color: colors.ink }}>{c.author}{c.timeHint ? `  (${c.timeHint})` : ''}</Text>
-              <Text style={{ color: colors.ink }}>{c.body}</Text>
+              <Text style={{ fontWeight: '600', color: colors.ink }}>{c.author}{c.timeHint ? `  (${showTime(c.timeHint)})` : ''}</Text>
+              <Text style={{ color: colors.ink }}>{cleanMentions(c.body)}</Text>
             </Panel>
           ))}
         </>
       ) : null}
     </Screen>
   );
+}
+
+function priceIn(label: string | null | undefined): number | null {
+  const m = label?.match(/\$\s?(\d+(?:\.\d{1,2})?)/);
+  return m ? Number(m[1]) : null;
 }
 
 function ClaimRow({
@@ -142,7 +163,8 @@ function ClaimRow({
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: colors.ink }}>
           {claim.author}
-          {claim.timeHint ? <Text style={{ color: colors.soft, fontWeight: '400' }}>  {claim.timeHint}</Text> : null}
+          {claim.kind === 'backup' ? <Text style={{ color: colors.soft, fontWeight: '400' }}>  next in line</Text> : null}
+          {claim.timeHint ? <Text style={{ color: colors.soft, fontWeight: '400' }}>  {showTime(claim.timeHint)}</Text> : null}
         </Text>
         <Text style={{ color: colors.soft }} numberOfLines={2}>
           {claim.text}
