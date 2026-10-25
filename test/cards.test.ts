@@ -73,9 +73,13 @@ describe('every format', () => {
         it(`${kind} announcement carries the sale terms once`, () => {
           expect(outputs.announcement).toContain(profile.shipping);
           expect(outputs.announcement).toContain(profile.payment);
-          expect(outputs.announcement).toMatch(/Seller #12|Commons Seller No\. 12/);
+          expect(outputs.announcement).toMatch(/Seller #12|Commons Verified Grower No\. 12/);
           expect(outputs.announcement).toContain('US Hoya Market');
           expect(outputs.announcement).toContain('Sunday, October 25 at 7:00 PM Central');
+        });
+        it(`${kind} announcement names the event a Grower Showcase and the lots Market Listings`, () => {
+          expect(outputs.announcement).toMatch(/grower showcase/i);
+          expect(outputs.announcement).toContain('Market Listing');
         });
       }
     });
@@ -91,11 +95,12 @@ describe('every format', () => {
 
   it('names the Commons only inside the Commons format', () => {
     const s = sale('sale');
-    expect(getFormat('commons').announcement({ profile, sale: s })).toContain('Commons Seller No. 12');
+    expect(getFormat('commons').announcement({ profile, sale: s })).toContain('Commons Verified Grower No. 12');
     expect(COMMONS_NAME).toContain('Commons');
     for (const text of [
       getFormat('generic').announcement({ profile, sale: s }),
       getFormat('generic').listing({ profile, sale: s, lot: s.lots[0] }),
+      getFormat('generic').single({ profile, sale: s, lot: s.lots[0], claimRules: '' }),
       stampText('Gathering Moss', '12', '2026-10-24').origin,
     ]) {
       expect(text).not.toContain('Commons');
@@ -107,7 +112,7 @@ describe('every format', () => {
     const lot = { ...s.lots[0], name: 'Hoya', noid: true, price: 15, description: 'Rooted cutting, 4 inch pot' };
     expect(getFormat('commons').single({ profile, sale: s, lot, claimRules: '' })).toBe(
       [
-        'Seller: Gathering Moss \u00B7 Commons Seller No. 12',
+        'Seller: Gathering Moss \u00B7 Commons Verified Grower No. 12',
         'Plant: Hoya NOID (no confirmed name)',
         'Price: $15',
         'Rooted cutting, 4 inch pot',

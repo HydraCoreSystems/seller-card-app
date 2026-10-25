@@ -4,3 +4,9 @@ export const MAKER_NAME = 'Gathering Moss';
 
 /** The origin line. Always present on every card and every stamped photo. */
 export const ORIGIN_LINE = `Made with ${APP_NAME} by ${MAKER_NAME}`;
+
+// The room's words, built into every template so a seller sounds like the room without
+// choosing them. A sale event is a Grower Showcase; a post for a plant is a Market Listing.
+// The Commons only terms live in formats/commons.ts.
+export const SHOWCASE = 'Grower Showcase';
+export const MARKET_LISTING = 'Market Listing';

@@ -1,4 +1,4 @@
-import { ORIGIN_LINE } from '../brand';
+import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
 import { formatPrice, formatSaleTime, joinLines } from '../text';
 import type { Lot, Profile, Sale, SaleKind } from '../types';
 import { lotName, shippingLine } from './parts';
@@ -6,6 +6,9 @@ import type { CardFormat } from './types';
 
 // The room's name appears only inside this format, never on generic output.
 export const COMMONS_NAME = 'The Hoya and Orchid Commons';
+// The room's own words for its selling space and its approved sellers. Commons format only.
+export const COMMONS_MARKET = 'Commons Market';
+export const VERIFIED_GROWER = 'Commons Verified Grower';
 
 // Matched line for line to THE COMMONS SALES CARD, the template in the room's featured
 // sales card post. Field order and wording follow it; only the blanks are filled.
@@ -15,7 +18,7 @@ const BIDS_LINE = 'Bids in this thread only. A bid in the final five minutes ext
 function sellerLine(profile: Profile): string {
   const number = profile.sellerNumber.trim();
   const name = profile.sellerName.trim();
-  return number ? `Seller: ${name} · Commons Seller No. ${number}` : `Seller: ${name}`;
+  return number ? `Seller: ${name} · ${VERIFIED_GROWER} No. ${number}` : `Seller: ${name}`;
 }
 
 function priceLine(kind: SaleKind, price: number | null, closes: string | null): string | null {
@@ -64,7 +67,7 @@ export const commons: CardFormat = {
     return joinLines([
       sellerLine(profile),
       sale.lots.length
-        ? `${auction ? 'Auction' : 'Sale'}: ${sale.lots.length} plants, each on its own card in the comments below`
+        ? `${auction ? `${SHOWCASE} auction` : SHOWCASE}: ${sale.lots.length} plants, each on its own ${MARKET_LISTING} in the comments below`
         : null,
       sale.opens ? `Opens ${formatSaleTime(sale.opens, profile.timeZone)}` : null,
       auction && closes ? `Closes ${closes}` : null,

@@ -26,7 +26,7 @@ export default function ClaimsScreen() {
     return text ? { text, warn: !!h?.unpaidSales } : null;
   };
 
-  if (!sale) return <Screen><Note>This sale is gone.</Note></Screen>;
+  if (!sale) return <Screen><Note>This showcase is gone.</Note></Screen>;
 
   const lotFor = (n: number): Lot | undefined => sale.lots.find((l) => l.number === n);
   const record = (lot: Lot | undefined, lotNumber: number, buyer: string, label?: string | null) => {
@@ -52,12 +52,12 @@ export default function ClaimsScreen() {
     <Screen
       footer={
         report ? (
-          <Button title="After the sale" onPress={() => router.push(`/sale/${sale.id}/rundown`)} />
+          <Button title="After the showcase" onPress={() => router.push(`/sale/${sale.id}/rundown`)} />
         ) : undefined
       }
     >
       <Note>
-        Open your sale post, copy all the comments, and paste them here. Claims come back in thread order, lot by lot.
+        Open your Grower Showcase post, copy all the comments, and paste them here. Claims come back in thread order, lot by lot.
       </Note>
       <TextInput
         value={text}

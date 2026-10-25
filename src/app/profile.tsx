@@ -81,7 +81,7 @@ export default function ProfileScreen() {
         onChangeText={set('claimRules')}
         placeholder="First clear claim wins. Pay within 24 hours."
         multiline
-        hint="Goes on every sale announcement. You can change it for any one sale."
+        hint="Goes on every Grower Showcase announcement. You can change it for any one showcase."
       />
       <Choice<FormatId>
         label="Card format you use most"

@@ -22,7 +22,7 @@ export default function Home() {
   const footer = picking ? (
     <View style={{ gap: 8 }}>
       <Button
-        title={picked.length ? `Build sale with ${picked.length} plant${picked.length === 1 ? '' : 's'}` : 'Pick plants for the sale'}
+        title={picked.length ? `Build a showcase with ${picked.length} plant${picked.length === 1 ? '' : 's'}` : 'Pick plants for the showcase'}
         disabled={!picked.length}
         onPress={() => {
           router.push({ pathname: '/sale/new', params: { plants: picked.join(',') } });
@@ -40,7 +40,7 @@ export default function Home() {
       <Button title="Add plant" onPress={() => router.push('/plant/new')} style={{ flex: 1 }} disabled={!profile} />
       <Button
         kind="secondary"
-        title="New sale"
+        title="New showcase"
         onPress={() => setPicking(true)}
         style={{ flex: 1 }}
         disabled={!profile}
@@ -95,7 +95,7 @@ export default function Home() {
                 }}
               >
                 <Text style={{ fontWeight: '700', color: colors.ink, fontSize: 15 }}>
-                  {s.kind === 'auction' ? 'Auction' : 'Sale'}, {s.lots.length} lots
+                  {s.kind === 'auction' ? 'Grower Showcase auction' : 'Grower Showcase'}, {s.lots.length} lots
                   {s.opens ? `, ${formatDay(s.opens.day)}` : ''}
                 </Text>
                 <Text style={{ color: colors.soft, fontSize: 13 }}>{getFormat(s.formatId).name} format. Tap to open.</Text>

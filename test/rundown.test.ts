@@ -129,6 +129,13 @@ describe('the Sales Record document', () => {
     expect(words).toContain(ORIGIN_LINE);
   });
 
+  it('heads the record as a Grower Showcase, with the Commons Market heading only in the Commons format', () => {
+    expect(words).toContain('Grower Showcase, October 23, 2026');
+    expect(words).not.toContain('Commons');
+    const commons = salesRecordHtml(buildRundown({ sale: { ...sale, formatId: 'commons' }, profile, report, records: [] }));
+    expect(commons).toContain('Commons Market Sales Record, Phil Achleman');
+  });
+
   it('keeps dashes out of the words a seller reads', () => {
     expect(words.replace(/<!doctype html>/i, '')).not.toMatch(DASH_PATTERN);
   });

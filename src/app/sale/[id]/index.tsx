@@ -14,7 +14,7 @@ export default function SaleScreen() {
   const sale = useSale(id);
   const [saving, setSaving] = useState<string | null>(null);
 
-  if (!sale || !store.profile) return <Screen><Note>This sale is gone.</Note></Screen>;
+  if (!sale || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
   const profile = store.profile;
   const format = getFormat(sale.formatId);
   const announcement = format.announcement({ profile, sale });
@@ -35,11 +35,11 @@ export default function SaleScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: `${sale.kind === 'auction' ? 'Auction' : 'Sale'}, ${sale.lots.length} lots` }} />
+      <Stack.Screen options={{ title: `${sale.kind === 'auction' ? 'Grower Showcase auction' : 'Grower Showcase'}, ${sale.lots.length} lots` }} />
       <Screen
         footer={
           <Row>
-            <Button title="Post it, lot by lot" onPress={() => router.push(`/sale/${sale.id}/post`)} style={{ flex: 1 }} />
+            <Button title="Post the Market Listings" onPress={() => router.push(`/sale/${sale.id}/post`)} style={{ flex: 1 }} />
             <Button kind="secondary" title="Claims" onPress={() => router.push(`/sale/${sale.id}/claims`)} style={{ flex: 1 }} />
           </Row>
         }
@@ -98,7 +98,7 @@ export default function SaleScreen() {
         {!sale.lots.length ? <Note>No lots yet. Add one with a photo, a name and a price.</Note> : null}
         <Button
           kind="danger"
-          title="Delete this sale"
+          title="Delete this showcase"
           onPress={() => {
             store.deleteSale(sale.id);
             router.back();

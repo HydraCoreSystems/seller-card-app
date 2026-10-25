@@ -75,7 +75,7 @@ export default function PlantScreen() {
           <StampedPhoto photoUri={existing.photoUri} profile={store.profile} />
           <Note>
             This is a card for posting one plant on its own, in the {format.name} format. For several plants at
-            once, start a New sale from your plant list.
+            once, start a New showcase from your plant list.
           </Note>
         </Screen>
       </>

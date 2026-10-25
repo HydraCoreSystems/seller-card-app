@@ -1,4 +1,4 @@
-import { ORIGIN_LINE } from '../brand';
+import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
 import { joinLines } from '../text';
 import { closesLine, labeled, lotName, opensLine, priceLine, sellerLine, shippingLine } from './parts';
 import type { CardFormat } from './types';
@@ -12,7 +12,7 @@ export const generic: CardFormat = {
   announcement({ profile, sale }) {
     const auction = sale.kind === 'auction';
     return joinLines([
-      auction ? 'PLANT AUCTION' : 'PLANT SALE',
+      auction ? `${SHOWCASE.toUpperCase()} AUCTION` : SHOWCASE.toUpperCase(),
       `Seller: ${sellerLine(profile)}`,
       '',
       opensLine(sale, profile),
@@ -24,7 +24,7 @@ export const generic: CardFormat = {
       labeled(auction ? 'Bidding rules' : 'Claim rules', sale.claimRules),
       labeled('Also listed in', sale.crossListing),
       '',
-      sale.lots.length ? `${sale.lots.length} lots, numbered in the comments below.` : null,
+      sale.lots.length ? `${sale.lots.length} ${MARKET_LISTING}${sale.lots.length === 1 ? '' : 's'}, numbered in the comments below.` : null,
       '',
       ORIGIN_LINE,
     ]);
@@ -43,6 +43,7 @@ export const generic: CardFormat = {
 
   single({ profile, sale, lot, claimRules }) {
     return joinLines([
+      MARKET_LISTING.toUpperCase(),
       lotName(lot),
       priceLine(sale.kind, lot.price),
       lot.description.trim() || null,

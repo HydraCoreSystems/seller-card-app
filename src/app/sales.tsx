@@ -81,11 +81,11 @@ export default function SalesScreen() {
 
       {store.sales.length ? (
         <>
-          <H>Your sales</H>
+          <H>Your Grower Showcases</H>
           {store.sales.map((s) => (
             <Pressable key={s.id} accessibilityRole="button" onPress={() => router.push(`/sale/${s.id}`)} style={styles.panel}>
               <Text style={{ fontWeight: '600', color: colors.ink }}>
-                {s.kind === 'auction' ? 'Auction' : 'Sale'} of {s.lots.length} lots
+                {s.kind === 'auction' ? 'Grower Showcase auction' : 'Grower Showcase'} of {s.lots.length} lots
               </Text>
               <Text style={{ color: colors.soft }}>Made {formatDay(s.createdAt)}</Text>
             </Pressable>

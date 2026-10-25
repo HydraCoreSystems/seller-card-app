@@ -13,7 +13,7 @@ export default function PostScreen() {
   const startIndex = sale && lotParam ? sale.lots.findIndex((l) => String(l.number) === lotParam) + 1 : 0;
   const [step, setStep] = useState(Math.max(0, startIndex));
 
-  if (!sale || !store.profile) return <Screen><Note>This sale is gone.</Note></Screen>;
+  if (!sale || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
   const profile = store.profile;
   const format = getFormat(sale.formatId);
   const total = sale.lots.length;
@@ -37,7 +37,7 @@ export default function PostScreen() {
       <Screen footer={nav}>
         {lot ? (
           <>
-            <Note>Comment on your sale post: attach the photo, paste the text.</Note>
+            <Note>Comment on your Grower Showcase post: attach the photo, paste the Market Listing.</Note>
             <StampedPhoto photoUri={lot.photoUri} profile={profile} />
             <CardText text={format.listing({ profile, sale, lot })} copyKey={`lot${lot.number}`} />
             <Button
@@ -48,7 +48,7 @@ export default function PostScreen() {
           </>
         ) : (
           <>
-            <Note>Start the sale post with this. Then go lot by lot.</Note>
+            <Note>Start the Grower Showcase post with this. Then go lot by lot.</Note>
             <CardText text={format.announcement({ profile, sale })} copyKey="announcement" label="Copy announcement" />
           </>
         )}

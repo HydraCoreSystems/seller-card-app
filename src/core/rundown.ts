@@ -3,13 +3,14 @@
  * and gives back who won each lot, who's next in line, what each buyer owes, and anything
  * a buyer asked that the seller should answer. The Sales Record document is printed from it.
  */
-import { ORIGIN_LINE } from './brand';
+import { ORIGIN_LINE, SHOWCASE } from './brand';
 import { buyerHistory, buyerKey as key, type BuyerHistory } from './buyers';
 import type { ClaimReport, ThreadComment } from './claims';
 import { cleanMentions, showTime, spoken } from './claims';
+import { COMMONS_MARKET } from './formats/commons';
 import { shippingLine } from './formats/parts';
 import { formatLongDate, formatPrice, plantDisplayName } from './text';
-import type { Lot, Profile, Sale, SaleRecord } from './types';
+import type { FormatId, Lot, Profile, Sale, SaleRecord } from './types';
 
 export interface RundownLot {
   number: number;
@@ -47,6 +48,8 @@ export interface Rundown {
   /** YYYY-MM-DD */
   day: string;
   sellerName: string;
+  /** The showcase's format, so the record carries the room's heading only in the room's format. */
+  formatId: FormatId;
   lotsOffered: number;
   lotsClaimed: number;
   claimedValue: number;
@@ -125,6 +128,7 @@ export function buildRundown({
   return {
     day: sale.opens?.day ?? sale.createdAt,
     sellerName: profile.sellerName.trim(),
+    formatId: sale.formatId,
     lotsOffered: lots.length,
     lotsClaimed: claimed.length,
     claimedValue: claimed.reduce((sum, l) => sum + (l.price ?? 0), 0),
@@ -189,7 +193,8 @@ function money(n: number | null): string {
 
 /** One readable page: totals, winners by lot, buyer totals, open questions. Prints to PDF. */
 export function salesRecordHtml(r: Rundown): string {
-  const title = `Sales Record${r.sellerName ? `, ${r.sellerName}` : ''}`;
+  const heading = r.formatId === 'commons' ? `${COMMONS_MARKET} Sales Record` : 'Sales Record';
+  const title = `${heading}${r.sellerName ? `, ${r.sellerName}` : ''}`;
   const lotRows = r.lots
     .map((l) => {
       const who = l.winner
@@ -221,7 +226,7 @@ th{font-size:11px;color:#5E6B5E;font-weight:600}.n{width:28px}.m{text-align:righ
 .soft{color:#5E6B5E}.warn{color:#9A5B00;font-weight:600}.totals td{border:none;padding:2px 12px 2px 0}
 ul{padding-left:18px;margin:0}li{margin-bottom:4px}footer{margin-top:28px;font-size:10px;color:#5E6B5E}
 </style></head><body>
-<h1>${esc(title)}</h1><div class="soft">${esc(formatLongDate(r.day))}</div>
+<h1>${esc(title)}</h1><div class="soft">${SHOWCASE}, ${esc(formatLongDate(r.day))}</div>
 <h2>Totals</h2><table class="totals">
 <tr><td>Lots claimed</td><td><b>${r.lotsClaimed} of ${r.lotsOffered}</b></td></tr>
 <tr><td>Claimed value</td><td><b>${money(r.claimedValue)}</b></td></tr>

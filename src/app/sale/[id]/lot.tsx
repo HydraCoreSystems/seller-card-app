@@ -20,7 +20,7 @@ export default function LotScreen() {
     photoUri: existing?.photoUri ?? null,
   });
 
-  if (!sale) return <Screen><Note>This sale is gone.</Note></Screen>;
+  if (!sale) return <Screen><Note>This showcase is gone.</Note></Screen>;
   const number = existing?.number ?? nextLotNumber(sale);
   const canSave = draft.name.trim() !== '' || draft.noid;
 

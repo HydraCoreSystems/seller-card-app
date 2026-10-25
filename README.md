@@ -18,6 +18,12 @@ This is **test build one**: everything runs on the phone, with no sign in and no
   plus the origin line. The original is never changed.
 * **Claim tracker**: paste the comment thread, get claims per lot in thread order. Times are hints
   only. Claims that thread order can't separate are marked as ties for the seller to rule on.
+* **After the showcase**: the rundown of winners by lot with the next in line, buyer totals and open
+  buyer questions. Closing marks every clear winner sold and saves the Sales Record as a PDF. Each
+  buyer is marked waiting, paid or never paid.
+* **Buyer memory**: built from the sales record. A quiet line in Claims for returning buyers, a repeat
+  flag in the rundown, and one short note per buyer.
+* **Leftovers**: unclaimed and never paid lots from closed showcases, relisted in one tap.
 * **Sales record**: searchable, exports a CSV file.
 * **Origin line** on every card and stamped photo.
 
@@ -34,7 +40,9 @@ Every push to `main` builds an Android APK and publishes it to the
 * `src/core/formats/` has one file per posting format. A format pack is a new file registered in
   `formats/index.ts`. Every format has both layers.
 * `src/core/brand.ts` holds the app name and the origin line. The product name is still open; change
-  it there.
+  it there. It also holds the room's words every template speaks: a sale event is a Grower Showcase,
+  a post for a plant is a Market Listing. Commons Market, Commons Verified Grower and the Commons name
+  appear only inside the Commons format.
 * `src/app/` holds the screens (Expo Router). `src/lib/` holds storage, photos and stamping, with
   `.web.ts` versions for trying the app in a browser.
 

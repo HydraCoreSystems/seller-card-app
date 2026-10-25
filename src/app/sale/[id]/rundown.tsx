@@ -22,7 +22,7 @@ export default function RundownScreen() {
     return buildRundown({ sale, profile: store.profile, report, records: store.records });
   }, [sale, store.profile, store.records]);
 
-  if (!sale || !rundown) return <Screen><Note>This sale is gone.</Note></Screen>;
+  if (!sale || !rundown) return <Screen><Note>This showcase is gone.</Note></Screen>;
 
   const ties = rundown.lots.filter((l) => l.tie);
 
@@ -49,7 +49,7 @@ export default function RundownScreen() {
     <Screen
       footer={
         <Button
-          title={status ?? (sale.closedAt ? 'Save the Sales Record' : 'Close sale and save the record')}
+          title={status ?? (sale.closedAt ? 'Save the Sales Record' : 'Close the showcase and save the record')}
           disabled={status === 'Making the record'}
           onPress={sale.closedAt ? save : close}
         />
