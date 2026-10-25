@@ -4,7 +4,7 @@
  * is the claim order the showcase closed with, as named in the Sales Record. If the runner up
  * passes or doesn't answer inside the window, the lot goes back to open with the leftovers.
  */
-import { buyerKey } from './buyers';
+import { buyerKey, firstName } from './buyers';
 import { joinLines, formatPrice, formatSaleTime, toDay } from './text';
 import type { Profile, Sale, SaleRecord } from './types';
 
@@ -137,10 +137,9 @@ export function formatDeadline(ms: number, timeZone: string): string {
 
 /** The message the seller copies or sends to the runner up. */
 export function offerMessage(card: Pick<ChanceCard, 'lot' | 'name' | 'price'>, to: string, profile: Profile, answerByMs: number): string {
-  const first = to.trim().split(/\s+/)[0] || to;
   const price = card.price !== null ? ` at ${formatPrice(card.price)}` : '';
   return joinLines([
-    `Hi ${first}! Lot ${card.lot}, ${card.name}, came back open and you were next in line. It’s yours${price} if you still want it.`,
+    `Hi ${firstName(to)}! Lot ${card.lot}, ${card.name}, came back open and you were next in line. It’s yours${price} if you still want it.`,
     `Just let me know by ${formatDeadline(answerByMs, profile.timeZone)} and I’ll hold it for you.`,
     '',
     profile.shipping.trim() ? `Shipping: ${profile.shipping.trim()}` : null,

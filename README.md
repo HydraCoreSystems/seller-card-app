@@ -23,6 +23,8 @@ This is **test build one**: everything runs on the phone, with no sign in and no
   buyer is marked waiting, paid or never paid.
 * **Second Chance**: when a winner doesn't pay inside the window set in the profile, the lot can go
   to the next in line at the same price, with the message ready to copy or send.
+* **Money chase**: once a showcase closes, every buyer still waiting to pay has a one tap reminder
+  with their lots, total, shipping and payment handles. Marking a buyer paid folds them out of the list.
 * **Buyer memory**: built from the sales record. A quiet line in Claims for returning buyers, a repeat
   flag in the rundown, and one short note per buyer.
 * **Leftovers**: unclaimed and never paid lots from closed showcases, relisted in one tap.

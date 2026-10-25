@@ -62,3 +62,8 @@ export function historyLine(h: BuyerHistory): string {
   if (h.unpaidSales) parts.push(`${h.unpaidSales} ${h.unpaidSales === 1 ? 'sale' : 'sales'} left unpaid`);
   return parts.join(', ');
 }
+
+/** The name a message greets the buyer by. */
+export function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || name;
+}

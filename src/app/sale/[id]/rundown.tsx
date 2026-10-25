@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Share, Text, TextInput, View } from 'react-native';
+import { Pressable, Share, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { buyerKey, historyLine } from '../../../core/buyers';
+import { reminderMessage } from '../../../core/chase';
 import {
   buildRundown,
   claimOrderOf,
@@ -39,6 +40,10 @@ export default function RundownScreen() {
   const ties = rundown.lots.filter((l) => l.tie);
   const chances = secondChances(sale, store.records, window, now);
   const payBy = sale.closedMs ? sale.closedMs + window : null;
+  // Marking a buyer paid moves them off the chase list and down to a single line.
+  const waiting = rundown.buyers.filter((b) => !b.payment);
+  const paid = rundown.buyers.filter((b) => b.payment === 'paid');
+  const never = rundown.buyers.filter((b) => b.payment === 'never');
 
   const save = async () => {
     setStatus('Making the record');
@@ -92,6 +97,11 @@ export default function RundownScreen() {
           {rundown.lotsClaimed} of {rundown.lotsOffered} lots claimed
         </Text>
         <Text style={{ color: colors.soft, marginTop: 2 }}>{formatPrice(rundown.claimedValue) || '$0'} claimed</Text>
+        {sale.closedAt && rundown.buyers.length ? (
+          <Text style={{ color: colors.soft }}>
+            {formatPrice(sum(paid)) || '$0'} paid, {formatPrice(sum(waiting)) || '$0'} waiting
+          </Text>
+        ) : null}
       </Panel>
 
       {ties.length ? (
@@ -113,11 +123,40 @@ export default function RundownScreen() {
         </>
       ) : null}
 
-      <H>Buyers</H>
-      {rundown.buyers.length ? (
-        rundown.buyers.map((b) => <BuyerCard key={b.name} buyer={b} saleId={sale.id} closed={!!sale.closedAt} />)
+      {!sale.closedAt ? (
+        <>
+          <H>Buyers</H>
+          {rundown.buyers.length ? (
+            rundown.buyers.map((b) => <BuyerCard key={b.name} buyer={b} saleId={sale.id} closed={false} />)
+          ) : (
+            <Note>No winners yet.</Note>
+          )}
+        </>
       ) : (
-        <Note>No winners yet.</Note>
+        <>
+          <H>Waiting on payment</H>
+          {waiting.length ? (
+            waiting.map((b) => (
+              <BuyerCard
+                key={b.name}
+                buyer={b}
+                saleId={sale.id}
+                closed
+                reminder={reminderMessage(b, profile, rundown.day, payBy && payBy > now ? payBy : null)}
+              />
+            ))
+          ) : (
+            <Note>{rundown.buyers.length ? 'Everyone’s settled up.' : 'No winners on this showcase.'}</Note>
+          )}
+          {paid.length ? <H>Paid</H> : null}
+          {paid.map((b) => (
+            <DoneLine key={b.name} buyer={b} saleId={sale.id} />
+          ))}
+          {never.length ? <H>Never paid</H> : null}
+          {never.map((b) => (
+            <DoneLine key={b.name} buyer={b} saleId={sale.id} />
+          ))}
+        </>
       )}
 
       <H>Winners by lot</H>
@@ -212,12 +251,44 @@ function ChanceView({ card, saleId, profile, window }: { card: ChanceCard; saleI
 
 type PayChoice = 'waiting' | 'paid' | 'never';
 
-function BuyerCard({ buyer, saleId, closed }: { buyer: RundownBuyer; saleId: string; closed: boolean }) {
+const sum = (buyers: RundownBuyer[]) => buyers.reduce((n, b) => n + b.total, 0);
+
+/** A buyer who's paid or never paid: one line, opened back up with a tap. */
+function DoneLine({ buyer, saleId }: { buyer: RundownBuyer; saleId: string }) {
+  const [open, setOpen] = useState(false);
+  if (open) return <BuyerCard buyer={buyer} saleId={saleId} closed onFold={() => setOpen(false)} />;
+  return (
+    <Pressable
+      onPress={() => setOpen(true)}
+      accessibilityRole="button"
+      style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.line }}
+    >
+      <Text style={{ color: colors.ink, flex: 1 }}>{buyer.name}</Text>
+      <Text style={{ color: colors.soft }}>{formatPrice(buyer.total) || '$0'}  ›</Text>
+    </Pressable>
+  );
+}
+
+function BuyerCard({
+  buyer,
+  saleId,
+  closed,
+  reminder,
+  onFold,
+}: {
+  buyer: RundownBuyer;
+  saleId: string;
+  closed: boolean;
+  /** The payment reminder, for a buyer still waiting to pay. */
+  reminder?: string;
+  onFold?: () => void;
+}) {
   const store = useStore();
   const saved = store.buyerNotes[buyerKey(buyer.name)] ?? '';
   const [note, setNote] = useState(saved);
+  const [copied, copy] = useCopy();
   return (
-    <Panel style={buyer.payment === 'paid' ? { opacity: 0.6 } : undefined}>
+    <Panel>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Text style={{ fontWeight: '700', color: colors.ink, flex: 1 }}>{buyer.name}</Text>
         <Text style={{ fontWeight: '700', color: colors.ink }}>{formatPrice(buyer.total) || '$0'}</Text>
@@ -233,6 +304,16 @@ function BuyerCard({ buyer, saleId, closed }: { buyer: RundownBuyer; saleId: str
           {l.price !== null ? `, ${formatPrice(l.price)}` : ''}
         </Text>
       ))}
+      {reminder ? (
+        <Row style={{ marginTop: 8 }}>
+          <Button
+            title={copied ? '✓ Reminder copied' : 'Copy payment reminder'}
+            onPress={() => copy('reminder', reminder)}
+            style={{ flex: 2 }}
+          />
+          <Button kind="secondary" title="Send" onPress={() => Share.share({ message: reminder }).catch(() => undefined)} style={{ flex: 1 }} />
+        </Row>
+      ) : null}
       <TextInput
         value={note}
         onChangeText={setNote}
@@ -254,6 +335,7 @@ function BuyerCard({ buyer, saleId, closed }: { buyer: RundownBuyer; saleId: str
           onChange={(v) => store.setPayment(saleId, buyer.name, v === 'waiting' ? undefined : v)}
         />
       ) : null}
+      {onFold ? <Button kind="quiet" title="Fold up" onPress={onFold} style={{ marginTop: 4 }} /> : null}
     </Panel>
   );
 }
