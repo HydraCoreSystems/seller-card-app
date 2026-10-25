@@ -107,7 +107,13 @@ describe('the paid date', () => {
       'January 2027,0,12.00,8.00,20.00,0.00',
       '2027 total,0,12.00,8.00,20.00,0.00',
     ]);
-    // The screen keeps counting on the close date.
-    expect(seasonTotals(late, sales, 'month', null)[1]).toMatchObject({ key: '2026-10', gross: 15, shipping: 8 });
+    // The screen counts the same way, so a month never shows two numbers.
+    const months = seasonTotals(late, sales, 'month', null);
+    expect(months.map((m) => [m.key, m.plants, m.gross, m.shipping, m.unpaid])).toEqual([
+      ['2027-01', 0, 12, 8, 0],
+      ['2026-12', 1, 0, 0, 0],
+      ['2026-11', 0, 15, 8, 0],
+      ['2026-10', 2, 0, 0, 30],
+    ]);
   });
 });

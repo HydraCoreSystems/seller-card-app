@@ -7,6 +7,9 @@
  * marked paid, plus lots entered by hand. Shipping is one flat charge per paying buyer per showcase,
  * as the payment reminder asks for it; showcases with tiered shipping add nothing, since the app
  * can't know what each buyer paid. Unpaid is the plant money still waiting.
+ *
+ * Plants sold and unpaid count on the day the showcase closed. Gross taken and shipping collected
+ * count on the day they were marked paid, on the screen and in the export alike.
  */
 import { buyerKey } from './buyers';
 import { MONTHS, formatDay, parseDay, toDay } from './text';
@@ -52,16 +55,10 @@ function shippingFor(sale: Sale | undefined, fallback: number | null): number {
 const takenOn = (r: SaleRecord) => r.paidDate ?? r.date;
 
 /**
- * Totals for each period with any sales in it, newest first. Everything counts on the record's day
- * unless byPaidDate is set, when gross taken and shipping collected count on the day they were paid.
+ * Totals for each period with any sales in it, newest first. Plants sold and unpaid count on the
+ * record's day; gross taken and shipping collected count on the day they were paid.
  */
-export function seasonTotals(
-  records: SaleRecord[],
-  sales: Sale[],
-  span: Span,
-  fallbackShipping: number | null,
-  { byPaidDate = false }: { byPaidDate?: boolean } = {},
-): PeriodTotals[] {
+export function seasonTotals(records: SaleRecord[], sales: Sale[], span: Span, fallbackShipping: number | null): PeriodTotals[] {
   const periods = new Map<string, PeriodTotals>();
   const at = (day: string) => {
     const p = periodOf(day, span);
@@ -72,7 +69,7 @@ export function seasonTotals(
   for (const r of records) {
     if (r.payment === 'never') continue;
     const t = at(r.date);
-    const money = byPaidDate ? at(takenOn(r)) : t;
+    const money = at(takenOn(r));
     t.plants += 1;
     const price = r.price ?? 0;
     if (r.saleId === null || r.payment === 'paid') money.gross += price;
@@ -100,11 +97,10 @@ const money = (n: number) => n.toFixed(2);
  * spreadsheet. Gross taken and shipping collected count in the month they were paid.
  */
 export function seasonCsv(records: SaleRecord[], sales: Sale[], year: string, fallbackShipping: number | null): string {
-  const opts = { byPaidDate: true };
-  const months = seasonTotals(records, sales, 'month', fallbackShipping, opts)
+  const months = seasonTotals(records, sales, 'month', fallbackShipping)
     .filter((m) => m.key.startsWith(`${year}-`))
     .reverse();
-  const total = seasonTotals(records, sales, 'season', fallbackShipping, opts).find((s) => s.key === year) ?? empty();
+  const total = seasonTotals(records, sales, 'season', fallbackShipping).find((s) => s.key === year) ?? empty();
   const row = (label: string, t: Totals) => [label, String(t.plants), money(t.gross), money(t.shipping), money(t.gross + t.shipping), money(t.unpaid)];
   const rows = [
     ['Period', 'Plants sold', 'Gross taken', 'Shipping collected', 'Taken with shipping', 'Unpaid outstanding'],
