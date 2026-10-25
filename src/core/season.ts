@@ -48,8 +48,20 @@ function shippingFor(sale: Sale | undefined, fallback: number | null): number {
   return fallback ?? 0;
 }
 
-/** Totals for each period with any sales in it, newest first. */
-export function seasonTotals(records: SaleRecord[], sales: Sale[], span: Span, fallbackShipping: number | null): PeriodTotals[] {
+/** When money came in: the day it was marked paid, or the record's own day for hand entries and older marks. */
+const takenOn = (r: SaleRecord) => r.paidDate ?? r.date;
+
+/**
+ * Totals for each period with any sales in it, newest first. Everything counts on the record's day
+ * unless byPaidDate is set, when gross taken and shipping collected count on the day they were paid.
+ */
+export function seasonTotals(
+  records: SaleRecord[],
+  sales: Sale[],
+  span: Span,
+  fallbackShipping: number | null,
+  { byPaidDate = false }: { byPaidDate?: boolean } = {},
+): PeriodTotals[] {
   const periods = new Map<string, PeriodTotals>();
   const at = (day: string) => {
     const p = periodOf(day, span);
@@ -60,15 +72,16 @@ export function seasonTotals(records: SaleRecord[], sales: Sale[], span: Span, f
   for (const r of records) {
     if (r.payment === 'never') continue;
     const t = at(r.date);
+    const money = byPaidDate ? at(takenOn(r)) : t;
     t.plants += 1;
     const price = r.price ?? 0;
-    if (r.saleId === null || r.payment === 'paid') t.gross += price;
+    if (r.saleId === null || r.payment === 'paid') money.gross += price;
     else t.unpaid += price;
     if (r.saleId !== null && r.payment === 'paid') {
       const once = `${r.saleId}:${buyerKey(r.buyer)}`;
       if (!shipped.has(once)) {
         shipped.add(once);
-        t.shipping += shippingFor(sales.find((s) => s.id === r.saleId), fallbackShipping);
+        money.shipping += shippingFor(sales.find((s) => s.id === r.saleId), fallbackShipping);
       }
     }
   }
@@ -82,11 +95,16 @@ export function hasUncountedShipping(records: SaleRecord[], sales: Sale[]): bool
 
 const money = (n: number) => n.toFixed(2);
 
-/** One season month by month, with the season total last: a clean file for a tax preparer or a spreadsheet. */
+/**
+ * One season month by month, with the season total last: a clean file for a tax preparer or a
+ * spreadsheet. Gross taken and shipping collected count in the month they were paid.
+ */
 export function seasonCsv(records: SaleRecord[], sales: Sale[], year: string, fallbackShipping: number | null): string {
-  const inYear = records.filter((r) => r.date.startsWith(`${year}-`));
-  const months = seasonTotals(inYear, sales, 'month', fallbackShipping).reverse();
-  const total = seasonTotals(inYear, sales, 'season', fallbackShipping)[0] ?? { label: `${year} season`, ...empty() };
+  const opts = { byPaidDate: true };
+  const months = seasonTotals(records, sales, 'month', fallbackShipping, opts)
+    .filter((m) => m.key.startsWith(`${year}-`))
+    .reverse();
+  const total = seasonTotals(records, sales, 'season', fallbackShipping, opts).find((s) => s.key === year) ?? empty();
   const row = (label: string, t: Totals) => [label, String(t.plants), money(t.gross), money(t.shipping), money(t.gross + t.shipping), money(t.unpaid)];
   const rows = [
     ['Period', 'Plants sold', 'Gross taken', 'Shipping collected', 'Taken with shipping', 'Unpaid outstanding'],

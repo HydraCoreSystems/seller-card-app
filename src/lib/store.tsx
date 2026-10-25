@@ -3,6 +3,7 @@ import { buyerKey } from '../core/buyers';
 import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
+import { markPayment } from '../core/records';
 import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
 import { toDay } from '../core/text';
 import type { Lot, Plant, Profile, Sale, SaleRecord } from '../core/types';
@@ -195,7 +196,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // A buyer who never paid hands the plant back, so it shows as for sale again.
           const plantIds = new Set(plantIdsFor(d.sales.find((s) => s.id === saleId), d.records.filter(mine).map((r) => r.lotNumber)));
           return {
-            records: d.records.map((r) => (mine(r) ? { ...r, payment } : r)),
+            records: d.records.map((r) => (mine(r) ? markPayment(r, payment, toDay(new Date())) : r)),
             plants: d.plants.map((p) => (plantIds.has(p.id) ? { ...p, sold: payment !== 'never' } : p)),
           };
         }),

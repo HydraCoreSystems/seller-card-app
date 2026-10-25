@@ -98,4 +98,6 @@ export interface SaleRecord {
   date: string;
   /** Marked from the rundown. Unset means still waiting on the money. */
   payment?: 'paid' | 'never';
+  /** YYYY-MM-DD, stamped when the lot is marked paid. */
+  paidDate?: string;
 }

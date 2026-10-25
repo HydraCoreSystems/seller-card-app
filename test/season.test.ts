@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { markPayment } from '../src/core/records';
 import { hasUncountedShipping, periodOf, seasonCsv, seasonTotals } from '../src/core/season';
 import type { Sale, SaleRecord } from '../src/core/types';
 
@@ -77,5 +78,36 @@ describe('the season file', () => {
 
   it('gives a header and a zero total for a season with nothing in it', () => {
     expect(seasonCsv(records, sales, '2024', null).split('\r\n')[1]).toBe('2024 total,0,0.00,0.00,0.00,0.00');
+  });
+});
+
+describe('the paid date', () => {
+  it('is stamped on a Paid mark, kept on a repeat mark, and dropped when the mark comes off', () => {
+    const waiting = rec('oct23', 'Cal Moss', 30, '2026-10-23');
+    const paid = markPayment(waiting, 'paid', '2026-10-25');
+    expect(paid.paidDate).toBe('2026-10-25');
+    expect(markPayment(paid, 'paid', '2026-10-27').paidDate).toBe('2026-10-25');
+    expect(markPayment(paid, undefined, '2026-10-27')).not.toHaveProperty('paidDate');
+    expect(markPayment(paid, 'never', '2026-10-27')).not.toHaveProperty('paidDate');
+  });
+
+  it('moves gross and shipping in the export to the month and season they were paid', () => {
+    const late: SaleRecord[] = [
+      { ...rec('oct23', 'Jo Banks', 15, '2026-10-30', 'paid'), paidDate: '2026-11-02' },
+      { ...rec('oct23', 'Ava Stone', 12, '2026-12-30', 'paid'), paidDate: '2027-01-02' },
+      rec('oct23', 'Cal Moss', 30, '2026-10-30'),
+    ];
+    expect(seasonCsv(late, sales, '2026', null).split('\r\n').slice(1, 5)).toEqual([
+      'October 2026,2,0.00,0.00,0.00,30.00',
+      'November 2026,0,15.00,8.00,23.00,0.00',
+      'December 2026,1,0.00,0.00,0.00,0.00',
+      '2026 total,3,15.00,8.00,23.00,30.00',
+    ]);
+    expect(seasonCsv(late, sales, '2027', null).split('\r\n').slice(1, 3)).toEqual([
+      'January 2027,0,12.00,8.00,20.00,0.00',
+      '2027 total,0,12.00,8.00,20.00,0.00',
+    ]);
+    // The screen keeps counting on the close date.
+    expect(seasonTotals(late, sales, 'month', null)[1]).toMatchObject({ key: '2026-10', gross: 15, shipping: 8 });
   });
 });

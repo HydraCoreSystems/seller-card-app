@@ -13,6 +13,13 @@ export function searchRecords(records: SaleRecord[], query: string): SaleRecord[
   );
 }
 
+/** Sets a lot's payment. A Paid mark stamps today as the paid date, unless it was already paid. */
+export function markPayment(r: SaleRecord, payment: SaleRecord['payment'], today: string): SaleRecord {
+  const { paidDate, ...rest } = r;
+  if (payment !== 'paid') return { ...rest, payment };
+  return { ...rest, payment, paidDate: r.payment === 'paid' && paidDate ? paidDate : today };
+}
+
 function csvCell(value: string): string {
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
