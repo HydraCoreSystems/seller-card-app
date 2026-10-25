@@ -1,6 +1,7 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { getFormat } from '../../core/formats';
+import { lastSold, priceMemoryLine } from '../../core/records';
 import { toDay } from '../../core/text';
 import type { Plant, SaleKind } from '../../core/types';
 import { deletePhoto } from '../../lib/photos';
@@ -26,6 +27,7 @@ export default function PlantScreen() {
   });
 
   const canSave = draft.name.trim() !== '' || draft.noid;
+  const memory = lastSold(store.records, draft.name, draft.noid);
   // Lots in a sale keep pointing at the photo, so only remove photos no sale uses.
   const dropPhoto = (uri: string | null) => {
     if (!store.sales.some((s) => s.lots.some((l) => l.photoUri === uri))) deletePhoto(uri);
@@ -93,6 +95,7 @@ export default function PlantScreen() {
           onChange={setDraft}
           priceLabel={kind === 'auction' ? 'Opening price' : 'Price'}
           descriptionLabel="Notes"
+          memory={memory ? priceMemoryLine(memory) : null}
         />
         <Choice<SaleKind>
           label="Sell it as"

@@ -1,4 +1,4 @@
-import { formatPrice } from './text';
+import { formatLongDate, formatPrice } from './text';
 import type { SaleRecord } from './types';
 
 export function searchRecords(records: SaleRecord[], query: string): SaleRecord[] {
@@ -11,6 +11,34 @@ export function searchRecords(records: SaleRecord[], query: string): SaleRecord[
       .toLowerCase()
       .includes(q),
   );
+}
+
+export interface PriceMemory {
+  price: number;
+  /** YYYY-MM-DD */
+  date: string;
+}
+
+const nameKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * The last price a plant name sold for, and when. NOIDs and blank names have no memory, since two
+ * plants under the same NOID label aren't the same plant. Lots never paid for don't count.
+ */
+export function lastSold(records: SaleRecord[], name: string, noid: boolean, exceptSaleId?: string): PriceMemory | null {
+  const k = nameKey(name);
+  if (noid || !k) return null;
+  let best: PriceMemory | null = null;
+  for (const r of records) {
+    if (r.price === null || r.payment === 'never' || (exceptSaleId && r.saleId === exceptSaleId)) continue;
+    if (nameKey(r.plantName) !== k) continue;
+    if (!best || r.date > best.date) best = { price: r.price, date: r.date };
+  }
+  return best;
+}
+
+export function priceMemoryLine(m: PriceMemory): string {
+  return `Last sold for ${formatPrice(m.price)} on ${formatLongDate(m.date)}`;
 }
 
 /** Sets a lot's payment. A Paid mark stamps today as the paid date, unless it was already paid. */

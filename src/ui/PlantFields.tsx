@@ -26,11 +26,14 @@ export function PlantFields({
   onChange,
   priceLabel = 'Price',
   descriptionLabel = 'A few words',
+  memory,
 }: {
   draft: PlantDraft;
   onChange: (d: PlantDraft) => void;
   priceLabel?: string;
   descriptionLabel?: string;
+  /** A quiet line under the price: what this plant name last sold for. */
+  memory?: string | null;
 }) {
   const set = <K extends keyof PlantDraft>(k: K, v: PlantDraft[K]) => onChange({ ...draft, [k]: v });
   const badPrice = draft.priceText.trim() !== '' && parsePrice(draft.priceText) === null;
@@ -80,6 +83,7 @@ export function PlantFields({
         keyboardType="decimal-pad"
       />
       {badPrice ? <Text style={{ color: colors.danger, marginTop: -8, marginBottom: 12 }}>Type the price as a number, like 25.</Text> : null}
+      {memory && !badPrice ? <Text style={{ color: colors.soft, fontSize: 13, marginTop: -8, marginBottom: 12 }}>{memory}</Text> : null}
       <Field
         label={descriptionLabel}
         value={draft.description}

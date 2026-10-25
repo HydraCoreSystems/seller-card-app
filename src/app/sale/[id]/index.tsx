@@ -2,6 +2,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../../../core/formats';
+import { lastSold, priceMemoryLine } from '../../../core/records';
 import { formatPrice, plantDisplayName } from '../../../core/text';
 import { saveToGallery } from '../../../lib/stampPhoto';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
@@ -62,6 +63,7 @@ export default function SaleScreen() {
         ) : null}
         {sale.lots.map((lot) => {
           const record = lotRecorded(store.records, sale.id, lot);
+          const memory = record ? null : lastSold(store.records, lot.name, lot.noid, sale.id);
           return (
             <Pressable
               key={lot.number}
@@ -91,6 +93,7 @@ export default function SaleScreen() {
                       ? 'No price yet'
                       : `${sale.kind === 'auction' ? 'Opening bid ' : ''}${formatPrice(lot.price)}`}
                 </Text>
+                {memory ? <Text style={{ color: colors.soft, fontSize: 12 }}>{priceMemoryLine(memory)}</Text> : null}
               </View>
             </Pressable>
           );

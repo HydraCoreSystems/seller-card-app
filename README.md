@@ -27,6 +27,8 @@ This is **test build one**: everything runs on the phone, with no sign in and no
   with their lots, total, shipping and payment handles. Marking a buyer paid folds them out of the list.
 * **Season totals**: plants sold, gross taken, shipping collected and unpaid, by week, month and
   season (a calendar year), with a month by month season file for a tax preparer.
+* **Price memory**: a plant name sold before quietly shows its last price and sale date, on the
+  plant, on the lot and in the showcase's lot list.
 * **Buyer memory**: built from the sales record. A quiet line in Claims for returning buyers, a repeat
   flag in the rundown, and one short note per buyer.
 * **Leftovers**: unclaimed and never paid lots from closed showcases, relisted in one tap.

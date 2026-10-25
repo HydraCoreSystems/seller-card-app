@@ -1,5 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { lastSold, priceMemoryLine } from '../../../core/records';
 import { appendLot, nextLotNumber } from '../../../core/sale';
 import { toDay } from '../../../core/text';
 import { newId, useSale, useStore } from '../../../lib/store';
@@ -23,6 +24,7 @@ export default function LotScreen() {
   if (!sale) return <Screen><Note>This showcase is gone.</Note></Screen>;
   const number = existing?.number ?? nextLotNumber(sale);
   const canSave = draft.name.trim() !== '' || draft.noid;
+  const memory = lastSold(store.records, draft.name, draft.noid, sale.id);
 
   const save = () => {
     const fields = {
@@ -62,6 +64,7 @@ export default function LotScreen() {
           draft={draft}
           onChange={setDraft}
           priceLabel={sale.kind === 'auction' ? 'Opening bid' : 'Price'}
+          memory={memory ? priceMemoryLine(memory) : null}
         />
       </Screen>
     </>
