@@ -24,6 +24,7 @@ export default function Layout() {
           <Stack.Screen name="profile" options={{ title: 'Seller profile' }} />
           <Stack.Screen name="sales" options={{ title: 'Sales record' }} />
           <Stack.Screen name="leftovers" options={{ title: 'Leftovers' }} />
+          <Stack.Screen name="totals" options={{ title: 'Season totals' }} />
           <Stack.Screen name="plant/[id]" options={{ title: 'Plant' }} />
           <Stack.Screen name="sale/new" options={{ title: 'New Grower Showcase' }} />
           <Stack.Screen name="sale/[id]/index" options={{ title: 'Grower Showcase' }} />

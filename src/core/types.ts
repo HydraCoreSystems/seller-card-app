@@ -69,6 +69,8 @@ export interface Sale {
   leftovers?: Lot[];
   /** When the sale closed, in milliseconds, so the payment window can run in hours. */
   closedMs?: number;
+  /** The flat shipping charge when the showcase closed, or null when shipping was tiered. */
+  shippingCharge?: number | null;
   /** Every lot's claim order when the sale closed, as the Sales Record names it. Second Chance reads it. */
   claimOrder?: Record<number, string[]>;
   offers?: SecondChance[];

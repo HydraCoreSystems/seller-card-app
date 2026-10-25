@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { buyerKey } from '../core/buyers';
+import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
 import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
@@ -139,7 +140,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         update((d) => {
           const date = toDay(new Date());
           const sold = new Set(plantIdsFor(sale, winners.map((w) => w.lotNumber)));
-          const closed = { ...sale, closedAt: date, closedMs: Date.now(), leftovers: unclaimed, claimOrder };
+          const closed = {
+            ...sale,
+            closedAt: date,
+            closedMs: Date.now(),
+            leftovers: unclaimed,
+            claimOrder,
+            shippingCharge: flatShipping(d.profile?.shipping ?? ''),
+          };
           return {
             records: [...winners.map((w) => ({ ...w, saleId: sale.id, date, id: newId() })), ...d.records],
             plants: d.plants.map((p) => (sold.has(p.id) ? { ...p, sold: true } : p)),

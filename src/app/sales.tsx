@@ -19,6 +19,7 @@ export default function SalesScreen() {
 
   return (
     <Screen>
+      <Button title="Season totals" disabled={!store.records.length} onPress={() => router.push('/totals')} style={{ marginBottom: 12 }} />
       <Field label="Search" value={query} onChangeText={setQuery} placeholder="Plant, buyer or date" />
       <Row style={{ marginBottom: 12 }}>
         <Button
