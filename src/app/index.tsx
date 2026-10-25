@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../core/formats';
 import { formatDay, formatPrice, plantDisplayName } from '../core/text';
-import { useStore } from '../lib/store';
+import { useLeftovers, useStore } from '../lib/store';
 import { Button, Note, Panel, Row, Screen, Thumb, colors } from '../ui/kit';
 
 export default function Home() {
   const { profile, plants, sales } = useStore();
+  const leftovers = useLeftovers();
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
 
@@ -101,6 +102,15 @@ export default function Home() {
               </Pressable>
             ))}
           </View>
+        ) : null}
+
+        {!picking && leftovers.length ? (
+          <Button
+            kind="secondary"
+            title={`${leftovers.length} ${leftovers.length === 1 ? 'leftover' : 'leftovers'} ready to relist`}
+            onPress={() => router.push('/leftovers')}
+            style={{ marginBottom: 12 }}
+          />
         ) : null}
 
         {picking ? <Note>Tap plants in the order you want the lots numbered.</Note> : null}

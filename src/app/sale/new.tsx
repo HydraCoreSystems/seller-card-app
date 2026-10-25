@@ -2,17 +2,23 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { FORMAT_LIST } from '../../core/formats';
 import type { FormatId, SaleKind, SaleTime } from '../../core/types';
-import { useStore } from '../../lib/store';
+import { useLeftovers, useStore } from '../../lib/store';
 import { Button, Choice, Field, Note, Screen } from '../../ui/kit';
 import { WhenPicker, isComplete } from '../../ui/WhenPicker';
 
 export default function NewSale() {
-  const { plants: param } = useLocalSearchParams<{ plants?: string }>();
+  const { plants: param, leftovers: leftoverParam } = useLocalSearchParams<{ plants?: string; leftovers?: string }>();
   const store = useStore();
   const profile = store.profile!;
+  const waiting = useLeftovers();
   const plantIds = (param ?? '').split(',').filter(Boolean);
-  const picked = plantIds.map((id) => store.plants.find((p) => p.id === id)).filter(Boolean);
-  const mostlyAuction = picked.filter((p) => p!.kind === 'auction').length > picked.length / 2;
+  const leftoverKeys = (leftoverParam ?? '').split(',').filter((k) => waiting.some((l) => l.key === k));
+  const plants = plantIds.map((id) => store.plants.find((p) => p.id === id)).filter((p) => !!p);
+  // Leftovers come back as lots, so only plants say whether they were up for auction.
+  const picked: { price: number | null }[] = leftoverKeys.length
+    ? leftoverKeys.map((k) => waiting.find((l) => l.key === k)!.lot)
+    : plants;
+  const mostlyAuction = plants.filter((p) => p.kind === 'auction').length > plants.length / 2;
 
   const [formatId, setFormatId] = useState<FormatId>(profile.defaultFormat);
   const [kind, setKind] = useState<SaleKind>(mostlyAuction ? 'auction' : 'sale');
@@ -22,7 +28,7 @@ export default function NewSale() {
   const [claimRules, setClaimRules] = useState(profile.claimRules);
   const [crossListing, setCrossListing] = useState('');
 
-  const noPrice = picked.filter((p) => p!.price === null).length;
+  const noPrice = picked.filter((p) => p.price === null).length;
 
   return (
     <Screen
@@ -30,7 +36,7 @@ export default function NewSale() {
         <Button
           title={picked.length ? `Build announcement and ${picked.length} lots` : 'Build announcement'}
           onPress={() => {
-            const sale = store.createSale(plantIds, {
+            const settings = {
               formatId,
               kind,
               opens: isComplete(opens) ? opens : null,
@@ -38,7 +44,10 @@ export default function NewSale() {
               closeCall: kind === 'auction' ? closeCall.trim() : '',
               claimRules: claimRules.trim(),
               crossListing: crossListing.trim(),
-            });
+            };
+            const sale = leftoverKeys.length
+              ? store.relistLeftovers(leftoverKeys, settings)
+              : store.createSale(plantIds, settings);
             router.replace(`/sale/${sale.id}`);
           }}
         />

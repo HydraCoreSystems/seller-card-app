@@ -59,6 +59,10 @@ export interface Sale {
   lots: Lot[];
   /** The last comment thread pasted into the claim tracker for this sale. */
   claimText?: string;
+  /** YYYY-MM-DD, set when the seller closes the sale from the rundown. */
+  closedAt?: string;
+  /** Lots nobody claimed, as they stood when the sale closed. */
+  leftovers?: Lot[];
   createdAt: string;
 }
 
@@ -81,4 +85,6 @@ export interface SaleRecord {
   price: number | null;
   /** YYYY-MM-DD */
   date: string;
+  /** Marked from the rundown. Unset means still waiting on the money. */
+  payment?: 'paid' | 'never';
 }

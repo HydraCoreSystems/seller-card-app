@@ -113,7 +113,7 @@ export function cleanMentions(text: string): string {
 }
 
 /** The words of a comment with any opening @mentions taken off. */
-function spoken(body: string, names: string[]): string {
+export function spoken(body: string, names: string[]): string {
   let t = cleanMentions(body).trim();
   while (t.startsWith('@')) {
     const hit = names.find((n) => n && t.slice(1).toLowerCase().startsWith(n.toLowerCase()));

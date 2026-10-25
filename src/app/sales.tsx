@@ -72,6 +72,7 @@ export default function SalesScreen() {
               {r.buyer}
               {r.price !== null ? `, ${formatPrice(r.price)}` : ''}, {formatDay(r.date)}
               {r.lotNumber !== null ? `, lot ${r.lotNumber}` : ''}
+              {r.payment === 'paid' ? ', paid' : r.payment === 'never' ? ', never paid' : ''}
             </Text>
           </View>
           <Button kind="quiet" title="Remove" onPress={() => store.deleteRecord(r.id)} />

@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { cleanMentions, showTime, trackClaims, type Claim } from '../../../core/claims';
+import { router, useLocalSearchParams } from 'expo-router';
+import { buyerHistory, buyerKey, historyLine } from '../../../core/buyers';
+import { cleanMentions, showTime, type Claim } from '../../../core/claims';
+import { priceIn } from '../../../core/rundown';
 import { formatPrice, plantDisplayName, toDay } from '../../../core/text';
 import type { Lot } from '../../../core/types';
+import { readClaims } from '../../../lib/claimReport';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
 import { Button, H, Note, Panel, Row, Screen, colors, styles } from '../../../ui/kit';
 
@@ -14,15 +17,14 @@ export default function ClaimsScreen() {
   const [text, setText] = useState(sale?.claimText ?? '');
   const [shown, setShown] = useState(sale?.claimText ?? '');
 
-  const report = useMemo(() => {
-    if (!sale || !shown.trim()) return null;
-    const maxLot = sale.lots.reduce((m, l) => Math.max(m, l.number), 0) || undefined;
-    return trackClaims(shown, {
-      sellerName: store.profile?.facebookName?.trim() || store.profile?.sellerName,
-      lots: sale.lots.map((l) => ({ number: l.number, name: l.name })),
-      maxLot,
-    });
-  }, [shown, sale, store.profile?.facebookName, store.profile?.sellerName]);
+  const report = useMemo(() => (sale ? readClaims(shown, sale, store.profile) : null), [shown, sale, store.profile]);
+  const past = useMemo(() => buyerHistory(store.records, id), [store.records, id]);
+  const memory = (author: string): { text: string; warn: boolean } | null => {
+    const h = past.get(buyerKey(author));
+    const note = store.buyerNotes[buyerKey(author)];
+    const text = [h ? `Back again: ${historyLine(h)}` : null, note].filter(Boolean).join('. ');
+    return text ? { text, warn: !!h?.unpaidSales } : null;
+  };
 
   if (!sale) return <Screen><Note>This sale is gone.</Note></Screen>;
 
@@ -47,7 +49,13 @@ export default function ClaimsScreen() {
   };
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        report ? (
+          <Button title="After the sale" onPress={() => router.push(`/sale/${sale.id}/rundown`)} />
+        ) : undefined
+      }
+    >
       <Note>
         Open your sale post, copy all the comments, and paste them here. Claims come back in thread order, lot by lot.
       </Note>
@@ -98,6 +106,7 @@ export default function ClaimsScreen() {
               <ClaimRow
                 key={`${c.commentIndex}-${c.lot}`}
                 claim={c}
+                memory={memory(c.author)}
                 place={i + 1}
                 tied={tied.has(c.commentIndex)}
                 canPick={!done && (entry.tie ? tied.has(c.commentIndex) : i === 0)}
@@ -139,23 +148,20 @@ export default function ClaimsScreen() {
   );
 }
 
-function priceIn(label: string | null | undefined): number | null {
-  const m = label?.match(/\$\s?(\d+(?:\.\d{1,2})?)/);
-  return m ? Number(m[1]) : null;
-}
-
 function ClaimRow({
   claim,
   place,
   tied,
   canPick,
   onPick,
+  memory,
 }: {
   claim: Claim;
   place: number;
   tied: boolean;
   canPick: boolean;
   onPick: () => void;
+  memory: { text: string; warn: boolean } | null;
 }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderTopWidth: place > 1 ? 1 : 0, borderColor: colors.line }}>
@@ -169,6 +175,11 @@ function ClaimRow({
         <Text style={{ color: colors.soft }} numberOfLines={2}>
           {claim.text}
         </Text>
+        {memory ? (
+          <Text style={{ color: memory.warn ? colors.warn : colors.moss, fontSize: 12 }} numberOfLines={1}>
+            {memory.text}
+          </Text>
+        ) : null}
       </View>
       {canPick ? <Button kind="secondary" title="Sold" onPress={onPick} style={{ paddingVertical: 8 }} /> : null}
     </View>
