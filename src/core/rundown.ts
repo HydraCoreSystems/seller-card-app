@@ -24,6 +24,10 @@ export interface RundownLot {
   tie: string[] | null;
   /** Everyone still waiting behind the winner, in thread order. */
   line: string[];
+  /** How the winner stands on paying, once the seller has marked it. */
+  payment: 'paid' | 'never' | null;
+  /** Winners who never paid, when the lot went on to the next in line. */
+  passedOver: string[];
 }
 
 export interface RundownBuyer {
@@ -87,27 +91,39 @@ export function buildRundown({
     .map((number) => {
       const lot = sale.lots.find((l) => l.number === number);
       const claims = report?.lots.find((l) => l.lot === number);
-      const record = records.find((r) => r.saleId === sale.id && r.lotNumber === number);
+      const recs = records.filter((r) => r.saleId === sale.id && r.lotNumber === number);
+      // A runner up who took the lot on a second chance is its winner now.
+      const record = recs.find((r) => r.payment !== 'never') ?? recs[0];
       const queue = claims?.queue.map((c) => c.author) ?? [];
       const name = lot
         ? plantDisplayName(lot.name, lot.noid)
         : record?.plantName ?? (claims?.label ? nameIn(claims.label) : `Lot ${number}`);
       const price = record?.price ?? lot?.price ?? priceIn(claims?.label);
+      const base = { number, name, price, payment: null, passedOver: [] };
 
       if (record) {
-        return { number, name, price, winner: record.buyer, ruled: true, tie: null, line: queue.filter((a) => key(a) !== key(record.buyer)) };
+        const had = new Set(recs.map((r) => key(r.buyer)));
+        return {
+          ...base,
+          winner: record.buyer,
+          ruled: true,
+          tie: null,
+          line: queue.filter((a) => !had.has(key(a))),
+          payment: record.payment ?? null,
+          passedOver: recs.filter((r) => r !== record).map((r) => r.buyer),
+        };
       }
       if (claims?.tie) {
         const tied = claims.tie.map((c) => c.author);
-        return { number, name, price, winner: null, ruled: false, tie: tied, line: queue.filter((a) => !tied.includes(a)) };
+        return { ...base, winner: null, ruled: false, tie: tied, line: queue.filter((a) => !tied.includes(a)) };
       }
-      return { number, name, price, winner: queue[0] ?? null, ruled: false, tie: null, line: queue.slice(1) };
+      return { ...base, winner: queue[0] ?? null, ruled: false, tie: null, line: queue.slice(1) };
     });
 
   const claimed = lots.filter((l) => l.winner || l.tie);
   const past = buyerHistory(records, sale.id);
-  const mine = records.filter((r) => r.saleId === sale.id);
   const byBuyer = new Map<string, RundownBuyer>();
+  const wins = new Map<string, RundownLot[]>();
   for (const l of lots) {
     if (!l.winner) continue;
     const k = key(l.winner);
@@ -115,14 +131,11 @@ export function buildRundown({
     b.lots.push({ number: l.number, name: l.name, price: l.price });
     b.total += l.price ?? 0;
     byBuyer.set(k, b);
+    wins.set(k, [...(wins.get(k) ?? []), l]);
   }
   for (const [k, b] of byBuyer) {
-    const recs = mine.filter((r) => key(r.buyer) === k);
-    b.payment = recs.some((r) => r.payment === 'never')
-      ? 'never'
-      : recs.length === b.lots.length && recs.every((r) => r.payment === 'paid')
-        ? 'paid'
-        : null;
+    const won = wins.get(k)!;
+    b.payment = won.some((l) => l.payment === 'never') ? 'never' : won.every((l) => l.payment === 'paid') ? 'paid' : null;
   }
 
   return {
@@ -138,6 +151,16 @@ export function buildRundown({
     buyers: [...byBuyer.values()].sort((a, b) => a.name.localeCompare(b.name)),
     questions: report ? openQuestions(report, lots) : [],
   };
+}
+
+/** Every lot's claim order as the record names it: the winner or tied buyers, then the line. */
+export function claimOrderOf(r: Rundown): Record<number, string[]> {
+  const out: Record<number, string[]> = {};
+  for (const l of r.lots) {
+    const order = [...(l.winner ? [l.winner] : []), ...(l.tie ?? []), ...l.line];
+    if (order.length) out[l.number] = order;
+  }
+  return out;
 }
 
 /** The lots nobody claimed, kept on the sale when it closes so they can go up again. */
@@ -198,7 +221,9 @@ export function salesRecordHtml(r: Rundown): string {
   const lotRows = r.lots
     .map((l) => {
       const who = l.winner
-        ? esc(l.winner)
+        ? esc(l.winner) +
+          (l.payment === 'never' ? ' <span class="warn">(never paid)</span>' : '') +
+          (l.passedOver.length ? ` <span class="soft">(second chance after ${esc(l.passedOver.join(', '))} never paid)</span>` : '')
         : l.tie
           ? `<span class="warn">Tie: ${esc(l.tie.join(' or '))}. Your call.</span>`
           : '<span class="soft">Unclaimed</span>';

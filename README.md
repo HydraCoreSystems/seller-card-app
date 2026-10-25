@@ -21,6 +21,8 @@ This is **test build one**: everything runs on the phone, with no sign in and no
 * **After the showcase**: the rundown of winners by lot with the next in line, buyer totals and open
   buyer questions. Closing marks every clear winner sold and saves the Sales Record as a PDF. Each
   buyer is marked waiting, paid or never paid.
+* **Second Chance**: when a winner doesn't pay inside the window set in the profile, the lot can go
+  to the next in line at the same price, with the message ready to copy or send.
 * **Buyer memory**: built from the sales record. A quiet line in Claims for returning buyers, a repeat
   flag in the rundown, and one short note per buyer.
 * **Leftovers**: unclaimed and never paid lots from closed showcases, relisted in one tap.

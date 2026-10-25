@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FORMAT_LIST } from '../core/formats';
 import { ORIGIN_LINE } from '../core/brand';
+import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
 import type { FormatId, Profile } from '../core/types';
 import { EMPTY_PROFILE, useStore } from '../lib/store';
@@ -83,6 +84,16 @@ export default function ProfileScreen() {
         multiline
         hint="Goes on every Grower Showcase announcement. You can change it for any one showcase."
       />
+      <Choice
+        label="Winners pay within"
+        value={String(p.payWindowHours ?? DEFAULT_PAY_WINDOW)}
+        options={PAY_WINDOWS.map((h) => ({ value: String(h), label: `${h} hours` }))}
+        onChange={(v) => set('payWindowHours')(Number(v))}
+      />
+      <Note>
+        After that, a lot nobody paid for can go to the next in line at the same price. The next buyer gets the
+        same time to answer.
+      </Note>
       <Choice<FormatId>
         label="Card format you use most"
         value={p.defaultFormat}

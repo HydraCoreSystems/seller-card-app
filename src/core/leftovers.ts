@@ -4,6 +4,7 @@
  * sales and the sales record; removing a leftover only hides it and never touches the record.
  */
 import { buyerKey } from './buyers';
+import { DEFAULT_PAY_WINDOW, awaitingChance } from './secondChance';
 import type { Lot, Sale, SaleRecord } from './types';
 
 export interface Leftover {
@@ -27,8 +28,17 @@ const strip = (l: Lot): Omit<Lot, 'number'> => ({
   plantId: l.plantId, name: l.name, noid: l.noid, price: l.price, description: l.description, photoUri: l.photoUri,
 });
 
-/** Every leftover still waiting, oldest sale first, with removed and relisted ones left out. */
-export function gatherLeftovers(sales: Sale[], records: SaleRecord[], done: string[]): Leftover[] {
+/**
+ * Every leftover still waiting, oldest sale first, with removed and relisted ones left out.
+ * A never paid lot stays out while its second chance is still in play: someone is next in
+ * line and the seller hasn't offered it yet, or the offer is still inside its window.
+ */
+export function gatherLeftovers(
+  sales: Sale[],
+  records: SaleRecord[],
+  done: string[],
+  { window = DEFAULT_PAY_WINDOW * 3_600_000, now = Date.now() }: { window?: number; now?: number } = {},
+): Leftover[] {
   const all: Leftover[] = [];
   const closed = sales.filter((s) => s.closedAt).sort((a, b) => (a.closedAt! < b.closedAt! ? -1 : a.closedAt! > b.closedAt! ? 1 : 0));
   for (const sale of closed) {
@@ -41,6 +51,7 @@ export function gatherLeftovers(sales: Sale[], records: SaleRecord[], done: stri
     const never = [...new Set(recs.filter((r) => r.payment === 'never' && r.lotNumber !== null).map((r) => r.lotNumber!))];
     for (const n of never.sort((a, b) => a - b)) {
       if (sold(n) || all.some((l) => l.key === leftoverKey(sale.id, n))) continue;
+      if (awaitingChance(sale, n, records, window, now)) continue;
       const r = recs.find((x) => x.lotNumber === n)!;
       const lot = sale.lots.find((l) => l.number === n) ?? {
         number: n, plantId: null, name: r.plantName, noid: false, price: r.price, description: '', photoUri: null,

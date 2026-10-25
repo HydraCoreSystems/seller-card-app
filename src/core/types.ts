@@ -1,3 +1,5 @@
+import type { SecondChance } from './secondChance';
+
 export type SaleKind = 'sale' | 'auction';
 
 export type FormatId = 'commons' | 'generic';
@@ -19,6 +21,8 @@ export interface Profile {
   defaultFormat: FormatId;
   /** The seller's name as Facebook shows it, so the claim tracker can tell their comments apart. */
   facebookName?: string;
+  /** Hours a winner has to pay before the lot can go to the next in line. Also how long the runner up gets. */
+  payWindowHours?: number;
 }
 
 export interface Plant {
@@ -63,6 +67,11 @@ export interface Sale {
   closedAt?: string;
   /** Lots nobody claimed, as they stood when the sale closed. */
   leftovers?: Lot[];
+  /** When the sale closed, in milliseconds, so the payment window can run in hours. */
+  closedMs?: number;
+  /** Every lot's claim order when the sale closed, as the Sales Record names it. Second Chance reads it. */
+  claimOrder?: Record<number, string[]>;
+  offers?: SecondChance[];
   createdAt: string;
 }
 

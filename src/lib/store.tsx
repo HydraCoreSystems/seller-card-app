@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { buyerKey } from '../core/buyers';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
+import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
 import { toDay } from '../core/text';
 import type { Lot, Plant, Profile, Sale, SaleRecord } from '../core/types';
 import { loadJson, saveJson } from './storage';
@@ -15,6 +16,7 @@ export const EMPTY_PROFILE: Profile = {
   timeZone: '',
   claimRules: '',
   defaultFormat: 'generic',
+  payWindowHours: DEFAULT_PAY_WINDOW,
 };
 
 interface Data {
@@ -40,7 +42,16 @@ interface Store extends Data {
   removeLeftover(key: string): void;
   saveSale(sale: Sale): void;
   /** Marks the winners sold, keeps the unclaimed lots as leftovers, and stamps the close date. */
-  closeSale(sale: Sale, winners: Omit<SaleRecord, 'id' | 'saleId' | 'date'>[], unclaimed: Lot[]): void;
+  closeSale(
+    sale: Sale,
+    winners: Omit<SaleRecord, 'id' | 'saleId' | 'date'>[],
+    unclaimed: Lot[],
+    claimOrder: Record<number, string[]>,
+  ): void;
+  /** Takes the lot off the winner who didn't pay and offers it to the runner up, or sends it back to open when there's none. */
+  sendSecondChance(saleId: string, lot: number, from: string, to: string | null): void;
+  /** The runner up took it, so it's theirs; or they passed, so it's open again. */
+  settleSecondChance(saleId: string, lot: number, outcome: 'took' | 'passed'): void;
   deleteSale(id: string): void;
   recordSold(entry: Omit<SaleRecord, 'id'>, plantId?: string | null): void;
   /** Paid, never paid, or back to waiting, for every lot one buyer won in one sale. */
@@ -113,7 +124,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return sale;
       },
       relistLeftovers: (keys, settings) => {
-        const waiting = gatherLeftovers(data.sales, data.records, data.leftoversDone);
+        const waiting = gatherLeftovers(data.sales, data.records, data.leftoversDone, { window: windowMs(data.profile) });
         const lots = keys
           .map((k) => waiting.find((l) => l.key === k))
           .filter((l) => !!l)
@@ -124,14 +135,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       removeLeftover: (key) => update((d) => ({ leftoversDone: [...d.leftoversDone, key] })),
       saveSale: (sale) => update((d) => ({ sales: d.sales.map((s) => (s.id === sale.id ? sale : s)) })),
-      closeSale: (sale, winners, unclaimed) =>
+      closeSale: (sale, winners, unclaimed, claimOrder) =>
         update((d) => {
           const date = toDay(new Date());
           const sold = new Set(plantIdsFor(sale, winners.map((w) => w.lotNumber)));
+          const closed = { ...sale, closedAt: date, closedMs: Date.now(), leftovers: unclaimed, claimOrder };
           return {
             records: [...winners.map((w) => ({ ...w, saleId: sale.id, date, id: newId() })), ...d.records],
             plants: d.plants.map((p) => (sold.has(p.id) ? { ...p, sold: true } : p)),
-            sales: d.sales.map((s) => (s.id === sale.id ? { ...sale, closedAt: date, leftovers: unclaimed } : s)),
+            sales: d.sales.map((s) => (s.id === sale.id ? closed : s)),
+          };
+        }),
+      sendSecondChance: (saleId, lot, from, to) =>
+        update((d) => {
+          const sale = d.sales.find((s) => s.id === saleId);
+          if (!sale) return {};
+          const next = applyOffer(sale, d.records, { lot, from, to, now: Date.now() });
+          // The plant is back in play: offered on, or open again.
+          const back = new Set(plantIdsFor(sale, [lot]));
+          return {
+            records: next.records,
+            sales: d.sales.map((s) => (s.id === saleId ? next.sale : s)),
+            plants: d.plants.map((p) => (back.has(p.id) ? { ...p, sold: false } : p)),
+          };
+        }),
+      settleSecondChance: (saleId, lot, outcome) =>
+        update((d) => {
+          const sale = d.sales.find((s) => s.id === saleId);
+          if (!sale) return {};
+          const next = applySettle(sale, d.records, { lot, outcome, id: newId(), date: toDay(new Date()) });
+          const sold = new Set(outcome === 'took' ? plantIdsFor(sale, [lot]) : []);
+          return {
+            records: next.records,
+            sales: d.sales.map((s) => (s.id === saleId ? next.sale : s)),
+            plants: d.plants.map((p) => (sold.has(p.id) ? { ...p, sold: true } : p)),
           };
         }),
       deleteSale: (id) => update((d) => ({ sales: d.sales.filter((s) => s.id !== id) })),
@@ -143,7 +180,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setPayment: (saleId, buyer, payment) =>
         update((d) => {
           const k = buyerKey(buyer);
-          const mine = (r: SaleRecord) => r.saleId === saleId && buyerKey(r.buyer) === k;
+          const sale = d.sales.find((s) => s.id === saleId);
+          // Lots already passed on to the next in line stay never paid whatever the buyer does now.
+          const passedOn = (r: SaleRecord) => sale?.offers?.some((o) => o.lot === r.lotNumber && buyerKey(o.from) === k);
+          const mine = (r: SaleRecord) => r.saleId === saleId && buyerKey(r.buyer) === k && !passedOn(r);
           // A buyer who never paid hands the plant back, so it shows as for sale again.
           const plantIds = new Set(plantIdsFor(d.sales.find((s) => s.id === saleId), d.records.filter(mine).map((r) => r.lotNumber)));
           return {
@@ -177,9 +217,23 @@ export function useSale(id: string | undefined): Sale | undefined {
   return sales.find((s) => s.id === id);
 }
 
+/** The clock, ticking once a minute, so payment windows run out on screen without a reload. */
+export function useNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
 export function useLeftovers() {
-  const { sales, records, leftoversDone } = useStore();
-  return useMemo(() => gatherLeftovers(sales, records, leftoversDone), [sales, records, leftoversDone]);
+  const { sales, records, leftoversDone, profile } = useStore();
+  const now = useNow();
+  return useMemo(
+    () => gatherLeftovers(sales, records, leftoversDone, { window: windowMs(profile), now }),
+    [sales, records, leftoversDone, profile, now],
+  );
 }
 
 export function lotRecorded(records: SaleRecord[], saleId: string, lot: Lot): SaleRecord | undefined {

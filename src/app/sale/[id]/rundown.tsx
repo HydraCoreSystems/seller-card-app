@@ -1,13 +1,22 @@
 import { useMemo, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Share, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { buyerKey, historyLine } from '../../../core/buyers';
-import { buildRundown, salesRecordHtml, unclaimedLots, type RundownBuyer, type RundownLot } from '../../../core/rundown';
+import {
+  buildRundown,
+  claimOrderOf,
+  salesRecordHtml,
+  unclaimedLots,
+  type RundownBuyer,
+  type RundownLot,
+} from '../../../core/rundown';
+import { formatDeadline, offerMessage, secondChances, windowMs, type ChanceCard } from '../../../core/secondChance';
 import { formatDay, formatPrice } from '../../../core/text';
+import type { Profile } from '../../../core/types';
 import { readClaims } from '../../../lib/claimReport';
 import { sharePdf } from '../../../lib/exportPdf';
-import { useLeftovers, useSale, useStore } from '../../../lib/store';
-import { Button, Choice, H, Note, Panel, Screen, colors, styles } from '../../../ui/kit';
+import { useLeftovers, useNow, useSale, useStore } from '../../../lib/store';
+import { Button, Choice, H, Note, Panel, Row, Screen, colors, styles, useCopy } from '../../../ui/kit';
 
 export default function RundownScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -15,6 +24,8 @@ export default function RundownScreen() {
   const sale = useSale(id);
   const [status, setStatus] = useState<string | null>(null);
   const leftovers = useLeftovers().filter((l) => l.saleId === id);
+  const now = useNow();
+  const window = windowMs(store.profile);
 
   const rundown = useMemo(() => {
     if (!sale || !store.profile) return null;
@@ -22,9 +33,12 @@ export default function RundownScreen() {
     return buildRundown({ sale, profile: store.profile, report, records: store.records });
   }, [sale, store.profile, store.records]);
 
-  if (!sale || !rundown) return <Screen><Note>This showcase is gone.</Note></Screen>;
+  if (!sale || !rundown || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
 
+  const profile = store.profile;
   const ties = rundown.lots.filter((l) => l.tie);
+  const chances = secondChances(sale, store.records, window, now);
+  const payBy = sale.closedMs ? sale.closedMs + window : null;
 
   const save = async () => {
     setStatus('Making the record');
@@ -41,7 +55,7 @@ export default function RundownScreen() {
     const winners = rundown.lots
       .filter((l) => l.winner && !l.ruled)
       .map((l) => ({ lotNumber: l.number, plantName: l.name, buyer: l.winner!, price: l.price }));
-    store.closeSale(sale, winners, unclaimedLots(rundown, sale));
+    store.closeSale(sale, winners, unclaimedLots(rundown, sale), claimOrderOf(rundown));
     save();
   };
 
@@ -58,7 +72,12 @@ export default function RundownScreen() {
       {!sale.claimText?.trim() ? (
         <Note tone="warn">Paste the comment thread in Claims first, so the rundown knows who won.</Note>
       ) : null}
-      {sale.closedAt ? <Note>Closed {formatDay(sale.closedAt)}. Every clear winner is in your sales record.</Note> : null}
+      {sale.closedAt ? (
+        <Note>
+          Closed {formatDay(sale.closedAt)}. Every clear winner is in your sales record.
+          {payBy && payBy > now ? ` Winners have until ${formatDeadline(payBy, profile.timeZone)} to pay.` : ''}
+        </Note>
+      ) : null}
       {leftovers.length ? (
         <Button
           kind="secondary"
@@ -83,6 +102,15 @@ export default function RundownScreen() {
           <Text style={{ color: colors.warn, marginBottom: 8 }}>Tap Sold on the buyer you pick. Ties stay open until you do.</Text>
           <Button kind="secondary" title="Rule in Claims" onPress={() => router.back()} />
         </View>
+      ) : null}
+
+      {chances.length ? (
+        <>
+          <H>Second chance</H>
+          {chances.map((c) => (
+            <ChanceView key={c.lot} card={c} saleId={sale.id} profile={profile} window={window} />
+          ))}
+        </>
       ) : null}
 
       <H>Buyers</H>
@@ -115,6 +143,70 @@ export default function RundownScreen() {
         <Note>None.</Note>
       )}
     </Screen>
+  );
+}
+
+/** One lot that can go to the next in line: offer it, or settle the offer that's out. */
+function ChanceView({ card, saleId, profile, window }: { card: ChanceCard; saleId: string; profile: Profile; window: number }) {
+  const store = useStore();
+  const [copied, copy] = useCopy();
+  const runner = card.runnerUp;
+  // A fresh offer gives the runner up a full window from now; one already out keeps its own.
+  const message = (answerBy: number) => (runner ? offerMessage(card, runner, profile, answerBy) : '');
+  const send = async (how: 'copy' | 'share') => {
+    const text = message(card.offer ? card.dueMs : Date.now() + window);
+    if (!card.offer) store.sendSecondChance(saleId, card.lot, card.buyer, runner);
+    if (how === 'copy') await copy(`offer${card.lot}`, text);
+    else await Share.share({ message: text }).catch(() => undefined);
+  };
+  const head = (
+    <Text style={{ fontWeight: '700', color: colors.ink }}>
+      Lot {card.lot}: {card.name}
+      {card.price !== null ? <Text style={{ color: colors.soft, fontWeight: '400' }}>  {formatPrice(card.price)}</Text> : null}
+    </Text>
+  );
+
+  if (card.kind === 'offered') {
+    return (
+      <Panel>
+        {head}
+        <Text style={{ color: colors.soft, marginBottom: 8 }}>
+          Offered to {runner}. They have until {formatDeadline(card.dueMs, profile.timeZone)} to answer.
+        </Text>
+        <Row style={{ marginBottom: 6 }}>
+          <Button title={`${runner} took it`} onPress={() => store.settleSecondChance(saleId, card.lot, 'took')} style={{ flex: 1 }} />
+          <Button kind="secondary" title="Passed" onPress={() => store.settleSecondChance(saleId, card.lot, 'passed')} style={{ flex: 1 }} />
+        </Row>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Button kind="quiet" title={copied ? '✓ Copied' : 'Copy the offer again'} onPress={() => send('copy')} />
+          <Button kind="quiet" title="Send" onPress={() => send('share')} />
+        </Row>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel style={{ borderColor: colors.warn, borderWidth: 1.5 }}>
+      {head}
+      <Text style={{ color: colors.warn }}>
+        {card.kind === 'overdue' ? `${card.buyer} hasn’t paid.` : `${card.buyer} never paid.`}{' '}
+        {runner ? `${runner} is next in line.` : 'Nobody is next in line.'}
+      </Text>
+      <Row style={{ marginTop: 8 }}>
+        {runner ? (
+          <>
+            <Button title={`Offer it to ${runner}`} onPress={() => send('copy')} style={{ flex: 2 }} />
+            <Button kind="secondary" title="Send" onPress={() => send('share')} style={{ flex: 1 }} />
+          </>
+        ) : (
+          <Button kind="secondary" title="Back to open" onPress={() => store.sendSecondChance(saleId, card.lot, card.buyer, null)} style={{ flex: 1 }} />
+        )}
+      </Row>
+      {card.kind === 'overdue' ? (
+        <Button kind="quiet" title={`${card.buyer} paid after all`} onPress={() => store.setPayment(saleId, card.buyer, 'paid')} style={{ marginTop: 4 }} />
+      ) : null}
+      {runner ? <Text style={{ color: colors.soft, fontSize: 12, marginTop: 4 }}>Offering copies a message to paste to {runner}, with the price, your shipping and your payment.</Text> : null}
+    </Panel>
   );
 }
 
