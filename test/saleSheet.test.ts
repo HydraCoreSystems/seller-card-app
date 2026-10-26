@@ -5,9 +5,9 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { trackClaims } from '../src/core/claims';
 import { buildRundown } from '../src/core/rundown';
-import { NO_PICTURES, SHEET_COLUMNS, parseCsv, readSaleSheet, saleSheet, sheetRowsFromBytes, sheetState } from '../src/core/saleSheet';
+import { NO_PICTURES, SHEET_COLUMNS, parseCsv, plantsOnList, readSaleSheet, saleSheet, sheetRowsFromBytes, sheetState } from '../src/core/saleSheet';
 import { DASH_PATTERN } from '../src/core/text';
-import type { Lot, Profile, Sale } from '../src/core/types';
+import type { Lot, Plant, Profile, Sale } from '../src/core/types';
 import { readXlsx, writeXlsx } from '../src/core/xlsx';
 
 const profile: Profile = {
@@ -156,6 +156,37 @@ describe('the Sale Sheet coming back', () => {
     ]);
     expect(read.claimsLeftOut).toBe(true);
     for (const p of read.problems) expect(p.text).not.toMatch(DASH_PATTERN);
+  });
+
+  it('reads the .xlsx Google Sheets hands back after the sheet was opened there', () => {
+    // A real export from Drive: shared strings, 1000 padded rows, numbers written as 25.0.
+    const read = readSaleSheet(sheetRowsFromBytes(new Uint8Array(readFileSync(join(__dirname, 'fixtures/google-sheets-export.xlsx')))));
+    expect(read).toEqual({
+      ok: true,
+      problems: [],
+      claimsLeftOut: false,
+      lots: [
+        { row: 14, name: 'Hoya carnosa Krimson Queen', noid: false, price: 25, description: 'Rooted, 6 leaves, "new growth"\nShips bare root' },
+        { row: 15, name: 'Hoya', noid: true, price: 12.5, description: 'Big leaves & fuzzy' },
+      ],
+    });
+  });
+
+  it('attaches a row to the plant already on the list instead of making a duplicate', () => {
+    const plant = (id: string, name: string, noid = false, sold = false): Plant => ({
+      id, name, noid, sold, price: 20, kind: 'sale', photoUri: `${id}.jpg`, notes: '', createdAt: '2026-10-01',
+    });
+    const plants = [plant('kq', 'Hoya carnosa Krimson Queen'), plant('gone', 'Hoya kerrii', false, true), plant('n', 'Hoya', true)];
+    const row = (name: string, noid = false) => ({ row: 1, name, noid, price: 25, description: '' });
+    expect(
+      plantsOnList(plants, [
+        row('hoya carnosa  Krimson-Queen'),
+        row('Hoya kerrii'),
+        row('Hoya', true),
+        row('Hoya'),
+        row('Dischidia'),
+      ]).map((p) => p?.id ?? null),
+    ).toEqual(['kq', null, 'n', null, null]);
   });
 
   it('reads a CSV saved from a spreadsheet, quotes, commas and all', () => {

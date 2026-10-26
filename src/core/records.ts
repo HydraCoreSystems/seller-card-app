@@ -19,7 +19,8 @@ export interface PriceMemory {
   date: string;
 }
 
-const nameKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+/** A plant name with case, spaces and punctuation set aside, so "Krimson-Queen" finds "krimson queen". */
+export const nameKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /**
  * The last price a plant name sold for, and when. NOIDs and blank names have no memory, since two

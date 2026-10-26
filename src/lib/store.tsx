@@ -3,7 +3,7 @@ import { buyerKey } from '../core/buyers';
 import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
-import type { SheetLot } from '../core/saleSheet';
+import { plantsOnList, type SheetLot } from '../core/saleSheet';
 import { markPayment } from '../core/records';
 import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
 import { toDay } from '../core/text';
@@ -140,12 +140,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       importSale: (rows, settings) => {
         // A row naming a plant already on the list, still for sale, uses that plant and its photo.
-        const key = (name: string, noid: boolean) => `${noid ? 'noid:' : ''}${name.trim().toLowerCase().replace(/\s+/g, ' ')}`;
-        const onList = new Map(data.plants.filter((p) => !p.sold && p.name.trim()).map((p) => [key(p.name, p.noid), p]));
+        const onList = plantsOnList(data.plants, rows);
         const today = toDay(new Date());
         const added: Plant[] = [];
         const lots: Lot[] = rows.map((r, i) => {
-          let plant = r.name ? onList.get(key(r.name, r.noid)) : undefined;
+          let plant = onList[i];
           if (!plant) {
             plant = { id: newId(), name: r.name, noid: r.noid, price: r.price, kind: settings.kind, photoUri: null, notes: r.description, sold: false, createdAt: today };
             added.push(plant);

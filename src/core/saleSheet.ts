@@ -8,8 +8,9 @@ import { ORIGIN_LINE, SHOWCASE } from './brand';
 import { COMMONS_MARKET, VERIFIED_GROWER } from './formats/commons';
 import { shippingLine } from './formats/parts';
 import { formatDay, parsePrice } from './text';
+import { nameKey } from './records';
 import type { RundownLot } from './rundown';
-import type { FormatId, Profile, Sale } from './types';
+import type { FormatId, Plant, Profile, Sale } from './types';
 import { isZip, readXlsx, type CellValue, type SheetLayout } from './xlsx';
 
 export const SHEET_COLUMNS = ['Lot', 'Plant name', 'NOID', 'Price or opening price', 'Description', 'Claimed by', 'Payment'] as const;
@@ -134,6 +135,17 @@ export function readSaleSheet(rows: string[][]): SheetRead {
     else lots.push({ row, name, noid, price, description: cell(r, descCol) });
   });
   return { ok: true, lots, problems, claimsLeftOut };
+}
+
+/**
+ * The plant already on the list for each imported lot, so a row attaches to it (and its photo)
+ * instead of making a duplicate. Only plants still for sale count, and a NOID matches only a NOID.
+ */
+export function plantsOnList(plants: Plant[], lots: SheetLot[]): (Plant | null)[] {
+  const key = (name: string, noid: boolean) => `${noid ? 'noid:' : ''}${nameKey(name)}`;
+  const onList = new Map<string, Plant>();
+  for (const p of plants) if (!p.sold && nameKey(p.name) && !onList.has(key(p.name, p.noid))) onList.set(key(p.name, p.noid), p);
+  return lots.map((l) => (nameKey(l.name) ? onList.get(key(l.name, l.noid)) ?? null : null));
 }
 
 /** The rows of a picked file: an .xlsx from Sheets or Excel, or a CSV. Throws on a broken workbook. */
