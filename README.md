@@ -42,6 +42,10 @@ This is **test build one**: everything runs on the phone, with no sign in and no
 * **Leftovers**: unclaimed and never paid lots from closed showcases, relisted in one tap.
 * **Sales record**: searchable, exports a CSV file.
 * **Origin line** on every card and stamped photo.
+* **Sample showcase**: one tap from the welcome panel or the profile screen opens a finished sample
+  with a made up seller and buyers, so every main screen shows full. It lives in memory only; the
+  seller's own data is set aside and comes back untouched.
+* **Suggest a feature**: the profile screen links out to the feature suggestions form.
 
 ## Getting the test build
 

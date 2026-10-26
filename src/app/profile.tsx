@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { Linking } from 'react-native';
 import { FORMAT_LIST } from '../core/formats';
-import { ORIGIN_LINE } from '../core/brand';
+import { ORIGIN_LINE, SUGGESTIONS_URL } from '../core/brand';
 import { VERIFIED_GROWER } from '../core/formats/commons';
 import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
@@ -134,6 +135,12 @@ export default function ProfileScreen() {
           <Button kind="secondary" title="Open a sample showcase" onPress={() => { store.openSample(); router.back(); }} />
         </>
       )}
+      <H>Got an idea?</H>
+      <Note>
+        Tell us what would make sale night easier. We read every suggestion each week, and if you leave your name,
+        we’ll tell you when yours ships.
+      </Note>
+      <Button kind="secondary" title="Suggest a feature" onPress={() => Linking.openURL(SUGGESTIONS_URL).catch(() => undefined)} />
     </Screen>
   );
 }

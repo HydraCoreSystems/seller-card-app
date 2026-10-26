@@ -10,3 +10,6 @@ export const ORIGIN_LINE = `Made with ${APP_NAME} by ${MAKER_NAME}`;
 // The Commons only terms live in formats/commons.ts.
 export const SHOWCASE = 'Grower Showcase';
 export const MARKET_LISTING = 'Market Listing';
+
+/** The Seller Card App: Feature Suggestions form. Suggestions go to the team for the weekly read. */
+export const SUGGESTIONS_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeqyTCBVGbXSpM6xs7R93fhsWX29JUXmnaTcKU3zAJbwRqD-A/viewform';
