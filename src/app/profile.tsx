@@ -122,6 +122,18 @@ export default function ProfileScreen() {
       ) : null}
       <H>On every card</H>
       <Note>{ORIGIN_LINE}</Note>
+      <H>Try it out</H>
+      {store.sample ? (
+        <Button kind="secondary" title="Leave the sample showcase" onPress={() => { store.leaveSample(); router.back(); }} />
+      ) : (
+        <>
+          <Note>
+            A finished sample showcase with a made up seller and buyers: claims, a rundown, one lot paid, one
+            waiting and two leftovers. Your own plants and records wait safely aside until you leave it.
+          </Note>
+          <Button kind="secondary" title="Open a sample showcase" onPress={() => { store.openSample(); router.back(); }} />
+        </>
+      )}
     </Screen>
   );
 }

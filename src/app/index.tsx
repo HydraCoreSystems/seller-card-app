@@ -7,7 +7,8 @@ import { useLeftovers, useStore } from '../lib/store';
 import { Button, Note, Panel, Row, Screen, Thumb, colors } from '../ui/kit';
 
 export default function Home() {
-  const { profile, plants, sales } = useStore();
+  const store = useStore();
+  const { profile, plants, sales } = store;
   const leftovers = useLeftovers();
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -78,6 +79,17 @@ export default function Home() {
               or payment terms again.
             </Note>
             <Button title="Set up my profile" onPress={() => router.push('/profile')} />
+            <Button kind="quiet" title="Look around a sample showcase first" onPress={store.openSample} />
+          </Panel>
+        ) : null}
+
+        {store.sample && !picking ? (
+          <Panel style={{ backgroundColor: colors.mossTint, borderColor: colors.mossTint }}>
+            <Note>
+              You’re looking around a sample showcase. The seller and buyers are made up, and nothing you do here is
+              saved. Open it, the claims and the rundown to see each step full.
+            </Note>
+            <Button kind="secondary" title="Leave the sample" onPress={store.leaveSample} />
           </Panel>
         ) : null}
 

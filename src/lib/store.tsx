@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { buyerKey } from '../core/buyers';
+import { sampleData } from '../core/demo';
 import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
@@ -36,6 +37,12 @@ interface Data {
 type SaleSettings = Omit<Sale, 'id' | 'lots' | 'createdAt'>;
 
 interface Store extends Data {
+  /** True while the sample showcase is open. Nothing is saved to the phone until the seller leaves it. */
+  sample: boolean;
+  /** Swaps in the sample showcase, keeping the seller's own data aside, untouched. */
+  openSample(): void;
+  /** Drops the sample and brings the seller's own data back. */
+  leaveSample(): void;
   saveProfile(profile: Profile): void;
   savePlant(plant: Plant): void;
   deletePlant(id: string): void;
@@ -102,19 +109,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     leftoversDone: loadJson<string[]>(KEYS.leftoversDone, []),
   }));
   const last = useRef(data);
+  // The seller's own data, set aside while the sample is open.
+  const [ownData, setOwnData] = useState<Data | null>(null);
+  const sample = ownData !== null;
 
   useEffect(() => {
-    for (const key of Object.keys(KEYS) as (keyof Data)[]) {
-      if (data[key] !== last.current[key]) saveJson(KEYS[key], data[key]);
+    // The sample lives in memory only, so the phone always holds the seller's own data.
+    if (!sample) {
+      for (const key of Object.keys(KEYS) as (keyof Data)[]) {
+        if (data[key] !== last.current[key]) saveJson(KEYS[key], data[key]);
+      }
     }
     last.current = data;
-  }, [data]);
+  }, [data, sample]);
 
   const update = useCallback((fn: (d: Data) => Partial<Data>) => setData((d) => ({ ...d, ...fn(d) })), []);
 
   const store = useMemo<Store>(
     () => ({
       ...data,
+      sample,
+      openSample: () => {
+        if (sample) return;
+        setOwnData(data);
+        setData(sampleData());
+      },
+      leaveSample: () => {
+        if (!ownData) return;
+        // Marked as already saved, so leaving writes nothing.
+        last.current = ownData;
+        setData(ownData);
+        setOwnData(null);
+      },
       saveProfile: (profile) => update(() => ({ profile })),
       savePlant: (plant) =>
         update((d) => ({
@@ -232,7 +258,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       deleteRecord: (id) => update((d) => ({ records: d.records.filter((r) => r.id !== id) })),
     }),
-    [data, update],
+    [data, update, sample, ownData],
   );
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
