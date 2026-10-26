@@ -267,7 +267,7 @@ export const styles = StyleSheet.create({
     color: colors.ink,
   },
   btn: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  btnText: { fontSize: 16, fontWeight: '600' },
+  btnText: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
   chip: {
     borderWidth: 1,
     borderColor: colors.line,
