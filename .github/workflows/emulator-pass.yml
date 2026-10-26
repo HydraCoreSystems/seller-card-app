@@ -1,0 +1,127 @@
+name: Emulator pass
+
+# Installs the app on two Android emulators, a standard Pixel and a small phone, runs
+# e2e/sample-pass.yaml, and publishes every screenshot to the emulator-pass release.
+# The emulator here is x86_64, so this builds its own x86_64 APK from the same code as the test build.
+
+on:
+  push:
+    branches: [emulator-pass]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: emulator-pass
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EXPO_NO_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v4
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: apk/app.apk
+          key: x86-apk-${{ hashFiles('src/**', 'assets/**', 'package-lock.json', 'app.json') }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: gradle/actions/setup-gradle@v4
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Build the x86_64 APK
+        run: |
+          npm ci
+          npx expo prebuild --platform android --no-install
+          (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon)
+          mkdir -p apk
+          cp android/app/build/outputs/apk/release/app-release.apk apk/app.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x86-apk
+          path: apk/app.apk
+
+  pass:
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [pixel_7, small_phone]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: x86-apk
+          path: apk
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | MAESTRO_VERSION=1.40.0 bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Run the pass
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: ${{ matrix.profile }}
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash e2e/run.sh ${{ matrix.profile }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots-${{ matrix.profile }}
+          path: shots/${{ matrix.profile }}
+
+  publish:
+    needs: pass
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shots-*
+          path: shots
+      - name: Publish to the emulator-pass release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p flat
+          for dir in shots/shots-*; do
+            profile="${dir#shots/shots-}"
+            find "$dir" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.txt' \) -not -path '*/debug/*' | while read -r f; do
+              cp "$f" "flat/${profile}-$(basename "$f")"
+            done
+            (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/flat/${profile}-debug.zip" .) || true
+          done
+          ls -la flat
+          gh release delete emulator-pass --yes --cleanup-tag || true
+          gh release create emulator-pass flat/* --target "$GITHUB_SHA" --prerelease \
+            --title "Emulator pass (${GITHUB_SHA::7})" \
+            --notes "Screenshots from the emulator pass: a standard Pixel and a small phone."

@@ -1,0 +1,118 @@
+# The emulator pass: a fresh install, the sample showcase, Claims, the rundown, and a Commons
+# card with the seal stamped on a photo. Every step leaves a screenshot. Runs in
+# .github/workflows/emulator-pass.yml; e2e/run.sh pushes plant-photo.jpg into the gallery first.
+appId: com.gatheringmoss.sellercard
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Welcome"
+    timeout: 90000
+- takeScreenshot: shot-01-welcome
+
+- tapOn: "Look around a sample showcase first"
+- extendedWaitUntil:
+    visible: "Leave the sample"
+    timeout: 10000
+- takeScreenshot: shot-02-sample-home
+
+- tapOn: "Grower Showcase, 4 lots.*"
+- extendedWaitUntil:
+    visible: "Announcement"
+    timeout: 10000
+- takeScreenshot: shot-03-showcase
+
+- tapOn: "Claims"
+- extendedWaitUntil:
+    visible: "After the showcase"
+    timeout: 10000
+- takeScreenshot: shot-04-claims
+- scroll
+- takeScreenshot: shot-05-claims-more
+- scroll
+- takeScreenshot: shot-06-claims-end
+
+- tapOn: "After the showcase"
+- extendedWaitUntil:
+    visible: "Winners by lot"
+    timeout: 10000
+- takeScreenshot: shot-07-rundown
+- scroll
+- takeScreenshot: shot-08-rundown-more
+- scroll
+- takeScreenshot: shot-09-rundown-more
+- scroll
+- takeScreenshot: shot-10-rundown-end
+
+- back
+- back
+- back
+- extendedWaitUntil:
+    visible: "Leave the sample"
+    timeout: 10000
+
+# Switch the sample seller to the Commons format with a grower number. Nothing here is saved.
+- tapOn: "Profile"
+- scrollUntilVisible:
+    element: "Hoya and Orchid Commons"
+- tapOn: "Hoya and Orchid Commons"
+- scrollUntilVisible:
+    element: "Leave blank until the desk issues one"
+- tapOn: "Leave blank until the desk issues one"
+- inputText: "001"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "also DBA Fern Hollow Plants"
+- tapOn: "also DBA Fern Hollow Plants"
+- inputText: "Ellery Greenhouse"
+- hideKeyboard
+- takeScreenshot: shot-11-profile-commons
+- tapOn: "Save profile"
+
+- extendedWaitUntil:
+    visible: "Hoya obovata"
+    timeout: 10000
+- tapOn: "Hoya obovata"
+- extendedWaitUntil:
+    visible: "Save the card image"
+    timeout: 10000
+- takeScreenshot: shot-12-commons-card
+- tapOn: "Save the card image"
+- tapOn:
+    text: "Allow.*"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*Saved to your photos"
+    timeout: 20000
+- takeScreenshot: shot-13-card-image-saved
+
+# Give the plant a photo from the gallery, through the phone's own photo picker.
+- tapOn: "Edit plant"
+- tapOn: "Choose photo"
+- extendedWaitUntil:
+    visible:
+      id: ".*icon_thumbnail.*"
+    timeout: 20000
+- takeScreenshot: shot-14-photo-picker
+- tapOn:
+    id: ".*icon_thumbnail.*"
+    index: 0
+- extendedWaitUntil:
+    visible: "Save"
+    timeout: 20000
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Save stamped photo"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "Save stamped photo"
+- takeScreenshot: shot-15-seal-on-photo
+- tapOn: "Save stamped photo"
+- tapOn:
+    text: "Allow.*"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*Saved to your photos"
+    timeout: 20000
+- tapOn: "Stamped photo. Tap to view full size."
+- takeScreenshot: shot-16-seal-full-size
