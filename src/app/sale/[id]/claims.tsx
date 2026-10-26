@@ -27,6 +27,9 @@ export default function ClaimsScreen() {
   };
 
   if (!sale) return <Screen><Note>This showcase is gone.</Note></Screen>;
+  // Once read, the paste folds down to a few lines so the claims below stay in easy reach on a small
+  // screen. Editing the paste opens it back up.
+  const isRead = !!shown.trim() && shown === text;
 
   const lotFor = (n: number): Lot | undefined => sale.lots.find((l) => l.number === n);
   const record = (lot: Lot | undefined, lotNumber: number, buyer: string, label?: string | null) => {
@@ -66,7 +69,7 @@ export default function ClaimsScreen() {
         placeholder="Paste the comment thread"
         placeholderTextColor="#9AA39A"
         accessibilityLabel="Comment thread"
-        style={[styles.input, { minHeight: 140, maxHeight: 260, textAlignVertical: 'top', marginBottom: 10 }]}
+        style={[styles.input, { ...(isRead ? { height: 96 } : { minHeight: 140, maxHeight: 260 }), textAlignVertical: 'top', marginBottom: 10 }]}
       />
       <Row style={{ marginBottom: 16 }}>
         <Button title="Read claims" disabled={!text.trim()} onPress={read} style={{ flex: 2 }} />

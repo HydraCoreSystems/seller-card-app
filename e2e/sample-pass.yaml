@@ -34,7 +34,7 @@ appId: com.gatheringmoss.sellercard
 
 - tapOn: "After the showcase"
 - extendedWaitUntil:
-    visible: "Winners by lot"
+    visible: ".*lots claimed"
     timeout: 10000
 - takeScreenshot: shot-07-rundown
 - scroll

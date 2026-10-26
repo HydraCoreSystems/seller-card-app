@@ -17,7 +17,9 @@ adb logcat -c
 
 cd "$OUT"
 status=0
-maestro test --debug-output "$OUT/debug" "$ROOT/e2e/sample-pass.yaml" || status=$?
+maestro test "$ROOT/e2e/sample-pass.yaml" > "$OUT/maestro.txt" 2>&1 || status=$?
+cat "$OUT/maestro.txt"
+mkdir -p "$OUT/debug" && cp -r "$HOME/.maestro/tests" "$OUT/debug/" 2>/dev/null || true
 
 # Screenshots land beside the flow or in the working directory, depending on the Maestro version.
 find "$ROOT/e2e" "$ROOT" -maxdepth 1 -name 'shot-*.png' -exec mv {} "$OUT/" \; 2>/dev/null || true
