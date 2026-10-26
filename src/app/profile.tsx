@@ -110,7 +110,7 @@ export default function ProfileScreen() {
             onChangeText={set('growerNumber')}
             placeholder="Leave blank until the desk issues one"
             keyboardType="number-pad"
-            hint="Type it the way the desk issued it, like 001. With it, your Commons card image carries the banner and your photo copies carry the seal. The desk checks every number against the register before a listing runs."
+            hint="Type it the way the desk issued it, like 001. With it, your Commons card image carries the banner, and your photo copies carry the seal with this number in the stamp in place of your seller number. The desk checks every number against the register before a listing runs."
           />
           <Field
             label="Vetted business name"

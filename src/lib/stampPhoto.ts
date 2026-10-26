@@ -12,7 +12,7 @@ export interface StampInput {
   sellerName: string;
   sellerNumber: string;
   day: string;
-  /** Commons format only: the grower number for the seal, or null for no seal. */
+  /** Commons format only: the grower number, for the seal and the band. Null for neither. */
   seal?: string | null;
 }
 
@@ -31,7 +31,7 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   canvas.drawImage(image, 0, 0);
 
   const layout = stampLayout(w, h);
-  const text = stampText(input.sellerName, input.sellerNumber, input.day);
+  const text = stampText(input.sellerName, input.sellerNumber, input.day, input.seal);
 
   const band = Skia.Paint();
   band.setColor(Skia.Color('rgba(0,0,0,0.55)'));

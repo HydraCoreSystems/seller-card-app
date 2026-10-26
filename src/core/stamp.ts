@@ -1,4 +1,5 @@
 import { ORIGIN_LINE } from './brand';
+import { VERIFIED_GROWER } from './formats/commons';
 import { formatLongDate } from './text';
 
 export interface StampText {
@@ -6,10 +7,14 @@ export interface StampText {
   origin: string;
 }
 
-/** "Gathering Moss · Seller #12 · October 24, 2026" over the origin line. */
-export function stampText(sellerName: string, sellerNumber: string, day: string): StampText {
+/**
+ * "Gathering Moss · Seller #12 · October 24, 2026" over the origin line. A Commons photo carries
+ * one number only: the grower number, the one the desk checks against the register.
+ */
+export function stampText(sellerName: string, sellerNumber: string, day: string, growerNumber: string | null = null): StampText {
   const parts = [sellerName.trim()];
-  if (sellerNumber.trim()) parts.push(`Seller #${sellerNumber.trim()}`);
+  if (growerNumber?.trim()) parts.push(`${VERIFIED_GROWER} No. ${growerNumber.trim()}`);
+  else if (sellerNumber.trim()) parts.push(`Seller #${sellerNumber.trim()}`);
   parts.push(formatLongDate(day));
   return { main: parts.join('  ·  '), origin: ORIGIN_LINE };
 }

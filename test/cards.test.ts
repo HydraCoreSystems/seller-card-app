@@ -209,6 +209,12 @@ describe('photo stamp', () => {
     });
     expect(stampText('Gathering Moss', '', '2026-10-24').main).not.toContain('Seller #');
   });
+  it('carries only the grower number on a Commons photo', () => {
+    expect(stampText('Gathering Moss', '12', '2026-10-24', ' 001 ').main).toBe(
+      'Gathering Moss  ·  Commons Verified Grower No. 001  ·  October 24, 2026',
+    );
+    expect(stampText('Gathering Moss', '12', '2026-10-24', null).main).toContain('Seller #12');
+  });
   it('keeps the band along the bottom edge and small', () => {
     for (const [w, h] of [[3000, 4000], [4000, 3000], [1080, 1080]]) {
       const l = stampLayout(w, h);

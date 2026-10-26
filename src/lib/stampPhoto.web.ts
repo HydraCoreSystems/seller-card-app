@@ -20,7 +20,7 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   ctx.drawImage(img, 0, 0);
 
   const layout = stampLayout(w, h);
-  const text = stampText(input.sellerName, input.sellerNumber, input.day);
+  const text = stampText(input.sellerName, input.sellerNumber, input.day, input.seal);
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(0, layout.bandTop, w, layout.bandHeight);
 
