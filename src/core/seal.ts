@@ -122,7 +122,7 @@ export function bannerShapes(b: BannerInput, x: number, y: number, width: number
   const k = width / 2400;
   const u = (n: number) => n * k;
   const left = x + u(780);
-  const maxWidth = u(2400 - 780 - 70);
+  const maxWidth = u(2400 - 780 - 140);
   const line = (text: string, at: number, size: number, bold: boolean, color: string, font: 'serif' | 'sans' = 'sans'): Shape => ({
     kind: 'text', text, x: left, y: y + u(at), size: u(size), font, bold, color, align: 'left', maxWidth,
   });

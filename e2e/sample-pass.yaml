@@ -82,26 +82,19 @@ appId: com.gatheringmoss.sellercard
     element: "Hoya obovata"
 - tapOn: "Hoya obovata"
 - extendedWaitUntil:
-    visible: "Save the card image"
+    visible: "Edit plant"
     timeout: 10000
 - takeScreenshot: shot-12-commons-card
-- tapOn: "Save the card image"
-- tapOn:
-    text: "Allow.*"
-    optional: true
-- extendedWaitUntil:
-    visible: ".*Saved to your photos"
-    timeout: 20000
-- takeScreenshot: shot-13-card-image-saved
 
-# Give the plant a photo from the gallery, through the phone's own photo picker.
+# Give the plant a photo from the gallery, through the phone's own photo picker. This comes before
+# saving the card image, so the newest picture in the gallery is still the plant photo.
 - tapOn: "Edit plant"
 - tapOn: "Choose photo"
 - extendedWaitUntil:
     visible:
       id: ".*icon_thumbnail.*"
     timeout: 20000
-- takeScreenshot: shot-14-photo-picker
+- takeScreenshot: shot-13-photo-picker
 - tapOn:
     id: ".*icon_thumbnail.*"
     index: 0
@@ -110,17 +103,32 @@ appId: com.gatheringmoss.sellercard
     timeout: 20000
 - tapOn: "Save"
 - extendedWaitUntil:
-    visible: "Save stamped photo"
-    timeout: 30000
+    visible: "Edit plant"
+    timeout: 20000
 - scrollUntilVisible:
     element: "Save stamped photo"
-- takeScreenshot: shot-15-seal-on-photo
+    timeout: 30000
+- takeScreenshot: shot-14-seal-on-photo
 - tapOn: "Save stamped photo"
+- tapOn:
+    text: "Allow.*"
+    optional: true
+- scrollUntilVisible:
+    element: ".*Saved to your photos"
+    timeout: 20000
+- tapOn: "Stamped photo. Tap to view full size."
+- waitForAnimationToEnd
+- takeScreenshot: shot-15-seal-full-size
+- back
+
+- scrollUntilVisible:
+    element: "Save the card image"
+    direction: UP
+- tapOn: "Save the card image"
 - tapOn:
     text: "Allow.*"
     optional: true
 - extendedWaitUntil:
     visible: ".*Saved to your photos"
     timeout: 20000
-- tapOn: "Stamped photo. Tap to view full size."
-- takeScreenshot: shot-16-seal-full-size
+- takeScreenshot: shot-16-card-image-saved
