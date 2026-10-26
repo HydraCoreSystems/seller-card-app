@@ -1,7 +1,7 @@
 import type { Shape } from '../core/seal';
 import { fitSize } from '../core/stamp';
 
-const FAMILY = { sans: 'Helvetica, Arial, sans-serif', serif: 'Georgia, "Times New Roman", serif' };
+const FAMILY = { sans: 'Helvetica, Arial, sans-serif', serif: '"Times New Roman", Times, serif' };
 
 export const cssFont = (font: 'serif' | 'sans', bold: boolean, size: number) => `${bold ? 'bold ' : ''}${size}px ${FAMILY[font]}`;
 

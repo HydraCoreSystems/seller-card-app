@@ -33,14 +33,15 @@ const SAMPLE_PLANTS: [id: string, name: string, noid: boolean, price: number, no
 export function sampleThread(): string {
   return [
     'Most relevant',
-    SAMPLE_SELLER, 'Author', 'Lot 1: Hoya carnosa Krimson Queen', '$25', 'Rooted, 6 leaves, new growth', '20h', 'Like', 'Reply',
-    'Jada Winslow', 'Top fan', 'claim', '20h', 'Like', 'Reply',
-    'Marcus Bell', 'claim if Jada passes', '20h', 'Like', 'Reply',
-    SAMPLE_SELLER, 'Author', 'Lot 2: Hoya kerrii splash', '$18', 'Single leaf cutting, rooted', '20h', 'Like', 'Reply',
-    'Marcus Bell', 'Claim!!', '20h', 'Like', 'Reply',
-    SAMPLE_SELLER, 'Author', 'Lot 3: Hoya NOID', '$12', 'Big fuzzy leaves, no tag', '20h', 'Like', 'Reply',
-    'Priya Lund', 'so pretty, does it come potted?', '19h', 'Like', 'Reply',
-    SAMPLE_SELLER, 'Author', 'Lot 4: Dischidia ruscifolia', '$15', '4 inch pot, trailing', '20h', 'Like', 'Reply',
+    SAMPLE_SELLER, 'Author', 'Lot 1: Hoya carnosa Krimson Queen', '$25', 'Rooted, 6 leaves, new growth', '2d', 'Like', 'Reply',
+    'Jada Winslow', 'Top fan', 'claim', '2d', 'Like', 'Reply',
+    'Marcus Bell', 'claim if Jada passes', '2d', 'Like', 'Reply',
+    SAMPLE_SELLER, 'Author', 'Lot 2: Hoya kerrii splash', '$18', 'Single leaf cutting, rooted', '2d', 'Like', 'Reply',
+    'Marcus Bell', 'Claim!!', '2d', 'Like', 'Reply',
+    'Theo Marsh', 'claim if Marcus passes', '2d', 'Like', 'Reply',
+    SAMPLE_SELLER, 'Author', 'Lot 3: Hoya NOID', '$12', 'Big fuzzy leaves, no tag', '2d', 'Like', 'Reply',
+    'Priya Lund', 'so pretty, does it come potted?', '2d', 'Like', 'Reply',
+    SAMPLE_SELLER, 'Author', 'Lot 4: Dischidia ruscifolia', '$15', '4 inch pot, trailing', '2d', 'Like', 'Reply',
   ].join('\n');
 }
 
@@ -50,7 +51,9 @@ const lotOf = (p: Plant, number: number): Lot => ({
 
 export function sampleData(now = new Date()): SampleData {
   const day = (back: number) => toDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - back));
-  const today = day(0);
+  // Closed a day and a half ago, past the 24 hour pay window, so the unpaid lot shows Second Chance.
+  const closedMs = now.getTime() - 30 * 3_600_000;
+  const closed = toDay(new Date(closedMs));
   const plants: Plant[] = SAMPLE_PLANTS.map(([id, name, noid, price, notes, sold]) => ({
     id, name, noid, price, notes, sold, kind: 'sale', photoUri: null, createdAt: day(9),
   }));
@@ -59,25 +62,24 @@ export function sampleData(now = new Date()): SampleData {
     id: SAMPLE_SALE_ID,
     formatId: 'generic',
     kind: 'sale',
-    opens: { day: day(1), time: '19:00' },
+    opens: { day: day(2), time: '19:00' },
     closes: null,
     closeCall: '',
     claimRules: 'First clear claim wins. Pay within 24 hours.',
     crossListing: '',
     lots,
     claimText: sampleThread(),
-    closedAt: today,
-    // Closed a few hours ago, so the pay window is still open and the reminder shows its pay by line.
-    closedMs: now.getTime() - 3 * 3_600_000,
+    closedAt: closed,
+    closedMs,
     leftovers: lots.slice(2),
     shippingCharge: 10,
-    claimOrder: { 1: ['Jada Winslow', 'Marcus Bell'], 2: ['Marcus Bell'] },
-    createdAt: day(2),
+    claimOrder: { 1: ['Jada Winslow', 'Marcus Bell'], 2: ['Marcus Bell', 'Theo Marsh'] },
+    createdAt: day(3),
   };
   const record = (id: string, r: Omit<SaleRecord, 'id'>): SaleRecord => ({ id, ...r });
   const records: SaleRecord[] = [
-    record('sample-r1', { saleId: SAMPLE_SALE_ID, lotNumber: 1, plantName: lots[0].name, buyer: 'Jada Winslow', price: 25, date: today, payment: 'paid', paidDate: today }),
-    record('sample-r2', { saleId: SAMPLE_SALE_ID, lotNumber: 2, plantName: lots[1].name, buyer: 'Marcus Bell', price: 18, date: today }),
+    record('sample-r1', { saleId: SAMPLE_SALE_ID, lotNumber: 1, plantName: lots[0].name, buyer: 'Jada Winslow', price: 25, date: closed, payment: 'paid', paidDate: closed }),
+    record('sample-r2', { saleId: SAMPLE_SALE_ID, lotNumber: 2, plantName: lots[1].name, buyer: 'Marcus Bell', price: 18, date: closed }),
     // A little history from earlier showcases, entered by hand.
     record('sample-r3', { saleId: null, lotNumber: null, plantName: 'Hoya carnosa Krimson Queen', buyer: 'Jada Winslow', price: 22, date: day(30), payment: 'paid', paidDate: day(30) }),
     record('sample-r4', { saleId: null, lotNumber: null, plantName: 'Hoya pubicalyx', buyer: 'Theo Marsh', price: 16, date: day(30), payment: 'paid', paidDate: day(29) }),

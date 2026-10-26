@@ -18,25 +18,25 @@ describe('the sample showcase', () => {
   it('reads its own thread the way the claim tracker reads a real one', () => {
     expect(rundown.lots.map((l) => [l.number, l.winner, l.line])).toEqual([
       [1, 'Jada Winslow', ['Marcus Bell']],
-      [2, 'Marcus Bell', []],
+      [2, 'Marcus Bell', ['Theo Marsh']],
       [3, null, []],
       [4, null, []],
     ]);
     expect(rundown.questions.map((q) => [q.author, q.lot])).toEqual([['Priya Lund', 3]]);
   });
 
-  it('has one lot paid, one waiting, and two leftovers', () => {
+  it('has one lot paid, one past its pay window with Second Chance ready, and two leftovers', () => {
     expect(rundown.lots.map((l) => l.payment)).toEqual(['paid', null, null, null]);
     const left = gatherLeftovers(d.sales, d.records, d.leftoversDone, { window: windowMs(d.profile), now: now.getTime() });
     expect(left.map((l) => [l.lotNumber, l.why])).toEqual([[3, 'unclaimed'], [4, 'unclaimed']]);
-    expect(secondChances(sale, d.records, windowMs(d.profile), now.getTime())).toEqual([]);
+    expect(secondChances(sale, d.records, windowMs(d.profile), now.getTime()).map((c) => [c.lot, c.buyer, c.kind])).toEqual([[2, 'Marcus Bell', 'overdue']]);
   });
 
   it('gives buyer memory, price memory and season totals something to say', () => {
     expect(buyerHistory(d.records, SAMPLE_SALE_ID).get('jadawinslow')).toBeTruthy();
     expect(d.buyerNotes).toHaveProperty('jadawinslow');
     const forSale = d.plants.find((p) => !p.sold && p.name === 'Hoya carnosa Krimson Queen')!;
-    expect(lastSold(d.records, forSale.name, forSale.noid)).toEqual({ price: 25, date: '2026-10-26' });
+    expect(lastSold(d.records, forSale.name, forSale.noid)).toEqual({ price: 25, date: '2026-10-25' });
     const month = seasonTotals(d.records, d.sales, 'month', null).find((p) => p.key === '2026-10')!;
     expect(month).toMatchObject({ plants: 2, gross: 25, shipping: 10, unpaid: 18 });
   });

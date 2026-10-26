@@ -5,6 +5,7 @@ import { getFormat } from '../core/formats';
 import { formatDay, formatPrice, plantDisplayName } from '../core/text';
 import { useLeftovers, useStore } from '../lib/store';
 import { Button, Note, Panel, Row, Screen, Thumb, colors } from '../ui/kit';
+import { SealHint } from '../ui/PreviewBanner';
 
 export default function Home() {
   const store = useStore();
@@ -89,6 +90,7 @@ export default function Home() {
               You’re looking around a sample showcase. The seller and buyers are made up, and nothing you do here is
               saved. Open it, the claims and the rundown to see each step full.
             </Note>
+            <SealHint />
             <Button kind="secondary" title="Leave the sample" onPress={store.leaveSample} />
           </Panel>
         ) : null}

@@ -4,7 +4,8 @@ import type { Shape } from '../core/seal';
 import { fitSize } from '../core/stamp';
 
 const SANS = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
-const SERIF = Platform.select({ ios: 'Georgia', default: 'serif' });
+// Times New Roman keeps the digits of the grower number on the line; Georgia drops some below it.
+const SERIF = Platform.select({ ios: 'Times New Roman', default: 'serif' });
 
 export function shapeFont(font: 'serif' | 'sans', bold: boolean, size: number): SkFont {
   return matchFont({ fontFamily: font === 'serif' ? SERIF : SANS, fontSize: size, fontWeight: bold ? 'bold' : 'normal' });

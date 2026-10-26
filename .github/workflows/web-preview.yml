@@ -1,0 +1,45 @@
+name: Web preview
+
+# The iPhone taste: the Expo web build, with the sample showcase, published to GitHub Pages at a
+# link that stays the same between builds: https://hydracoresystems.github.io/seller-card-app/
+# It's labeled as a preview inside the app (src/ui/PreviewBanner.web.tsx).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: web-preview
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_NO_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Serve from the repo's Pages path
+        # Web only. The phone builds never see this.
+        run: node -e "const f='app.json',a=require('./'+f);a.expo.experiments={...a.expo.experiments,baseUrl:'/seller-card-app'};require('fs').writeFileSync(f,JSON.stringify(a,null,2))"
+      - name: Export the web build
+        run: |
+          npx expo export -p web --output-dir site
+          cp site/index.html site/404.html
+          touch site/.nojekyll
+      - name: Publish to the gh-pages branch
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -q -m "Web preview from ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages

@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { StoreProvider } from '../lib/store';
 import { colors } from '../ui/kit';
+import { PreviewBanner } from '../ui/PreviewBanner';
 
 export default function Layout() {
   return (
@@ -11,6 +12,7 @@ export default function Layout() {
     <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
       <StoreProvider>
         <StatusBar style="dark" />
+        <PreviewBanner />
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: colors.bg },

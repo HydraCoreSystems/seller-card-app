@@ -53,6 +53,13 @@ Every push to `main` builds an Android APK and publishes it to the
 [test build release](../../releases/tag/test-build). Open that page on the phone, download the
 `.apk`, and install it.
 
+## The browser preview
+
+Every push to `main` also publishes the web build to
+[hydracoresystems.github.io/seller-card-app](https://hydracoresystems.github.io/seller-card-app/), a
+taste for iPhone waitlisters with the sample showcase one tap away. It's labeled as a preview on every
+screen, and keeps anything typed in that browser only.
+
 ## Code map
 
 * `src/core/` holds plain TypeScript with no app dependencies: formats, claim reading, lot numbering,
