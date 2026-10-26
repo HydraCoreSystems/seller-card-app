@@ -1,6 +1,6 @@
 import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
 import { formatPrice, formatSaleTime, joinLines } from '../text';
-import type { Lot, Profile, Sale, SaleKind } from '../types';
+import type { FormatId, Lot, Profile, Sale, SaleKind } from '../types';
 import { lotName, shippingLine } from './parts';
 import type { CardFormat } from './types';
 
@@ -15,8 +15,13 @@ export const VERIFIED_GROWER = 'Commons Verified Grower';
 const CLAIMS_LINE = 'Claims in this thread only. First confirmed claim takes it.';
 const BIDS_LINE = 'Bids in this thread only. A bid in the final five minutes extends the close by five minutes.';
 
+/** The grower number to print, or null for a showcase outside the Commons format or with no number. */
+export function growerNumber(profile: Profile, formatId: FormatId): string | null {
+  return formatId === 'commons' ? profile.growerNumber?.trim() || null : null;
+}
+
 function sellerLine(profile: Profile): string {
-  const number = profile.sellerNumber.trim();
+  const number = growerNumber(profile, 'commons');
   const name = profile.sellerName.trim();
   return number ? `Seller: ${name} · ${VERIFIED_GROWER} No. ${number}` : `Seller: ${name}`;
 }

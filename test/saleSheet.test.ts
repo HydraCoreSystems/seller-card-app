@@ -51,9 +51,9 @@ describe('the Sale Sheet going out', () => {
   });
 
   it('speaks Commons only inside the Commons format', () => {
-    const commons = text(saleSheet(profile, { ...sale, formatId: 'commons' }).rows);
+    const commons = text(saleSheet({ ...profile, growerNumber: '001' }, { ...sale, formatId: 'commons' }).rows);
     expect(commons[0]).toEqual(['Commons Market Sale Sheet']);
-    expect(commons).toContainEqual(['Commons Verified Grower No.', '12']);
+    expect(commons).toContainEqual(['Commons Verified Grower No.', '001']);
     expect(rows.flat().join(' ')).not.toContain('Commons');
   });
 

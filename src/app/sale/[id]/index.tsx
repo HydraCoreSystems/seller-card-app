@@ -2,6 +2,8 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../../../core/formats';
+import { growerNumber } from '../../../core/formats/commons';
+import { CardImageButton } from '../../../ui/CardImageButton';
 import { lastSold, priceMemoryLine } from '../../../core/records';
 import { buildRundown } from '../../../core/rundown';
 import { saleSheet, sheetState, sheetTitle } from '../../../core/saleSheet';
@@ -29,7 +31,7 @@ export default function SaleScreen() {
     setSaving('Stamping photos');
     try {
       const uris: string[] = [];
-      for (const lot of withPhotos) uris.push(await getStamped(lot.photoUri!, profile));
+      for (const lot of withPhotos) uris.push(await getStamped(lot.photoUri!, profile, growerNumber(profile, sale.formatId)));
       setSaving('Saving');
       const ok = await saveToGallery(uris);
       setSaving(ok ? `Saved ${uris.length} photos` : 'Photos not allowed');
@@ -51,6 +53,7 @@ export default function SaleScreen() {
       >
         <H>Announcement</H>
         <CardText text={announcement} copyKey="announcement" label="Copy announcement" />
+        <CardImageButton text={announcement} profile={profile} formatId={sale.formatId} />
 
         <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <H>Lots</H>

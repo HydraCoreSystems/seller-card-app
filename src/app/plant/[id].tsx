@@ -9,6 +9,8 @@ import { newId, useStore } from '../../lib/store';
 import { Button, CardText, Choice, H, Note, Screen } from '../../ui/kit';
 import { PlantFields, draftPrice, priceText, type PlantDraft } from '../../ui/PlantFields';
 import { StampedPhoto } from '../../ui/StampedPhoto';
+import { CardImageButton } from '../../ui/CardImageButton';
+import { growerNumber } from '../../core/formats/commons';
 
 export default function PlantScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -74,7 +76,12 @@ export default function PlantScreen() {
           footer={<Button kind="secondary" title="Edit plant" onPress={() => setEditing(true)} />}
         >
           <CardText text={card} copyKey="single" />
-          <StampedPhoto photoUri={existing.photoUri} profile={store.profile} />
+          <CardImageButton text={card} profile={store.profile} formatId={store.profile.defaultFormat} />
+          <StampedPhoto
+            photoUri={existing.photoUri}
+            profile={store.profile}
+            seal={growerNumber(store.profile, store.profile.defaultFormat)}
+          />
           <Note>
             This is a card for posting one plant on its own, in the {format.name} format. For several plants at
             once, start a New showcase from your plant list.

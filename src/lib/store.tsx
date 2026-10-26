@@ -90,7 +90,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Merged with EMPTY_PROFILE so a profile saved before a new field existed still gets a default for it.
     profile: (() => {
       const saved = loadJson<Profile | null>(KEYS.profile, null);
-      return saved ? { ...EMPTY_PROFILE, ...saved } : null;
+      if (!saved) return null;
+      // Before the grower number had its own field, a Commons seller's seller number stood in for it.
+      const growerNumber = saved.growerNumber ?? (saved.defaultFormat === 'commons' ? saved.sellerNumber : '');
+      return { ...EMPTY_PROFILE, ...saved, growerNumber };
     })(),
     plants: loadJson<Plant[]>(KEYS.plants, []),
     sales: loadJson<Sale[]>(KEYS.sales, []),

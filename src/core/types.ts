@@ -23,6 +23,10 @@ export interface Profile {
   facebookName?: string;
   /** Hours a winner has to pay before the lot can go to the next in line. Also how long the runner up gets. */
   payWindowHours?: number;
+  /** Commons format only: the Commons Verified Grower number the desk issued, as the seller typed it. */
+  growerNumber?: string;
+  /** Commons format only: the business name the desk vetted, like "also DBA Gathering Moss". */
+  growerBusiness?: string;
 }
 
 export interface Plant {

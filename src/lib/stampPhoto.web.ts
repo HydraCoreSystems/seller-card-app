@@ -1,4 +1,6 @@
+import { sealPlace, sealShapes } from '../core/seal';
 import { fitSize, stampLayout, stampText } from '../core/stamp';
+import { drawShapes } from './drawShapes.web';
 import type { StampInput } from './stampPhoto';
 
 export type { StampInput } from './stampPhoto';
@@ -34,6 +36,10 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   ctx.font = `${layout.originSize}px ${FONT}`;
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.fillText(text.origin, layout.padX, layout.originBaseline);
+  if (input.seal) {
+    const at = sealPlace(w, h);
+    drawShapes(ctx, sealShapes(input.seal, at.cx, at.cy, at.diameter));
+  }
   return canvas.toDataURL('image/jpeg', 0.92);
 }
 

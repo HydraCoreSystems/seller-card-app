@@ -8,19 +8,19 @@ import { ViewablePhoto } from './PhotoViewer';
 
 const cache = new Map<string, Promise<string>>();
 
-/** Makes (once) the stamped copy of a photo for today. */
-export function getStamped(photoUri: string, profile: Profile, day = toDay(new Date())): Promise<string> {
-  const key = [photoUri, profile.sellerName, profile.sellerNumber, day].join('|');
+/** Makes (once) the stamped copy of a photo for today. seal is the Commons grower number, when it applies. */
+export function getStamped(photoUri: string, profile: Profile, seal: string | null = null, day = toDay(new Date())): Promise<string> {
+  const key = [photoUri, profile.sellerName, profile.sellerNumber, seal ?? '', day].join('|');
   let p = cache.get(key);
   if (!p) {
-    p = stampPhoto({ photoUri, sellerName: profile.sellerName, sellerNumber: profile.sellerNumber, day });
+    p = stampPhoto({ photoUri, sellerName: profile.sellerName, sellerNumber: profile.sellerNumber, day, seal });
     p.catch(() => cache.delete(key));
     cache.set(key, p);
   }
   return p;
 }
 
-export function useStamped(photoUri: string | null, profile: Profile | null) {
+export function useStamped(photoUri: string | null, profile: Profile | null, seal: string | null) {
   const [uri, setUri] = useState<string | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -28,19 +28,19 @@ export function useStamped(photoUri: string | null, profile: Profile | null) {
     setUri(null);
     setError(false);
     if (photoUri && profile) {
-      getStamped(photoUri, profile)
+      getStamped(photoUri, profile, seal)
         .then((u) => live && setUri(u))
         .catch(() => live && setError(true));
     }
     return () => {
       live = false;
     };
-  }, [photoUri, profile?.sellerName, profile?.sellerNumber]);
+  }, [photoUri, profile?.sellerName, profile?.sellerNumber, seal]);
   return { uri, error };
 }
 
-export function StampedPhoto({ photoUri, profile }: { photoUri: string | null; profile: Profile | null }) {
-  const { uri, error } = useStamped(photoUri, profile);
+export function StampedPhoto({ photoUri, profile, seal = null }: { photoUri: string | null; profile: Profile | null; seal?: string | null }) {
+  const { uri, error } = useStamped(photoUri, profile, seal);
   const [saved, setSaved] = useState(false);
   useEffect(() => setSaved(false), [uri]);
   if (!photoUri) return null;

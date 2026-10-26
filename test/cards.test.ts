@@ -17,6 +17,7 @@ const profile: Profile = {
   timeZone: 'Central',
   claimRules: 'First clear claim wins. Pay within 24 hours.',
   defaultFormat: 'commons',
+  growerNumber: '12',
 };
 
 function plant(i: number, extra: Partial<Plant> = {}): Plant {

@@ -2,7 +2,9 @@ import { ImageFormat, Skia, matchFont } from '@shopify/react-native-skia';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { Platform } from 'react-native';
+import { sealPlace, sealShapes } from '../core/seal';
 import { fitSize, stampLayout, stampText } from '../core/stamp';
+import { drawShapes } from './drawShapes';
 import { newId } from './store';
 
 export interface StampInput {
@@ -10,6 +12,8 @@ export interface StampInput {
   sellerName: string;
   sellerNumber: string;
   day: string;
+  /** Commons format only: the grower number for the seal, or null for no seal. */
+  seal?: string | null;
 }
 
 const family = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
@@ -52,6 +56,10 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   soft.setAntiAlias(true);
   const originFont = matchFont({ fontFamily: family, fontSize: layout.originSize, fontWeight: 'normal' });
   canvas.drawText(text.origin, layout.padX, layout.originBaseline, soft, originFont);
+  if (input.seal) {
+    const at = sealPlace(w, h);
+    drawShapes(canvas, sealShapes(input.seal, at.cx, at.cy, at.diameter));
+  }
 
   surface.flush();
   const bytes = surface.makeImageSnapshot().encodeToBytes(ImageFormat.JPEG, 92);

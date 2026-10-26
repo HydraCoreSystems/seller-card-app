@@ -1,6 +1,8 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { getFormat } from '../../../core/formats';
+import { growerNumber } from '../../../core/formats/commons';
+import { CardImageButton } from '../../../ui/CardImageButton';
 import { useSale, useStore } from '../../../lib/store';
 import { Button, CardText, Note, Row, Screen } from '../../../ui/kit';
 import { StampedPhoto } from '../../../ui/StampedPhoto';
@@ -38,7 +40,7 @@ export default function PostScreen() {
         {lot ? (
           <>
             <Note>Comment on your Grower Showcase post: attach the photo, paste the Market Listing.</Note>
-            <StampedPhoto photoUri={lot.photoUri} profile={profile} />
+            <StampedPhoto photoUri={lot.photoUri} profile={profile} seal={growerNumber(profile, sale.formatId)} />
             <CardText text={format.listing({ profile, sale, lot })} copyKey={`lot${lot.number}`} />
             <Button
               kind="quiet"
@@ -50,6 +52,7 @@ export default function PostScreen() {
           <>
             <Note>Start the Grower Showcase post with this. Then go lot by lot.</Note>
             <CardText text={format.announcement({ profile, sale })} copyKey="announcement" label="Copy announcement" />
+            <CardImageButton text={format.announcement({ profile, sale })} profile={profile} formatId={sale.formatId} />
           </>
         )}
       </Screen>

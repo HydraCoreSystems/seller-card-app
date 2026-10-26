@@ -5,7 +5,7 @@
  */
 import { strFromU8 } from 'fflate';
 import { ORIGIN_LINE, SHOWCASE } from './brand';
-import { COMMONS_MARKET, VERIFIED_GROWER } from './formats/commons';
+import { COMMONS_MARKET, VERIFIED_GROWER, growerNumber } from './formats/commons';
 import { shippingLine } from './formats/parts';
 import { formatDay, parsePrice } from './text';
 import { nameKey } from './records';
@@ -37,7 +37,7 @@ export interface SaleSheet {
 /** The sheet for a showcase, or the blank template when sale is null. */
 export function saleSheet(profile: Profile, sale: Sale | null, state: Map<number, SheetLotState> = new Map()): SaleSheet {
   const formatId = sale?.formatId ?? profile.defaultFormat;
-  const number = profile.sellerNumber.trim();
+  const number = formatId === 'commons' ? growerNumber(profile, formatId) : profile.sellerNumber.trim();
   const showcase = sale
     ? `${SHOWCASE}${sale.kind === 'auction' ? ' auction' : ''}${sale.opens ? `, ${formatDay(sale.opens.day)}` : ''}`
     : null;

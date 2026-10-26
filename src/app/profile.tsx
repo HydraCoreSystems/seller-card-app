@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FORMAT_LIST } from '../core/formats';
 import { ORIGIN_LINE } from '../core/brand';
+import { VERIFIED_GROWER } from '../core/formats/commons';
 import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
 import type { FormatId, Profile } from '../core/types';
@@ -100,6 +101,25 @@ export default function ProfileScreen() {
         options={FORMAT_LIST.map((f) => ({ value: f.id, label: f.name }))}
         onChange={set('defaultFormat')}
       />
+      {p.defaultFormat === 'commons' ? (
+        <>
+          <Field
+            label={`${VERIFIED_GROWER} No.`}
+            value={p.growerNumber ?? ''}
+            onChangeText={set('growerNumber')}
+            placeholder="Leave blank until the desk issues one"
+            keyboardType="number-pad"
+            hint="Type it the way the desk issued it, like 001. With it, your Commons card image carries the banner and your photo copies carry the seal. The desk checks every number against the register before a listing runs."
+          />
+          <Field
+            label="Vetted business name"
+            value={p.growerBusiness ?? ''}
+            onChangeText={set('growerBusiness')}
+            placeholder="also DBA Fern Hollow Plants"
+            hint="Only the business name the desk vetted. Leave blank if you have none."
+          />
+        </>
+      ) : null}
       <H>On every card</H>
       <Note>{ORIGIN_LINE}</Note>
     </Screen>

@@ -33,6 +33,10 @@ This is **test build one**: everything runs on the phone, with no sign in and no
   showcase (with claims and payments once it's run) or a blank sheet, type the lots at a keyboard,
   and import it to build the lots in order. Rows that can't be read are flagged by row number before
   import. Photos stay a phone step.
+* **Commons seal**: inside the Commons format only, a Commons Verified Grower number on the profile
+  puts the circular seal on stamped photo copies and the banner across a saved card image. The art
+  is drawn from `src/core/seal.ts`, after the reference art kept with the Commons records. The app
+  prints the number the seller enters; the desk checks it against the register.
 * **Buyer memory**: built from the sales record. A quiet line in Claims for returning buyers, a repeat
   flag in the rundown, and one short note per buyer.
 * **Leftovers**: unclaimed and never paid lots from closed showcases, relisted in one tap.
