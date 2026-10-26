@@ -1,0 +1,90 @@
+name: Play bundle
+
+# The signed .aab for the Google Play closed test track. Run it by hand from the Actions tab
+# (Play bundle, then Run workflow). It needs the upload key in four repository secrets:
+#   ANDROID_UPLOAD_KEYSTORE           the upload keystore file, base64 encoded
+#   ANDROID_UPLOAD_KEYSTORE_PASSWORD  its store password
+#   ANDROID_UPLOAD_KEY_ALIAS          the key alias inside it
+#   ANDROID_UPLOAD_KEY_PASSWORD       the key password
+# Google Play App Signing holds the app signing key; this key only proves an upload is ours.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EXPO_NO_TELEMETRY: 1
+    steps:
+      - name: Check the upload key is in place
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::The upload key secret for $name is missing. See the top of play-bundle.yml."; exit 1; fi
+          done
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - name: Number this build
+        # Play needs every upload to carry a higher version code than the last.
+        run: node -e "const f='app.json',a=require('./'+f);a.expo.android.versionCode=Number(process.env.GITHUB_RUN_NUMBER);require('fs').writeFileSync(f,JSON.stringify(a,null,2))"
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install
+      - name: Sign with the upload key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > android/app/upload.keystore
+          cat >> android/app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  upload {
+                      storeFile file('upload.keystore')
+                      storePassword System.getenv('STORE_PASSWORD')
+                      keyAlias System.getenv('KEY_ALIAS')
+                      keyPassword System.getenv('KEY_PASSWORD')
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.upload
+                  }
+              }
+          }
+          EOF
+      - name: Build the bundle
+        working-directory: android
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --no-daemon
+      - name: Name the bundle
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/bundle/release/app-release.aab "out/seller-card-app-${GITHUB_RUN_NUMBER}.aab"
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seller-card-app-play-bundle
+          path: out/*.aab
