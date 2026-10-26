@@ -5,6 +5,12 @@ appId: com.gatheringmoss.sellercard
 ---
 - launchApp:
     clearState: true
+# A freshly booted emulator's launcher sometimes stalls and covers the app with its own notice.
+- runFlow:
+    when:
+      visible: ".*isn't responding"
+    commands:
+      - tapOn: "Wait"
 - extendedWaitUntil:
     visible: "Welcome"
     timeout: 90000
@@ -70,8 +76,10 @@ appId: com.gatheringmoss.sellercard
 - tapOn: "Save profile"
 
 - extendedWaitUntil:
-    visible: "Hoya obovata"
+    visible: "Leave the sample"
     timeout: 10000
+- scrollUntilVisible:
+    element: "Hoya obovata"
 - tapOn: "Hoya obovata"
 - extendedWaitUntil:
     visible: "Save the card image"

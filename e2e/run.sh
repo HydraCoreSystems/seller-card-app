@@ -7,6 +7,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/shots/$PROFILE"
 mkdir -p "$OUT/saved"
 
+# Let the freshly booted emulator finish settling, and close any system notice left over from boot.
+sleep 45
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS || true
 adb install -r "$ROOT/apk/app.apk"
 adb shell mkdir -p /sdcard/Pictures
 adb push "$ROOT/e2e/plant-photo.jpg" /sdcard/Pictures/plant-photo.jpg
