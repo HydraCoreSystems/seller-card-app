@@ -29,6 +29,10 @@ This is **test build one**: everything runs on the phone, with no sign in and no
   season (a calendar year), with a month by month season file for a tax preparer.
 * **Price memory**: a plant name sold before quietly shows its last price and sale date, on the
   plant, on the lot and in the showcase's lot list.
+* **Sale Sheet**: one .xlsx file carries a showcase to Google Sheets or Excel and back. Export any
+  showcase (with claims and payments once it's run) or a blank sheet, type the lots at a keyboard,
+  and import it to build the lots in order. Rows that can't be read are flagged by row number before
+  import. Photos stay a phone step.
 * **Buyer memory**: built from the sales record. A quiet line in Claims for returning buyers, a repeat
   flag in the rundown, and one short note per buyer.
 * **Leftovers**: unclaimed and never paid lots from closed showcases, relisted in one tap.

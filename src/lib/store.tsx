@@ -3,6 +3,7 @@ import { buyerKey } from '../core/buyers';
 import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
+import type { SheetLot } from '../core/saleSheet';
 import { markPayment } from '../core/records';
 import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
 import { toDay } from '../core/text';
@@ -41,6 +42,8 @@ interface Store extends Data {
   createSale(plantIds: string[], settings: SaleSettings): Sale;
   /** A new sale from leftovers, renumbered in the order given. */
   relistLeftovers(keys: string[], settings: SaleSettings): Sale;
+  /** A new sale from Sale Sheet rows, numbered as listed. Each row joins the plant list unless it's already there. */
+  importSale(rows: SheetLot[], settings: SaleSettings): Sale;
   removeLeftover(key: string): void;
   saveSale(sale: Sale): void;
   /** Marks the winners sold, keeps the unclaimed lots as leftovers, and stamps the close date. */
@@ -133,6 +136,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .map((l, i) => ({ ...l.lot, number: i + 1 }));
         const sale: Sale = { ...settings, id: newId(), lots, createdAt: toDay(new Date()) };
         update((d) => ({ sales: [sale, ...d.sales], leftoversDone: [...d.leftoversDone, ...keys] }));
+        return sale;
+      },
+      importSale: (rows, settings) => {
+        // A row naming a plant already on the list, still for sale, uses that plant and its photo.
+        const key = (name: string, noid: boolean) => `${noid ? 'noid:' : ''}${name.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+        const onList = new Map(data.plants.filter((p) => !p.sold && p.name.trim()).map((p) => [key(p.name, p.noid), p]));
+        const today = toDay(new Date());
+        const added: Plant[] = [];
+        const lots: Lot[] = rows.map((r, i) => {
+          let plant = r.name ? onList.get(key(r.name, r.noid)) : undefined;
+          if (!plant) {
+            plant = { id: newId(), name: r.name, noid: r.noid, price: r.price, kind: settings.kind, photoUri: null, notes: r.description, sold: false, createdAt: today };
+            added.push(plant);
+          }
+          return { number: i + 1, plantId: plant.id, name: r.name, noid: r.noid, price: r.price, description: r.description, photoUri: plant.photoUri };
+        });
+        const sale: Sale = { ...settings, id: newId(), lots, createdAt: today };
+        update((d) => ({ sales: [sale, ...d.sales], plants: [...d.plants, ...added] }));
         return sale;
       },
       removeLeftover: (key) => update((d) => ({ leftoversDone: [...d.leftoversDone, key] })),

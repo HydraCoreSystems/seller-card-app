@@ -2,22 +2,26 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { FORMAT_LIST } from '../../core/formats';
 import type { FormatId, SaleKind, SaleTime } from '../../core/types';
+import { clearSheetLots, sheetLots } from '../../lib/pendingSheet';
 import { useLeftovers, useStore } from '../../lib/store';
 import { Button, Choice, Field, Note, Screen } from '../../ui/kit';
 import { WhenPicker, isComplete } from '../../ui/WhenPicker';
 
 export default function NewSale() {
-  const { plants: param, leftovers: leftoverParam } = useLocalSearchParams<{ plants?: string; leftovers?: string }>();
+  const { plants: param, leftovers: leftoverParam, sheet } = useLocalSearchParams<{ plants?: string; leftovers?: string; sheet?: string }>();
   const store = useStore();
   const profile = store.profile!;
   const waiting = useLeftovers();
   const plantIds = (param ?? '').split(',').filter(Boolean);
   const leftoverKeys = (leftoverParam ?? '').split(',').filter((k) => waiting.some((l) => l.key === k));
+  const fromSheet = sheet ? sheetLots() : null;
   const plants = plantIds.map((id) => store.plants.find((p) => p.id === id)).filter((p) => !!p);
   // Leftovers come back as lots, so only plants say whether they were up for auction.
-  const picked: { price: number | null }[] = leftoverKeys.length
-    ? leftoverKeys.map((k) => waiting.find((l) => l.key === k)!.lot)
-    : plants;
+  const picked: { price: number | null }[] = fromSheet
+    ? fromSheet
+    : leftoverKeys.length
+      ? leftoverKeys.map((k) => waiting.find((l) => l.key === k)!.lot)
+      : plants;
   const mostlyAuction = plants.filter((p) => p.kind === 'auction').length > plants.length / 2;
 
   const [formatId, setFormatId] = useState<FormatId>(profile.defaultFormat);
@@ -45,9 +49,12 @@ export default function NewSale() {
               claimRules: claimRules.trim(),
               crossListing: crossListing.trim(),
             };
-            const sale = leftoverKeys.length
-              ? store.relistLeftovers(leftoverKeys, settings)
-              : store.createSale(plantIds, settings);
+            const sale = fromSheet
+              ? store.importSale(fromSheet, settings)
+              : leftoverKeys.length
+                ? store.relistLeftovers(leftoverKeys, settings)
+                : store.createSale(plantIds, settings);
+            if (fromSheet) clearSheetLots();
             router.replace(`/sale/${sale.id}`);
           }}
         />

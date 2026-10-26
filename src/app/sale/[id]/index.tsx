@@ -3,6 +3,10 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../../../core/formats';
 import { lastSold, priceMemoryLine } from '../../../core/records';
+import { buildRundown } from '../../../core/rundown';
+import { saleSheet, sheetState, sheetTitle } from '../../../core/saleSheet';
+import { readClaims } from '../../../lib/claimReport';
+import { shareSaleSheet } from '../../../lib/saleSheetFile';
 import { formatPrice, plantDisplayName } from '../../../core/text';
 import { saveToGallery } from '../../../lib/stampPhoto';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
@@ -99,6 +103,22 @@ export default function SaleScreen() {
           );
         })}
         {!sale.lots.length ? <Note>No lots yet. Add one with a photo, a name and a price.</Note> : null}
+        {sale.lots.length ? (
+          <Button
+            kind="secondary"
+            title="Export the Sale Sheet"
+            onPress={() => {
+              // A showcase that's run carries who claimed what and who's paid.
+              const run = sale.claimText?.trim()
+                ? buildRundown({ sale, profile, report: readClaims(sale.claimText, sale, profile), records: store.records })
+                : null;
+              const sheet = saleSheet(profile, sale, run ? sheetState(run.lots, !!sale.closedAt) : undefined);
+              const day = sale.opens?.day ?? sale.createdAt;
+              shareSaleSheet(`Sale_Sheet_${day}.xlsx`, sheet, sheetTitle(sale.formatId)).catch(() => undefined);
+            }}
+            style={{ marginTop: 16 }}
+          />
+        ) : null}
         <Button
           kind="danger"
           title="Delete this showcase"
