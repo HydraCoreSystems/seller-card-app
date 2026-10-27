@@ -1,4 +1,7 @@
+import { router, usePathname, useRootNavigationState } from 'expo-router';
+import { useEffect } from 'react';
 import { Text, View } from 'react-native';
+import { useStore } from '../lib/store';
 import { Note, colors } from './kit';
 
 /**
@@ -6,6 +9,15 @@ import { Note, colors } from './kit';
  * iPhone waitlisters. It makes no promise the web matches the phone app.
  */
 export function PreviewBanner() {
+  // The sample lives in memory only, so a refresh or an automatic tab reload on one of its screens
+  // finds it missing. Those land on the welcome screen instead.
+  const path = usePathname();
+  const { sample } = useStore();
+  const ready = !!useRootNavigationState()?.key;
+  useEffect(() => {
+    if (ready && !sample && /^\/(sale|plant)\/sample-/.test(path)) router.replace('/');
+  }, [ready, sample, path]);
+
   return (
     <View style={{ backgroundColor: colors.mossDark, paddingVertical: 8, paddingHorizontal: 16 }}>
       <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, textAlign: 'center' }}>Preview in your browser</Text>
