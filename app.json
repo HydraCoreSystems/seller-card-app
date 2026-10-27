@@ -26,6 +26,10 @@
       "package": "com.gatheringmoss.sellercard",
       "permissions": [
         "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ]
     },
     "web": {
@@ -41,7 +45,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Pick plant photos for your listings.",
-          "cameraPermission": "Take plant photos for your listings."
+          "cameraPermission": "Take plant photos for your listings.",
+          "microphonePermission": false
         }
       ],
       [
