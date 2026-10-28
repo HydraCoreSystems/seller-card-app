@@ -1,7 +1,7 @@
 name: Emulator pass
 
 # Installs the app on two Android emulators, a standard Pixel and a small phone, runs
-# e2e/sample-pass.yaml, and publishes every screenshot to the emulator-pass release.
+# e2e/sample-pass.yaml, and publishes every screenshot to the emulator-shots release.
 # The emulator here is x86_64, so this builds its own x86_64 APK from the same code as the test build.
 
 on:
@@ -107,7 +107,7 @@ jobs:
         with:
           pattern: shots-*
           path: shots
-      - name: Publish to the emulator-pass release
+      - name: Publish to the emulator-shots release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -121,7 +121,8 @@ jobs:
             (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/flat/${profile}-debug.zip" .) || true
           done
           ls -la flat
-          gh release delete emulator-pass --yes --cleanup-tag || true
-          gh release create emulator-pass flat/* --target "$GITHUB_SHA" --prerelease \
+          # The release has its own name: one shared with the branch makes the tag ambiguous.
+          gh release delete emulator-shots --yes --cleanup-tag || true
+          gh release create emulator-shots flat/* --target "$GITHUB_SHA" --prerelease \
             --title "Emulator pass (${GITHUB_SHA::7})" \
             --notes "Screenshots from the emulator pass: a standard Pixel and a small phone."
