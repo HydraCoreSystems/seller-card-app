@@ -35,7 +35,7 @@ describe('the Sale Sheet going out', () => {
 
   it('puts the profile on top, says pictures stay behind, then one row per lot', () => {
     expect(rows[0]).toEqual(['Grower Showcase Sale Sheet']);
-    expect(rows[1]).toEqual(['Made with Seller Card App by Gathering Moss']);
+    expect(rows[1]).toEqual(['Made with SprigList by Gathering Moss']);
     expect(rows[2]).toEqual([NO_PICTURES]);
     expect(rows).toContainEqual(['Seller', 'Phil Achleman']);
     expect(rows).toContainEqual(['Seller number', '12']);

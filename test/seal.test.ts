@@ -97,10 +97,10 @@ describe('the banner and the card image', () => {
   });
 
   it('puts the banner on top and every line of the card under it, wrapped to fit', () => {
-    const text = 'Seller: Phil Achleman · Commons Verified Grower No. 001\n\nMade with Seller Card App by Gathering Moss';
+    const text = 'Seller: Phil Achleman · Commons Verified Grower No. 001\n\nMade with SprigList by Gathering Moss';
     const card = cardImage(text, { number: '001', name: 'Phil Achleman', business: '' }, measure);
     const body = card.shapes.filter((s): s is Extract<Shape, { kind: 'text' }> => s.kind === 'text' && s.size === 34);
-    expect(body.map((s) => s.text).join(' ')).toBe('Seller: Phil Achleman · Commons Verified Grower No. 001 Made with Seller Card App by Gathering Moss');
+    expect(body.map((s) => s.text).join(' ')).toBe('Seller: Phil Achleman · Commons Verified Grower No. 001 Made with SprigList by Gathering Moss');
     expect(body.every((s) => measure(s.text) <= card.width - 112)).toBe(true);
     expect(Math.min(...body.map((s) => s.y))).toBeGreaterThan(56 + 968 * (760 / 2400));
     expect(Math.max(...body.map((s) => s.y))).toBeLessThan(card.height);

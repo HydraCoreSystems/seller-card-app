@@ -1,4 +1,4 @@
-# Seller Card App
+# SprigList
 
 Working title. A light phone app for Facebook plant sellers: save a profile once, keep a simple
 plant list, and get finished listing cards and stamped photos ready to paste. The app never posts
