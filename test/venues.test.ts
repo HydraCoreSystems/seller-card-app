@@ -137,9 +137,16 @@ describe('the circle marker', () => {
     expect(markerShapes(m, 500, 500, 400).some((s) => s.kind === 'circle')).toBe(true);
   });
 
+  it('keeps the other rooms’ ring lettering cream, since only the Commons seal went gold', () => {
+    const m = markerFor(profileForVenue(profile, marketRoom))!;
+    const ring = markerShapes(m, 500, 500, 400).filter((s) => s.kind === 'text' && s.text.length === 1 && s.text !== ' ');
+    expect(ring.length).toBeGreaterThan(10);
+    expect(ring.every((s) => s.kind === 'text' && s.color === '#F7F1E3')).toBe(true);
+  });
+
   it('keeps the Commons seal art for the Commons wording', () => {
     const m = markerFor(profileForVenue(profile, commonsRoom))!;
-    expect(texts(markerShapes(m, 500, 500, 400)).join('')).toContain('THE HOYA AND ORCHID COMMONS');
+    expect(texts(markerShapes(m, 500, 500, 400)).join('')).toContain('THE COMMONS');
   });
 
   it('keeps the existing stamp wording for a numbered room', () => {

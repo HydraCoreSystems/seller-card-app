@@ -6,7 +6,7 @@ import { isPhil } from '../variant';
 import type { CardFormat } from './types';
 
 // The room's name appears only inside this format, never on generic output.
-export const COMMONS_NAME = 'The Hoya and Orchid Commons';
+export const COMMONS_NAME = 'The Commons | Hoyas, Orchids and Other Rare Plants';
 // The room's own words for its selling space and its approved sellers. Commons format only.
 export const COMMONS_MARKET = 'Commons Market';
 export const VERIFIED_GROWER = 'Commons Verified Grower';

@@ -33,14 +33,15 @@ export type Shape =
       maxWidth?: number;
     };
 
-const RING_TOP = 'THE HOYA AND ORCHID COMMONS';
+// The room is called The Commons. Its full display name is too long for a ring, so the banner carries that.
+const RING_TOP = 'THE COMMONS';
 const RING_BOTTOM = 'VERIFIED GROWER';
 const MOTTO = 'SELL WITH YOUR WORD ON FILE';
 export const BANNER_TITLE = 'COMMONS VERIFIED GROWER';
-const BANNER_ROOM = 'The Hoya and Orchid Commons';
+const BANNER_ROOM = 'The Commons | Hoyas, Orchids and Other Rare Plants';
 
 /** Letters spaced evenly along an arc. Angles in degrees, 0 at the top, clockwise. */
-function ringText(text: string, cx: number, cy: number, r: number, from: number, to: number, size: number, flip: boolean): Shape[] {
+function ringText(text: string, cx: number, cy: number, r: number, from: number, to: number, size: number, flip: boolean, color: string = SEAL_COLORS.cream): Shape[] {
   const n = text.length;
   return [...text].map((ch, i) => {
     const ang = n === 1 ? (from + to) / 2 : from + ((to - from) * i) / (n - 1);
@@ -53,7 +54,7 @@ function ringText(text: string, cx: number, cy: number, r: number, from: number,
       size,
       font: 'sans',
       bold: true,
-      color: SEAL_COLORS.cream,
+      color,
       align: 'center',
       rotate: flip ? ang - 180 : ang,
     } satisfies Shape;
@@ -97,8 +98,9 @@ export function sealShapes(number: string, cx: number, cy: number, diameter: num
     { kind: 'circle', cx, cy, r: u(801), stroke: SEAL_COLORS.gold, width: u(10) },
     { kind: 'circle', cx, cy, r: u(780), fill: SEAL_COLORS.cream },
     { kind: 'circle', cx, cy, r: u(777), stroke: SEAL_COLORS.greenDark, width: u(6) },
-    ...ringText(RING_TOP, cx, cy, u(884), -104, 104, u(118), false),
-    ...ringText(RING_BOTTOM, cx, cy, u(884), 232, 128, u(118), true),
+    // Both arcs of the Commons seal are lettered in the seal gold. Letters sit 8 degrees apart, centered over the top.
+    ...ringText(RING_TOP, cx, cy, u(884), -4 * (RING_TOP.length - 1), 4 * (RING_TOP.length - 1), u(118), false, SEAL_COLORS.gold),
+    ...ringText(RING_BOTTOM, cx, cy, u(884), 232, 128, u(118), true, SEAL_COLORS.gold),
     { kind: 'circle', cx: cx - u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
     { kind: 'circle', cx: cx + u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
     ...leaf(cx, cy - u(210), u(760), u(210), 38, k),
