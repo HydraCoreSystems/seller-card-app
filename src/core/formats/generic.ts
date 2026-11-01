@@ -1,4 +1,4 @@
-import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
+import { MARKET_LISTING, originLine, SHOWCASE } from '../brand';
 import { joinLines } from '../text';
 import { closesLine, labeled, locationLine, lotName, noteLines, opensLine, priceLine, sellerLine, shippingLine } from './parts';
 import type { CardFormat } from './types';
@@ -29,7 +29,7 @@ export const generic: CardFormat = {
       '',
       sale.lots.length ? `${sale.lots.length} ${MARKET_LISTING}${sale.lots.length === 1 ? '' : 's'}, numbered in the comments below.` : null,
       '',
-      ORIGIN_LINE,
+      originLine(),
     ]);
   },
 
@@ -40,7 +40,7 @@ export const generic: CardFormat = {
       priceLine(sale.kind, lot.price),
       lot.description.trim() || null,
       '',
-      ORIGIN_LINE,
+      originLine(),
     ]);
   },
 
@@ -57,7 +57,7 @@ export const generic: CardFormat = {
       labeled('Payment', profile.payment),
       labeled(sale.kind === 'auction' ? 'Bidding rules' : 'Claim rules', claimRules),
       '',
-      ORIGIN_LINE,
+      originLine(),
     ]);
   },
 };

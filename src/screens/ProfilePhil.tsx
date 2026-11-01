@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Linking, Text, View } from 'react-native';
-import { CHECKOUT_FORM_TEMPLATE_URL, ORIGIN_LINE, SUGGESTIONS_URL } from '../core/brand';
+import { CHECKOUT_FORM_TEMPLATE_URL, originLine, SUGGESTIONS_URL } from '../core/brand';
 import { isPlainFormLink, prefilledLink, FORM_TOKEN } from '../core/checkout';
 import { FORMAT_LIST } from '../core/formats';
 import { VERIFIED_GROWER } from '../core/formats/commons';
@@ -173,7 +173,7 @@ export default function ProfilePhil() {
       {store.pro ? <Note>{PRO_TEST_NOTE}</Note> : null}
 
       <H>On every card</H>
-      <Note>{ORIGIN_LINE}</Note>
+      <Note>{originLine()}</Note>
       <H>Try it out</H>
       {store.sample ? (
         <Button kind="secondary" title="Leave the sample showcase" onPress={() => { store.leaveSample(); router.back(); }} />

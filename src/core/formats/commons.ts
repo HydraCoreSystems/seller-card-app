@@ -1,4 +1,4 @@
-import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
+import { MARKET_LISTING, originLine, SHOWCASE } from '../brand';
 import { formatPrice, formatSaleTime, joinLines } from '../text';
 import type { FormatId, Lot, Profile, Sale, SaleKind } from '../types';
 import { locationLine, lotName, noteLines, shippingLine } from './parts';
@@ -89,13 +89,13 @@ export const commons: CardFormat = {
       extraRules(sale.claimRules),
       contactLine ?? null,
       '',
-      ORIGIN_LINE,
+      originLine(),
     ]);
   },
 
   // Layer two: the lot's own lines of the card.
   listing({ sale, lot }) {
-    return joinLines([`Lot ${lot.number}`, ...plantLines(sale.kind, lot, null), '', ORIGIN_LINE]);
+    return joinLines([`Lot ${lot.number}`, ...plantLines(sale.kind, lot, null), '', originLine()]);
   },
 
   // One plant posted on its own: the whole card.
@@ -109,7 +109,7 @@ export const commons: CardFormat = {
       sale.kind === 'auction' ? BIDS_LINE : CLAIMS_LINE,
       extraRules(claimRules),
       '',
-      ORIGIN_LINE,
+      originLine(),
     ]);
   },
 };

@@ -5,7 +5,7 @@ module.exports = ({ config }) => {
   if (process.env.EXPO_PUBLIC_APP_VARIANT !== 'phil') return config;
   return {
     ...config,
-    name: 'SprigList Phil',
+    name: 'Skrybix Phil',
     slug: config.slug,
     scheme: 'sellercardphil',
     ios: { ...config.ios, bundleIdentifier: 'com.gatheringmoss.sellercard.phil' },

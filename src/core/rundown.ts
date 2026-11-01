@@ -3,7 +3,7 @@
  * and gives back who won each lot, who's next in line, what each buyer owes, and anything
  * a buyer asked that the seller should answer. The Sales Record document is printed from it.
  */
-import { ORIGIN_LINE, SHOWCASE } from './brand';
+import { originLine, SHOWCASE } from './brand';
 import { buyerHistory, buyerKey as key, type BuyerHistory } from './buyers';
 import type { ClaimReport, ThreadComment } from './claims';
 import { cleanMentions, showTime, spoken } from './claims';
@@ -261,6 +261,6 @@ ${r.payment ? `<tr><td>Payment</td><td>${esc(r.payment)}</td></tr>` : ''}
 <h2>Winners by lot</h2><table><tr><th>Lot</th><th>Plant</th><th class="m">Price</th><th>Winner</th><th>Next in line</th></tr>${lotRows}</table>
 <h2>Buyer totals</h2>${r.buyers.length ? `<table><tr><th>Buyer</th><th>Lots</th><th class="m">Total</th></tr>${buyerRows}</table>` : '<p class="soft">No winners yet.</p>'}
 <h2>Open buyer questions</h2>${questions}
-<footer>${esc(ORIGIN_LINE)}</footer>
+<footer>${esc(originLine())}</footer>
 </body></html>`;
 }

@@ -82,8 +82,16 @@ export function deadlineState(sale: Sale, profile: Profile, now: number): Deadli
 
 /* ---------- the standing form ---------- */
 
-/** The word the seller types into the sale name box when they make the pre-filled link. */
-export const FORM_TOKEN = 'SPRIGSALE';
+/** The word the app tags a link with, and the word a seller types into the sale name box when they make the prefilled link by hand. */
+export const FORM_TOKEN = 'SKRYBSALE';
+
+/**
+ * The word links carried before the app was renamed. It is only ever read, never written: a link a
+ * seller saved with it keeps swapping in each sale's name, and everything the app produces uses FORM_TOKEN.
+ */
+export const LEGACY_FORM_TOKEN = 'SPRIGSALE';
+
+const FORM_TOKENS: readonly string[] = [FORM_TOKEN, LEGACY_FORM_TOKEN];
 
 /** What the form calls this sale, so responses arrive tagged by sale. */
 export function saleName(sale: Pick<Sale, 'name' | 'opens' | 'createdAt'>, profile: Pick<Profile, 'venueName'>): string {
@@ -107,8 +115,9 @@ const ENTRY = /([?&])(entry\.\d+)=([^&#]*)/g;
 
 /**
  * The seller's pasted form link with this sale's name filled in. The seller makes the link once with
- * Google Forms' own Get pre-filled link, typing SPRIGSALE in the sale name box; each sale swaps that
- * word for the sale's name. A link with one pre-filled box and no SPRIGSALE gets that box filled.
+ * Google Forms' own Get prefilled link, typing SKRYBSALE in the sale name box; each sale swaps that
+ * word for the sale's name. Links saved with the old word SPRIGSALE work the same. A link with one
+ * prefilled box and neither word gets that box filled.
  */
 export function prefilledLink(link: string, name: string): PrefilledLink {
   const raw = link.trim();
@@ -127,13 +136,13 @@ export function prefilledLink(link: string, name: string): PrefilledLink {
     return { url: null, tagged: false, problem: 'That’s the link for editing your form. Use the link buyers open, which ends in viewform.' };
   }
   const entries = [...raw.matchAll(ENTRY)];
-  const withToken = entries.filter((e) => safeDecode(e[3]) === FORM_TOKEN);
+  const withToken = entries.filter((e) => FORM_TOKENS.includes(safeDecode(e[3])));
   const chosen = withToken.length ? withToken : entries.length === 1 ? entries : [];
   if (!chosen.length) {
     return {
       url: raw,
       tagged: false,
-      problem: 'This link has no pre-filled sale name box, so responses won’t say which sale they’re for. Make a pre-filled link and type SPRIGSALE in the sale name box.',
+      problem: `This link has no prefilled sale name box, so responses won’t say which sale they’re for. Make a prefilled link and type ${FORM_TOKEN} in the sale name box.`,
     };
   }
   const target = chosen[0][2];

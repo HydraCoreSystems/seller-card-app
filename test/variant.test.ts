@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { APP_NAME, SUGGESTIONS_URL, appName, originLine } from '../src/core/brand';
 import { announcementFor } from '../src/core/announce';
 import { commons } from '../src/core/formats/commons';
 import { markerFor, stampFor } from '../src/core/marker';
@@ -70,5 +74,65 @@ describe('the two builds', () => {
     expect(phil).toContain('A note from me');
     expect(phil).toContain('Fort Wayne');
     expect(phil).toMatch(/24 hours/);
+  });
+});
+
+describe('the app name', () => {
+  const closedTestLine = 'Made with SprigList by Gathering Moss';
+  const philLine = 'Made with Skrybix by Gathering Moss';
+
+  it('is Skrybix, and cannot silently go back', () => {
+    expect(APP_NAME).toBe('Skrybix');
+  });
+
+  it('closed test: keeps the name it ships under on the origin line, the stamp and the announcement', () => {
+    as(undefined);
+    expect(appName()).toBe('SprigList');
+    expect(originLine()).toBe(closedTestLine);
+    expect(stampFor(profile, '2026-11-01').origin).toBe(closedTestLine);
+    expect(announcementFor(profile, sale(), true)).toContain(closedTestLine);
+  });
+
+  it('Phil build: says Skrybix on the origin line, the stamp and the announcement, and SprigList nowhere', () => {
+    as('phil');
+    expect(appName()).toBe('Skrybix');
+    expect(originLine()).toBe(philLine);
+    expect(stampFor(profile, '2026-11-01').origin).toBe(philLine);
+    const text = announcementFor(profile, sale(), true);
+    expect(text).toContain(philLine);
+    expect(text).not.toMatch(/sprig/i);
+  });
+
+  it('Phil build: installs beside the closed test app as Skrybix Phil, and the closed test config is left exactly as it is', () => {
+    const appConfig = createRequire(join(__dirname, 'variant.test.ts'))('../app.config.js') as (a: { config: Record<string, unknown> }) => Record<string, unknown>;
+    const config = { name: 'SprigList', slug: 'seller-card-app' };
+    as(undefined);
+    expect(appConfig({ config })).toBe(config);
+    as('phil');
+    expect(appConfig({ config })).toMatchObject({ name: 'Skrybix Phil' });
+  });
+
+  it('leaves the suggestions link exactly as it is, since that form keeps its own title', () => {
+    expect(SUGGESTIONS_URL).toBe('https://docs.google.com/forms/d/e/1FAIpQLSeqyTCBVGbXSpM6xs7R93fhsWX29JUXmnaTcKU3zAJbwRqD-A/viewform');
+  });
+
+  it('keeps the dead name out of the source, apart from the two constants that keep it on purpose and comments', () => {
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) walk(path);
+        else if (/\.tsx?$/.test(entry.name)) {
+          readFileSync(path, 'utf8').split('\n').forEach((line, i) => {
+            const code = line.trim();
+            const comment = /^(\/\/|\/?\*)/.test(code);
+            const kept = /CLOSED_TEST_APP_NAME = 'SprigList'|LEGACY_FORM_TOKEN = 'SPRIGSALE'/.test(code);
+            if (/sprig/i.test(code) && !comment && !kept) found.push(`${path}:${i + 1}`);
+          });
+        }
+      }
+    };
+    walk(join(__dirname, '..', 'src'));
+    expect(found).toEqual([]);
   });
 });

@@ -4,7 +4,7 @@
  * comes back in; the columns never change. Pictures don't travel in it, and it says so.
  */
 import { strFromU8 } from 'fflate';
-import { ORIGIN_LINE, SHOWCASE } from './brand';
+import { originLine, SHOWCASE } from './brand';
 import { COMMONS_MARKET, VERIFIED_GROWER, growerNumber } from './formats/commons';
 import { shippingLine } from './formats/parts';
 import { formatDay, parsePrice } from './text';
@@ -51,7 +51,7 @@ export function saleSheet(profile: Profile, sale: Sale | null, state: Map<number
   ];
   const top: CellValue[][] = [
     [sheetTitle(formatId)],
-    [ORIGIN_LINE],
+    [originLine()],
     [NO_PICTURES],
     [HOW_TO_FILL],
     [],

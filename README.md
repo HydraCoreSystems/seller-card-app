@@ -1,4 +1,4 @@
-# SprigList
+# Skrybix
 
 Working title. A light phone app for Facebook plant sellers: save a profile once, keep a simple
 plant list, and get finished listing cards and stamped photos ready to paste. The app never posts
@@ -91,7 +91,7 @@ The build variant is the `EXPO_PUBLIC_APP_VARIANT` setting, read in `src/core/va
   chain and the room work. None of the new screens or settings are reachable in it.
 * **Phil test version** (`EXPO_PUBLIC_APP_VARIANT=phil`): the same app with the whole buyer checkout chain
   and every Part Two item on and unlocked. There is no paywall in it. It installs beside the closed test
-  app as "SprigList Phil" (package `com.gatheringmoss.sellercard.phil`) with its own data. `app.config.js`
+  app as "Skrybix Phil" (package `com.gatheringmoss.sellercard.phil`) with its own data. `app.config.js`
   makes that switch, and `app.json` stays the closed test app.
 
 ```bash

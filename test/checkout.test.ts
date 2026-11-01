@@ -4,7 +4,7 @@ import { CHECKOUT_FORM_TEMPLATE_URL } from '../src/core/brand';
 import {
   addHours, buildCheckoutRows, buildLabelFile, closeoutComment, contactDeadlineText, contactLine, deadlineState, formFields, formReminder, isPlainFormLink, labelProblem,
   matchResponses, mergeChances, noContactChances, noContactList, packingListHtml, packingRows, paidNoForm, paymentChoices, prefilledLink, readResponses,
-  saleEntryFromFormHtml, saleName, saleTimeMs, shippedMessage, taggedFormLink, winnerMessage, FORM_TOKEN, LABEL_HEADERS,
+  saleEntryFromFormHtml, saleName, saleTimeMs, shippedMessage, taggedFormLink, winnerMessage, FORM_TOKEN, LABEL_HEADERS, LEGACY_FORM_TOKEN,
 } from '../src/core/checkout';
 import { buildTaggedLink } from '../src/lib/formPage';
 import { buildRundown, type RundownBuyer } from '../src/core/rundown';
@@ -74,9 +74,9 @@ describe('the buyer contact deadline line', () => {
   });
 
   it('keeps the form link out of the announcement', () => {
-    const linked = withVenues(base, [{ ...room, formLink: 'https://docs.google.com/forms/d/e/ABC/viewform?usp=pp_url&entry.1=SPRIGSALE' }], 'v1');
+    const linked = withVenues(base, [{ ...room, formLink: `https://docs.google.com/forms/d/e/ABC/viewform?usp=pp_url&entry.1=${FORM_TOKEN}` }], 'v1');
     const text = announcementFor(linked, sale(), true);
-    expect(text).not.toMatch(/docs\.google\.com|forms|SPRIGSALE/);
+    expect(text).not.toMatch(/docs\.google\.com|forms|SKRYBSALE|SPRIGSALE/);
   });
 });
 
@@ -375,7 +375,8 @@ describe('the checkout form', () => {
     expect(prefilledLink('https://docs.google.com/forms/d/e/X/viewform?entry.9=anything', 'Fall Purge').url).toContain('entry.9=Fall%20Purge');
     const bare = prefilledLink('https://docs.google.com/forms/d/e/X/viewform', 'Fall Purge');
     expect(bare).toMatchObject({ tagged: false, url: 'https://docs.google.com/forms/d/e/X/viewform' });
-    expect(bare.problem).toMatch(/SPRIGSALE/);
+    expect(bare.problem).toMatch(/SKRYBSALE/);
+    expect(bare.problem).not.toMatch(/SPRIG/i);
   });
 
   it('turns away links it can\'t tag: short links, edit links, and anything that is not a Google form', () => {
@@ -405,7 +406,7 @@ describe('the checkout form', () => {
     const comment = closeoutComment(sale(), room1());
     // Nothing in the comment points anyone at a form: no link, no web address, no mention of a form at all.
     expect(comment).not.toContain(url);
-    expect(comment).not.toMatch(/https?:|docs\.google|forms?\b|SPRIGSALE/i);
+    expect(comment).not.toMatch(/https?:|docs\.google|forms?\b|SKRYBSALE|SPRIGSALE/i);
     expect(comment).toContain('Thank you, everyone!');
     expect(comment).toContain('watch for a message from me');
     expect(comment).toContain('Monday, November 2 at 9:00 PM Eastern');
@@ -423,11 +424,13 @@ describe('the checkout form', () => {
   });
 
   it('keeps the form link out of every post the app writes, for a room that has a form link saved', () => {
-    const url = 'https://docs.google.com/forms/d/e/ABC/viewform?usp=pp_url&entry.1=SPRIGSALE';
-    const linked = { ...room1(), formLink: url };
-    for (const text of [closeoutComment(sale(), linked), announcementFor(withVenues(base, [{ ...room, formLink: url }], 'v1'), sale(), true)]) {
-      expect(text).not.toContain('ABC');
-      expect(text).not.toMatch(/docs\.google\.com|SPRIGSALE/);
+    for (const token of [FORM_TOKEN, LEGACY_FORM_TOKEN]) {
+      const url = `https://docs.google.com/forms/d/e/ABC/viewform?usp=pp_url&entry.1=${token}`;
+      const linked = { ...room1(), formLink: url };
+      for (const text of [closeoutComment(sale(), linked), announcementFor(withVenues(base, [{ ...room, formLink: url }], 'v1'), sale(), true)]) {
+        expect(text).not.toContain('ABC');
+        expect(text).not.toMatch(/docs\.google\.com|SKRYBSALE|SPRIGSALE/);
+      }
     }
   });
 });
@@ -447,6 +450,7 @@ describe('the template form and the sale name link', () => {
     expect(isPlainFormLink('https://docs.google.com/forms/d/e/1FAIpQLSabc/viewform')).toBe(true);
     expect(isPlainFormLink('  https://docs.google.com/forms/d/1EsRd_x-Y/viewform  ')).toBe(true);
     expect(isPlainFormLink('https://docs.google.com/forms/d/e/X/viewform?usp=pp_url&entry.111=SPRIGSALE')).toBe(false);
+    expect(isPlainFormLink('https://docs.google.com/forms/d/e/X/viewform?usp=pp_url&entry.111=SKRYBSALE')).toBe(false);
     expect(isPlainFormLink('https://docs.google.com/forms/d/FORMID/edit')).toBe(false);
     expect(isPlainFormLink('https://forms.gle/abc123')).toBe(false);
     expect(isPlainFormLink('https://example.com/forms/d/e/X/viewform')).toBe(false);
@@ -491,6 +495,53 @@ describe('the template form and the sale name link', () => {
       expect(await buildTaggedLink(notPlain, reader(formPage([saleItem])))).toBeNull();
     }
     expect(seen).toEqual([]);
+  });
+});
+
+describe('the form token', () => {
+  const viewform = 'https://docs.google.com/forms/d/e/1FAIpQLSabc/viewform';
+  const name = 'Hoya Swap Market November 1';
+  const swapped = 'Hoya%20Swap%20Market%20November%201';
+
+  it('is SKRYBSALE now, with the old word kept only so it can be read', () => {
+    expect(FORM_TOKEN).toBe('SKRYBSALE');
+    expect(LEGACY_FORM_TOKEN).toBe('SPRIGSALE');
+  });
+
+  it('tags a link made with the new token, and swaps in each sale\'s own name', () => {
+    const r = prefilledLink(`${viewform}?usp=pp_url&entry.111=SKRYBSALE&entry.222=other`, name);
+    expect(r).toMatchObject({ tagged: true, problem: null });
+    expect(r.url).toBe(`${viewform}?usp=pp_url&entry.111=${swapped}&entry.222=other`);
+    expect(prefilledLink(`${viewform}?usp=pp_url&entry.111=SKRYBSALE`, 'Fall Purge').url).toBe(`${viewform}?usp=pp_url&entry.111=Fall%20Purge`);
+  });
+
+  it('still swaps the sale name into a saved link that carries the old token', () => {
+    const r = prefilledLink(`${viewform}?usp=pp_url&entry.111=SPRIGSALE&entry.222=other`, name);
+    expect(r).toMatchObject({ tagged: true, problem: null });
+    expect(r.url).toBe(`${viewform}?usp=pp_url&entry.111=${swapped}&entry.222=other`);
+    expect(r.url).not.toMatch(/SPRIGSALE|SKRYBSALE/);
+    // A saved link of the kind the first Phil builds made: one prefilled box holding the old word.
+    expect(prefilledLink(`${viewform}?usp=pp_url&entry.1208282983=SPRIGSALE`, 'Fall Purge').url).toBe(`${viewform}?usp=pp_url&entry.1208282983=Fall%20Purge`);
+  });
+
+  it('finds the token box among other boxes whichever token it carries, and swaps only that one', () => {
+    for (const token of [FORM_TOKEN, LEGACY_FORM_TOKEN]) {
+      const r = prefilledLink(`${viewform}?usp=pp_url&entry.1=Rowan&entry.2=${token}&entry.3=Venmo`, name);
+      expect(r).toMatchObject({ tagged: true, problem: null });
+      expect(r.url).toBe(`${viewform}?usp=pp_url&entry.1=Rowan&entry.2=${swapped}&entry.3=Venmo`);
+    }
+  });
+
+  it('writes only the new token in anything the app produces', async () => {
+    expect(taggedFormLink(`${viewform}?usp=sf_link`, '1208282983')).toBe(`${viewform}?usp=pp_url&entry.1208282983=SKRYBSALE`);
+    const page = `<script>var FB_PUBLIC_LOAD_DATA_ = ${JSON.stringify([null, ['Checkout', [[1, 'Sale name', '', 0, [[1208282983, null, 1]]]]]])};</script>`;
+    const built = await buildTaggedLink(`${viewform}?usp=sf_link`, async () => page);
+    expect(built).toBe(`${viewform}?usp=pp_url&entry.1208282983=SKRYBSALE`);
+    expect(built).not.toMatch(/SPRIG/i);
+    // The fallback wording that tells a seller what to type in the sale name box.
+    const fallback = prefilledLink(viewform, 'x').problem ?? '';
+    expect(fallback).toContain('type SKRYBSALE in the sale name box');
+    expect(fallback).not.toMatch(/SPRIG/i);
   });
 });
 

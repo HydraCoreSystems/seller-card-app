@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking } from 'react-native';
 import { FORMAT_LIST } from '../core/formats';
-import { ORIGIN_LINE, SUGGESTIONS_URL } from '../core/brand';
+import { originLine, SUGGESTIONS_URL } from '../core/brand';
 import { VERIFIED_GROWER } from '../core/formats/commons';
 import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
@@ -122,7 +122,7 @@ export default function ProfileClassic() {
         </>
       ) : null}
       <H>On every card</H>
-      <Note>{ORIGIN_LINE}</Note>
+      <Note>{originLine()}</Note>
       <H>Try it out</H>
       {store.sample ? (
         <Button kind="secondary" title="Leave the sample showcase" onPress={() => { store.leaveSample(); router.back(); }} />

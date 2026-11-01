@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ORIGIN_LINE } from '../src/core/brand';
+import { originLine } from '../src/core/brand';
 import { trackClaims } from '../src/core/claims';
 import { buildRundown, salesRecordHtml } from '../src/core/rundown';
 import { DASH_PATTERN } from '../src/core/text';
@@ -126,7 +126,7 @@ describe('the Sales Record document', () => {
       expect(words).toContain(part);
     }
     expect(words).toContain('Tie: Ivy Cole or Jo Banks. Your call.');
-    expect(words).toContain(ORIGIN_LINE);
+    expect(words).toContain(originLine());
   });
 
   it('heads the record as a Grower Showcase, with the Commons Market heading only in the Commons format', () => {

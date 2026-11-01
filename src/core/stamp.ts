@@ -1,4 +1,4 @@
-import { ORIGIN_LINE } from './brand';
+import { originLine } from './brand';
 import { VERIFIED_GROWER } from './formats/commons';
 import { formatLongDate } from './text';
 
@@ -25,7 +25,7 @@ export function stampText(
   // A room that issues the seller no number: the stamp names the room instead, and no circle is drawn.
   else if (venueName.trim()) parts.push(venueName.trim());
   parts.push(formatLongDate(day));
-  return { main: parts.join('  ·  '), origin: ORIGIN_LINE };
+  return { main: parts.join('  ·  '), origin: originLine() };
 }
 
 export interface StampLayout {
