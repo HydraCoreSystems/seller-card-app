@@ -15,8 +15,7 @@ export const MARKET_LISTING = 'Market Listing';
 export const SUGGESTIONS_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeqyTCBVGbXSpM6xs7R93fhsWX29JUXmnaTcKU3zAJbwRqD-A/viewform';
 
 /**
- * The template Google Form a seller makes their own copy of: its link ending in /copy. Left blank
- * until the template form is published. While it is blank, the app walks the seller through making
- * the form by hand from the field list instead, which makes the same form.
+ * The template Google Form a seller makes their own copy of: its copy link, which Google opens as a
+ * "Make a copy" page. The setup always sends the seller here. There is no build it by hand route.
  */
-export const CHECKOUT_FORM_TEMPLATE_URL = '';
+export const CHECKOUT_FORM_TEMPLATE_URL = 'https://docs.google.com/forms/d/1EsRdlHm6XPlchFB5IQdq4W9vTPNzuGH3LMaRjmP9zoE/copy';

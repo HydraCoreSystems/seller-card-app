@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { announcementFor } from '../src/core/announce';
+import { CHECKOUT_FORM_TEMPLATE_URL } from '../src/core/brand';
 import {
-  addHours, buildCheckoutRows, buildLabelFile, closeoutComment, contactDeadlineText, contactLine, deadlineState, formFields, formReminder, labelProblem,
+  addHours, buildCheckoutRows, buildLabelFile, closeoutComment, contactDeadlineText, contactLine, deadlineState, formFields, formReminder, isPlainFormLink, labelProblem,
   matchResponses, mergeChances, noContactChances, noContactList, packingListHtml, packingRows, paidNoForm, paymentChoices, prefilledLink, readResponses,
-  saleName, saleTimeMs, shippedMessage, winnerMessage, FORM_TOKEN, LABEL_HEADERS,
+  saleEntryFromFormHtml, saleName, saleTimeMs, shippedMessage, taggedFormLink, winnerMessage, FORM_TOKEN, LABEL_HEADERS,
 } from '../src/core/checkout';
+import { buildTaggedLink } from '../src/lib/formPage';
 import { buildRundown, type RundownBuyer } from '../src/core/rundown';
 import { sampleData, sampleThread, SAMPLE_SALE_ID } from '../src/core/demo';
 import { readClaims } from '../src/lib/claimReport';
@@ -397,19 +399,98 @@ describe('the checkout form', () => {
     expect(paymentChoices('  ')).toEqual([]);
   });
 
-  it('carries the form link and the clock time in the closeout comment and each winner message, and in nothing else', () => {
+  it('keeps the form link out of the closeout comment, and puts it only in a winner message and a reminder, each for one named winner', () => {
     const url = 'https://docs.google.com/forms/d/e/X/viewform?entry.1=Fall';
     const by = saleTimeMs({ day: '2026-11-02', time: '21:00' });
-    const comment = closeoutComment(sale(), room1(), url);
-    expect(comment).toContain(url);
+    const comment = closeoutComment(sale(), room1());
+    // Nothing in the comment points anyone at a form: no link, no web address, no mention of a form at all.
+    expect(comment).not.toContain(url);
+    expect(comment).not.toMatch(/https?:|docs\.google|forms?\b|SPRIGSALE/i);
+    expect(comment).toContain('Thank you, everyone!');
+    expect(comment).toContain('watch for a message from me');
     expect(comment).toContain('Monday, November 2 at 9:00 PM Eastern');
+    expect(closeoutComment(sale({ endsAt: null }), room1())).not.toMatch(/https?:|forms?\b/i);
     const [row] = buildCheckoutRows({ buyers: [buyer('Jada Winslow', 25)], match: matchResponses([], ['Jada Winslow'], 'x'), fulfillment: undefined, profile: room1(), deadline: { state: 'open', ms: by, hoursLeft: 4 } });
     const message = winnerMessage(row, sale(), room1(), url, by);
+    const reminder = formReminder(row, room1(), url, by);
     expect(message).toContain(url);
+    expect(message).toContain('Hi Jada!');
     expect(message).toContain('Monday, November 2 at 9:00 PM Eastern');
     expect(message).toContain('Your total with shipping is $35.');
-    expect(formReminder(row, room1(), url, by)).toContain(url);
-    for (const text of [comment, message, formReminder(row, room1(), url, by)]) expect(DASH_PATTERN.test(text.replace(url, ''))).toBe(false);
+    expect(reminder).toContain(url);
+    expect(reminder).toContain('Hi Jada!');
+    for (const text of [comment, message, reminder]) expect(DASH_PATTERN.test(text.replace(url, ''))).toBe(false);
+  });
+
+  it('keeps the form link out of every post the app writes, for a room that has a form link saved', () => {
+    const url = 'https://docs.google.com/forms/d/e/ABC/viewform?usp=pp_url&entry.1=SPRIGSALE';
+    const linked = { ...room1(), formLink: url };
+    for (const text of [closeoutComment(sale(), linked), announcementFor(withVenues(base, [{ ...room, formLink: url }], 'v1'), sale(), true)]) {
+      expect(text).not.toContain('ABC');
+      expect(text).not.toMatch(/docs\.google\.com|SPRIGSALE/);
+    }
+  });
+});
+
+describe('the template form and the sale name link', () => {
+  const plain = 'https://docs.google.com/forms/d/e/1FAIpQLSabc/viewform?usp=sf_link';
+  const formPage = (items: unknown[]) => `<!doctype html><html><body><script>window.x = 1;</script><script nonce="n">var FB_PUBLIC_LOAD_DATA_ = ${JSON.stringify([null, ['Checkout', items]])};</script></body></html>`;
+  const saleItem = [111, 'Sale name', '', 0, [[1429988731, null, 1]]];
+  const fbItem = [222, 'Buyer Facebook name', '', 0, [[2007553144, null, 1]]];
+
+  it('sends the seller to the template copy link exactly as Phil set it', () => {
+    expect(CHECKOUT_FORM_TEMPLATE_URL).toBe('https://docs.google.com/forms/d/1EsRdlHm6XPlchFB5IQdq4W9vTPNzuGH3LMaRjmP9zoE/copy');
+  });
+
+  it('knows a plain form link from one that already has prefilled boxes, an edit link and a short link', () => {
+    expect(isPlainFormLink(plain)).toBe(true);
+    expect(isPlainFormLink('https://docs.google.com/forms/d/e/1FAIpQLSabc/viewform')).toBe(true);
+    expect(isPlainFormLink('  https://docs.google.com/forms/d/1EsRd_x-Y/viewform  ')).toBe(true);
+    expect(isPlainFormLink('https://docs.google.com/forms/d/e/X/viewform?usp=pp_url&entry.111=SPRIGSALE')).toBe(false);
+    expect(isPlainFormLink('https://docs.google.com/forms/d/FORMID/edit')).toBe(false);
+    expect(isPlainFormLink('https://forms.gle/abc123')).toBe(false);
+    expect(isPlainFormLink('https://example.com/forms/d/e/X/viewform')).toBe(false);
+    expect(isPlainFormLink('')).toBe(false);
+  });
+
+  it('reads the Sale name box id from the form page, wherever the question sits', () => {
+    expect(saleEntryFromFormHtml(formPage([saleItem, fbItem]))).toBe('1429988731');
+    expect(saleEntryFromFormHtml(formPage([fbItem, saleItem]))).toBe('1429988731');
+    expect(saleEntryFromFormHtml(formPage([fbItem, [333, ' sale name ', '', 0, [[77, null, 1]]]]))).toBe('77');
+  });
+
+  it('gives null, not a guess, when the page has no Sale name question or isn\'t a form page', () => {
+    expect(saleEntryFromFormHtml(formPage([fbItem]))).toBeNull();
+    expect(saleEntryFromFormHtml(formPage([[1, 'Sale name', '', 0, null]]))).toBeNull();
+    expect(saleEntryFromFormHtml(formPage([[1, 'Sale name', '', 0, [['not a number', null, 1]]]]))).toBeNull();
+    expect(saleEntryFromFormHtml('<html><body>Sign in to continue</body></html>')).toBeNull();
+    expect(saleEntryFromFormHtml('<script>var FB_PUBLIC_LOAD_DATA_ = [oops;</script>')).toBeNull();
+  });
+
+  it('builds a link that the sale name logic accepts as tagged, and that each sale fills with its own name', () => {
+    const tagged = taggedFormLink(plain, '1429988731');
+    expect(tagged).toBe(`https://docs.google.com/forms/d/e/1FAIpQLSabc/viewform?usp=pp_url&entry.1429988731=${FORM_TOKEN}`);
+    expect(isPlainFormLink(tagged)).toBe(false);
+    const r = prefilledLink(tagged, 'Fall Purge');
+    expect(r).toMatchObject({ tagged: true, problem: null });
+    expect(r.url).toBe('https://docs.google.com/forms/d/e/1FAIpQLSabc/viewform?usp=pp_url&entry.1429988731=Fall%20Purge');
+  });
+
+  it('builds the tagged link from a plain link by reading its page, and only ever reads a Google Forms viewform page', async () => {
+    const seen: string[] = [];
+    const reader = (page: string | null) => async (url: string) => {
+      seen.push(url);
+      return page;
+    };
+    expect(await buildTaggedLink(`  ${plain}  `, reader(formPage([saleItem, fbItem])))).toBe(`https://docs.google.com/forms/d/e/1FAIpQLSabc/viewform?usp=pp_url&entry.1429988731=${FORM_TOKEN}`);
+    expect(seen).toEqual([plain]);
+    expect(await buildTaggedLink(plain, reader(formPage([fbItem])))).toBeNull();
+    expect(await buildTaggedLink(plain, reader(null))).toBeNull();
+    seen.length = 0;
+    for (const notPlain of ['https://forms.gle/abc123', 'https://example.com/forms/d/e/X/viewform', 'https://docs.google.com/forms/d/e/X/viewform?entry.1=SPRIGSALE', 'https://docs.google.com/forms/d/FORMID/edit', '']) {
+      expect(await buildTaggedLink(notPlain, reader(formPage([saleItem])))).toBeNull();
+    }
+    expect(seen).toEqual([]);
   });
 });
 

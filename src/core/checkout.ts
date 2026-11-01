@@ -149,6 +149,51 @@ function safeDecode(s: string): string {
   }
 }
 
+/**
+ * True for the plain link buyers open, the one Google Forms' Send button gives: a viewform link with
+ * no prefilled boxes yet. This is the one kind of link the app tries to tag by itself.
+ */
+export function isPlainFormLink(link: string): boolean {
+  const raw = link.trim();
+  if (!/^https:\/\/docs\.google\.com\/forms\/d\/(e\/)?[\w-]+\/viewform([?#].*)?$/i.test(raw)) return false;
+  return ![...raw.matchAll(ENTRY)].length;
+}
+
+/** The plain link with the Sale name box prefilled with the token, ready for each sale to swap its own name in. */
+export function taggedFormLink(link: string, entryId: string): string {
+  const base = link.trim().split(/[?#]/)[0];
+  return `${base}?usp=pp_url&entry.${entryId}=${FORM_TOKEN}`;
+}
+
+/**
+ * The Sale name question's box id, read from the form page's own data. A Google Form page carries its
+ * questions in a script as FB_PUBLIC_LOAD_DATA_: a list of items, each with its title and, in slot 4,
+ * the answer box whose first value is the id that prefilled links use as entry.ID. The template's
+ * first question is called Sale name. Null when the page isn't a form page or has no such question,
+ * so the caller can fall back to the manual route.
+ */
+export function saleEntryFromFormHtml(html: string): string | null {
+  const at = html.indexOf('FB_PUBLIC_LOAD_DATA_');
+  if (at < 0) return null;
+  const start = html.indexOf('[', at);
+  const close = html.indexOf('</script>', start);
+  if (start < 0 || close < 0) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(html.slice(start, close).trim().replace(/;$/, ''));
+  } catch {
+    return null;
+  }
+  const items = Array.isArray(data) && Array.isArray(data[1]) ? data[1][1] : null;
+  if (!Array.isArray(items)) return null;
+  for (const item of items) {
+    if (!Array.isArray(item) || typeof item[1] !== 'string' || !/^sale\b/i.test(item[1].trim())) continue;
+    const id = Array.isArray(item[4]) && Array.isArray(item[4][0]) ? item[4][0][0] : null;
+    if (typeof id === 'number' && Number.isSafeInteger(id) && id > 0) return String(id);
+  }
+  return null;
+}
+
 /** The payment choices for the form's payment question, from the room's own payment lines. */
 export function paymentChoices(payment: string): string[] {
   const text = payment.trim();
@@ -190,14 +235,18 @@ export function formFields(profile: Pick<Profile, 'payment'>): FormField[] {
   ];
 }
 
-/** The seller's one message for the closeout comment on the main listing post. */
-export function closeoutComment(sale: Sale, profile: Profile, formUrl: string): string {
+/**
+ * The seller's closeout comment for the main listing post. It never carries the checkout form link,
+ * and it never mentions a form: the app knows who won, and the form goes to each winner personally,
+ * in winnerMessage and formReminder. This comment only says thank you and tells winners to watch
+ * for a message from the seller.
+ */
+export function closeoutComment(sale: Sale, profile: Profile): string {
   const by = contactDeadlineText(sale, profile);
   return joinLines([
-    `${sale.kind === 'auction' ? 'The auction is closed' : 'The sale is closed'}. Thank you, everyone! Winners, please fill in this short form with your shipping details and how you’ll pay:`,
-    formUrl,
+    `${sale.kind === 'auction' ? 'The auction is closed' : 'The sale is closed'}. Thank you, everyone! Winners, watch for a message from me. I’ll send each of you your lots, your total and what I need from you.`,
     '',
-    by ? `Please do it by ${by}. If I don’t hear from you by then, the plant goes to the next in line.` : 'If I don’t hear from you, the plant goes to the next in line.',
+    by ? `Please answer me by ${by}. If I don’t hear from you by then, the plant goes to the next in line.` : 'If I don’t hear from you, the plant goes to the next in line.',
   ]);
 }
 

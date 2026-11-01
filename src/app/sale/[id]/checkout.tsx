@@ -65,7 +65,7 @@ export default function CheckoutScreen() {
         <>
           <Text selectable style={{ color: colors.ink, marginBottom: 6 }}>{link.url}</Text>
           {link.problem ? <Note tone="warn">{link.problem}</Note> : <Note>It carries the sale name “{name}”, so responses arrive tagged.</Note>}
-          <Note>The link stays out of the announcement. It goes in the two places below, after the sale closes.</Note>
+          <Note>This link never goes in a post or a comment. It goes only in each winner’s own message, below.</Note>
         </>
       ) : (
         <>
@@ -74,33 +74,39 @@ export default function CheckoutScreen() {
         </>
       )}
 
+      <H>Closeout comment</H>
+      <Note>Paste this as a comment on your main listing post once the sale closes. It carries no link. Each winner gets their own message with the form.</Note>
+      <CardText text={closeoutComment(sale, room)} copyKey="closeout" label="Copy closeout comment" />
+
       {link.url ? (
         <>
-          <H>Closeout comment</H>
-          <Note>Paste this as a comment on your main listing post once the sale closes.</Note>
-          <CardText text={closeoutComment(sale, room, link.url)} copyKey="closeout" label="Copy closeout comment" />
-
           <H>A message to each winner</H>
           {rows.length ? (
-            rows.map((r) => (
-              <Panel key={r.key}>
-                <Text style={{ fontWeight: '700', color: colors.ink }}>{r.buyer}</Text>
-                <Text style={{ color: colors.soft }}>
-                  {r.contacted ? 'Form is in.' : 'No form yet.'}
-                </Text>
-                {(() => {
-                  const text = r.contacted ? null : winnerMessage(r, sale, room, link.url!, deadlineMs);
-                  const remind = r.contacted ? null : formReminder(r, room, link.url!, deadlineMs);
-                  return text ? (
-                    <Row style={{ marginTop: 8 }}>
-                      <Button title={copied === `m${r.key}` ? '✓ Copied' : 'Copy message'} onPress={() => copy(`m${r.key}`, text)} style={{ flex: 2 }} />
-                      <Button kind="secondary" title="Send" onPress={() => Share.share({ message: text }).catch(() => undefined)} style={{ flex: 1 }} />
-                      <Button kind="quiet" title={copied === `r${r.key}` ? '✓ Copied' : 'Copy a reminder instead'} onPress={() => copy(`r${r.key}`, remind!)} />
-                    </Row>
-                  ) : null;
-                })()}
-              </Panel>
-            ))
+            <>
+              <Note>Each message is written for one winner by name and carries your form link. Send it to them directly.</Note>
+              {rows.map((r) => (
+                <Panel key={r.key}>
+                  <Text style={{ fontWeight: '700', color: colors.ink }}>{r.buyer}</Text>
+                  <Text style={{ color: colors.soft }}>
+                    {r.contacted ? 'Form is in.' : 'No form yet.'}
+                  </Text>
+                  {(() => {
+                    const text = r.contacted ? null : winnerMessage(r, sale, room, link.url!, deadlineMs);
+                    const remind = r.contacted ? null : formReminder(r, room, link.url!, deadlineMs);
+                    return text ? (
+                      <>
+                        <Text selectable style={{ color: colors.ink, marginTop: 8 }}>{text}</Text>
+                        <Row style={{ marginTop: 8 }}>
+                          <Button title={copied === `m${r.key}` ? '✓ Copied' : 'Copy message'} onPress={() => copy(`m${r.key}`, text)} style={{ flex: 2 }} />
+                          <Button kind="secondary" title="Send" onPress={() => Share.share({ message: text }).catch(() => undefined)} style={{ flex: 1 }} />
+                          <Button kind="quiet" title={copied === `r${r.key}` ? '✓ Copied' : 'Copy a reminder instead'} onPress={() => copy(`r${r.key}`, remind!)} />
+                        </Row>
+                      </>
+                    ) : null;
+                  })()}
+                </Panel>
+              ))}
+            </>
           ) : (
             <Note>No winners yet. Paste the comment thread in Claims first.</Note>
           )}
@@ -109,8 +115,8 @@ export default function CheckoutScreen() {
 
       <H>Responses</H>
       <Note>
-        Your form’s answers land in a Google Sheet in your own account. In Sheets, choose File, Download, then .xlsx or .csv,
-        and import it here. Winners are matched by the Facebook name they typed.
+        Your form’s answers land in a Google Sheet in your own Google Drive on their own. In Sheets, choose File, Download, then .xlsx or .csv,
+        and import it here. That import is your only form chore for each sale. Winners are matched by the Facebook name they typed.
       </Note>
       <Button title={busy ? 'Reading the sheet' : imported ? 'Import the sheet again' : 'Import the responses'} disabled={busy} onPress={importSheet} />
       {error ? <Note tone="warn">{error}</Note> : null}
