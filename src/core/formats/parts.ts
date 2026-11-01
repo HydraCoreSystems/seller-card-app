@@ -44,7 +44,7 @@ export function shippingLine(profile: Profile): string | null {
   return combined ? `Shipping: ${combined}` : null;
 }
 
-/** "Location: Fort Wayne 46802", from the room's own city and ZIP. Null when the room has neither. */
+/** "Location: Fort Wayne, IN 46802", from the room's own city, state and ZIP. Null when the room has neither. */
 export function locationLine(profile: Profile): string | null {
   if (!isPhil()) return null;
   const where = locationText(profile);

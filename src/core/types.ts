@@ -34,6 +34,8 @@ export interface Profile {
   venueId?: string;
   venueName?: string;
   city?: string;
+  /** Two letter state, filled from the ZIP and editable. */
+  state?: string;
   zip?: string;
   /** Hours a buyer has to get in touch once the sale ends. */
   contactHours?: number;
@@ -60,6 +62,8 @@ export interface Venue {
   /** The seller's standing claim rules for this room. */
   claimRules: string;
   city: string;
+  /** Two letter state. Rooms saved before this field existed have none. */
+  state?: string;
   zip: string;
   /** Hours a buyer has to get in touch once the sale ends. */
   contactHours: number;

@@ -8,6 +8,7 @@ import { VERIFIED_GROWER } from '../core/formats/commons';
 import { PRO_PRIVACY, PRO_TEST_NOTE } from '../core/pro';
 import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
+import { fillFromZip, type Place } from '../core/zip';
 import type { FormatId, Profile, Venue } from '../core/types';
 import { CONTACT_HOURS, defaultVenue, emptyVenue, venuesOf, withVenues } from '../core/venues';
 import { buildTaggedLink } from '../lib/formPage';
@@ -30,6 +31,13 @@ export default function ProfilePhil() {
   const ready = p.sellerName.trim().length > 0;
   const room = venues.find((v) => v.id === editingId) ?? venues[0];
   const setRoom = <K extends keyof Venue>(k: K) => (v: Venue[K]) => setVenues((all) => all.map((x) => (x.id === room.id ? { ...x, [k]: v } : x)));
+  // What the ZIP last filled in for each room, so only the app's own fill is ever replaced, never the seller's words.
+  const zipFills = useRef<Record<string, Place | null>>({});
+  const setZip = (zip: string) => {
+    const next = fillFromZip({ zip: room.zip, city: room.city, state: room.state ?? '' }, zip, zipFills.current[room.id] ?? null);
+    zipFills.current[room.id] = next.fill;
+    setVenues((all) => all.map((x) => (x.id === room.id ? { ...x, zip, city: next.city, state: next.state } : x)));
+  };
 
   const addRoom = () => {
     const id = newId();
@@ -126,8 +134,16 @@ export default function ProfilePhil() {
             hint="Only the business name the desk vetted. Leave blank if you have none."
           />
         ) : null}
-        <Field label="City" value={room.city} onChangeText={setRoom('city')} placeholder="Fort Wayne" hint="City and ZIP print on your cards as a location line. Leave both blank to print none." />
-        <Field label="ZIP code" value={room.zip} onChangeText={setRoom('zip')} placeholder="46802" keyboardType="number-pad" />
+        <Field label="ZIP code" value={room.zip} onChangeText={setZip} placeholder="46802" keyboardType="number-pad" hint="Type your ZIP first. The city and state fill in. City and ZIP print on your cards as a location line. Leave them blank to print none." />
+        <Field label="City" value={room.city} onChangeText={setRoom('city')} placeholder="Fort Wayne" hint="Type over it if your cards should show a different city. Yours is what saves and prints." />
+        <Field label="State" value={room.state ?? ''} onChangeText={setRoom('state')} placeholder="IN" autoCapitalize="characters" autoCorrect={false} maxLength={2} />
+        <Text style={{ fontSize: 12, color: colors.soft, marginTop: -8, marginBottom: 14 }}>
+          ZIP lookup data from{' '}
+          <Text style={{ textDecorationLine: 'underline' }} onPress={() => Linking.openURL('https://simplemaps.com/data/us-zips').catch(() => undefined)}>
+            SimpleMaps
+          </Text>
+          , used under CC BY 4.0.
+        </Text>
         <Field label="Shipping" value={room.shipping} onChangeText={setRoom('shipping')} placeholder="USPS Priority, $12 flat" multiline />
         <Checkboxes label="Ships on" value={room.shippingDays} options={DAY_OPTIONS} onChange={setRoom('shippingDays')} />
         <Field label="Payment" value={room.payment} onChangeText={setRoom('payment')} placeholder="PayPal Goods and Services, Venmo" multiline />

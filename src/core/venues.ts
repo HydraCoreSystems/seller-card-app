@@ -29,6 +29,7 @@ export function emptyVenue(id: string, name = '', formatId: FormatId = 'generic'
     payment: '',
     claimRules: '',
     city: '',
+    state: '',
     zip: '',
     contactHours: DEFAULT_CONTACT_HOURS,
     formLink: '',
@@ -48,6 +49,7 @@ export function legacyVenue(profile: Profile): Venue {
     payment: profile.payment,
     claimRules: profile.claimRules,
     city: profile.city ?? '',
+    state: profile.state ?? '',
     zip: profile.zip ?? '',
     contactHours: profile.contactHours ?? DEFAULT_CONTACT_HOURS,
     formLink: profile.formLink ?? '',
@@ -87,6 +89,7 @@ export function profileForVenue(profile: Profile, venue: Venue): Profile {
     venueId: venue.id,
     venueName: venue.name.trim(),
     city: venue.city.trim(),
+    state: (venue.state ?? '').trim(),
     zip: venue.zip.trim(),
     contactHours: venue.contactHours,
     formLink: venue.formLink.trim(),
@@ -137,8 +140,15 @@ export function markerNumber(profile: Profile, formatId: FormatId): string | nul
   return n?.trim() || null;
 }
 
-/** "Fort Wayne 46802", "Fort Wayne" or "46802". Null when the room has neither. */
-export function locationText(profile: Pick<Profile, 'city' | 'zip'>): string | null {
-  const text = [profile.city?.trim(), profile.zip?.trim()].filter(Boolean).join(' ');
-  return text || null;
+/**
+ * "Fort Wayne, IN 46802", "Fort Wayne 46802" (no state), "Fort Wayne" or "46802". Null when the room has neither
+ * a city nor a ZIP. A state alone prints nothing, and with no city it leads the ZIP: "IN 46802".
+ */
+export function locationText(profile: Pick<Profile, 'city' | 'zip'> & { state?: string }): string | null {
+  const city = profile.city?.trim() ?? '';
+  const state = profile.state?.trim() ?? '';
+  const zip = profile.zip?.trim() ?? '';
+  if (!city && !zip) return null;
+  const place = city && state ? `${city}, ${state}` : city;
+  return [place, !city ? state : '', zip].filter(Boolean).join(' ');
 }
