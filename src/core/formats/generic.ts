@@ -1,6 +1,6 @@
 import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
 import { joinLines } from '../text';
-import { closesLine, labeled, lotName, opensLine, priceLine, sellerLine, shippingLine } from './parts';
+import { closesLine, labeled, locationLine, lotName, noteLines, opensLine, priceLine, sellerLine, shippingLine } from './parts';
 import type { CardFormat } from './types';
 
 /** A neutral buy sell trade format that works in any room. */
@@ -9,12 +9,14 @@ export const generic: CardFormat = {
   name: 'Buy sell trade',
   blurb: 'A plain format that fits any room.',
 
-  announcement({ profile, sale }) {
+  announcement({ profile, sale, note, contactLine }) {
     const auction = sale.kind === 'auction';
     return joinLines([
       auction ? `${SHOWCASE.toUpperCase()} AUCTION` : SHOWCASE.toUpperCase(),
       `Seller: ${sellerLine(profile)}`,
+      locationLine(profile),
       '',
+      ...noteLines(note),
       opensLine(sale, profile),
       closesLine(sale, profile),
       auction ? labeled('How the close is called', sale.closeCall) : null,
@@ -23,6 +25,7 @@ export const generic: CardFormat = {
       labeled('Payment', profile.payment),
       labeled(auction ? 'Bidding rules' : 'Claim rules', sale.claimRules),
       labeled('Also listed in', sale.crossListing),
+      contactLine ?? null,
       '',
       sale.lots.length ? `${sale.lots.length} ${MARKET_LISTING}${sale.lots.length === 1 ? '' : 's'}, numbered in the comments below.` : null,
       '',
@@ -49,6 +52,7 @@ export const generic: CardFormat = {
       lot.description.trim() || null,
       '',
       `Seller: ${sellerLine(profile)}`,
+      locationLine(profile),
       shippingLine(profile),
       labeled('Payment', profile.payment),
       labeled(sale.kind === 'auction' ? 'Bidding rules' : 'Claim rules', claimRules),

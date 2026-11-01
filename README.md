@@ -83,5 +83,25 @@ npx expo start       # needs a development build for the camera and photo stamp
 npx expo export -p web   # browser build for a quick look
 ```
 
+## Two versions from one codebase
+
+The build variant is the `EXPO_PUBLIC_APP_VARIANT` setting, read in `src/core/variant.ts`.
+
+* **Closed test** (nothing set): the version on Google Play. It behaves as it did before the checkout
+  chain and the room work. None of the new screens or settings are reachable in it.
+* **Phil test version** (`EXPO_PUBLIC_APP_VARIANT=phil`): the same app with the whole buyer checkout chain
+  and every Part Two item on and unlocked. There is no paywall in it. It installs beside the closed test
+  app as "SprigList Phil" (package `com.gatheringmoss.sellercard.phil`) with its own data. `app.config.js`
+  makes that switch, and `app.json` stays the closed test app.
+
+```bash
+npm run test:phil       # the same checks, run as the Phil version
+npm run start:phil      # run the Phil version
+EXPO_PUBLIC_APP_VARIANT=phil npx eas-cli@latest build --platform android   # a Phil build
+```
+
+The paywall belongs to the shipping product later. Pro is a flag in the store that the Phil version holds
+on, so a real check can replace that one line when payment exists.
+
 House style for anything a member reads (app copy, card text, store text): plain words,
 contractions welcome, and no dashes of any kind. A test checks every format for dashes.

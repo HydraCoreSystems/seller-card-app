@@ -1,10 +1,14 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { photoFields, photosOf } from '../../../core/photos';
 import { lastSold, priceMemoryLine } from '../../../core/records';
 import { appendLot, nextLotNumber } from '../../../core/sale';
 import { toDay } from '../../../core/text';
 import { newId, useSale, useStore } from '../../../lib/store';
-import { Button, Note, Screen } from '../../../ui/kit';
+import { isPhil } from '../../../core/variant';
+import { resolveProfile } from '../../../core/venues';
+import { Button, H, Note, Screen } from '../../../ui/kit';
+import { StampedPhotos } from '../../../ui/StampedPhoto';
 import { PlantFields, draftPrice, priceText, type PlantDraft } from '../../../ui/PlantFields';
 
 /** Adds a lot during the sale, or changes one. Photo, name, price, a few words. */
@@ -18,7 +22,7 @@ export default function LotScreen() {
     noid: existing?.noid ?? false,
     priceText: priceText(existing?.price ?? null),
     description: existing?.description ?? '',
-    photoUri: existing?.photoUri ?? null,
+    photoUris: photosOf(existing),
   });
 
   if (!sale) return <Screen><Note>This showcase is gone.</Note></Screen>;
@@ -32,7 +36,7 @@ export default function LotScreen() {
       noid: draft.noid,
       price: draftPrice(draft),
       description: draft.description.trim(),
-      photoUri: draft.photoUri,
+      ...photoFields(draft.photoUris),
     };
     if (existing) {
       store.saveSale({ ...sale, lots: sale.lots.map((l) => (l.number === existing.number ? { ...l, ...fields } : l)) });
@@ -48,6 +52,7 @@ export default function LotScreen() {
       price: fields.price,
       kind: sale.kind,
       photoUri: fields.photoUri,
+      photoUris: fields.photoUris,
       notes: fields.description,
       sold: false,
       createdAt: toDay(new Date()),
@@ -66,6 +71,13 @@ export default function LotScreen() {
           priceLabel={sale.kind === 'auction' ? 'Opening bid' : 'Price'}
           memory={memory ? priceMemoryLine(memory) : null}
         />
+        {isPhil() && draft.photoUris.length && store.profile ? (
+          <>
+            <H>{draft.photoUris.length === 1 ? 'Your stamped photo' : 'Your stamped photos'}</H>
+            <Note>Save {draft.photoUris.length === 1 ? 'it' : 'them'} to your phone right here, stamped for this showcase’s room.</Note>
+            <StampedPhotos uris={draft.photoUris} profile={resolveProfile(store.profile, sale)} />
+          </>
+        ) : null}
       </Screen>
     </>
   );

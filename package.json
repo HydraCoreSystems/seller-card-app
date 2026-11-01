@@ -43,7 +43,10 @@
     "web": "expo start --web",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:phil": "EXPO_PUBLIC_APP_VARIANT=phil vitest run",
+    "start:phil": "EXPO_PUBLIC_APP_VARIANT=phil expo start",
+    "android:phil": "EXPO_PUBLIC_APP_VARIANT=phil expo start --android"
   },
   "private": true
 }

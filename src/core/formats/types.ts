@@ -3,6 +3,10 @@ import type { FormatId, Lot, Profile, Sale } from '../types';
 export interface AnnouncementInput {
   profile: Profile;
   sale: Sale;
+  /** The seller's own words for this sale, printed as its own paragraph. Blank prints nothing. */
+  note?: string;
+  /** The buyer contact deadline line, built by core/checkout.ts. Null prints nothing. */
+  contactLine?: string | null;
 }
 
 export interface ListingInput {

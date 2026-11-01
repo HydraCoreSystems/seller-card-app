@@ -1,19 +1,23 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { getFormat } from '../../../core/formats';
-import { growerNumber } from '../../../core/formats/commons';
-import { CardImageButton } from '../../../ui/CardImageButton';
+import { announcementFor } from '../../../core/announce';
+import { contactDeadlineText, contactHoursOf, saleName } from '../../../core/checkout';
+import { photosOf } from '../../../core/photos';
 import { lastSold, priceMemoryLine } from '../../../core/records';
 import { buildRundown } from '../../../core/rundown';
 import { saleSheet, sheetState, sheetTitle } from '../../../core/saleSheet';
 import { readClaims } from '../../../lib/claimReport';
 import { shareSaleSheet } from '../../../lib/saleSheetFile';
 import { formatPrice, plantDisplayName } from '../../../core/text';
+import { isPhil } from '../../../core/variant';
+import { CONTACT_HOURS, resolveProfile, venueOf } from '../../../core/venues';
+import { CardImageButton } from '../../../ui/CardImageButton';
 import { saveToGallery } from '../../../lib/stampPhoto';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
-import { Button, CardText, H, Note, Row, Screen, Thumb, colors } from '../../../ui/kit';
+import { Button, CardText, Choice, Field, H, Note, Row, Screen, Thumb, colors } from '../../../ui/kit';
 import { getStamped } from '../../../ui/StampedPhoto';
+import { WhenPicker, isComplete } from '../../../ui/WhenPicker';
 
 export default function SaleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,16 +26,16 @@ export default function SaleScreen() {
   const [saving, setSaving] = useState<string | null>(null);
 
   if (!sale || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
-  const profile = store.profile;
-  const format = getFormat(sale.formatId);
-  const announcement = format.announcement({ profile, sale });
-  const withPhotos = sale.lots.filter((l) => l.photoUri);
+  const profile = resolveProfile(store.profile, sale);
+  const room = venueOf(store.profile, sale);
+  const announcement = announcementFor(store.profile, sale, store.pro);
+  const allPhotos = sale.lots.flatMap((l) => photosOf(l));
 
   const saveAll = async () => {
     setSaving('Stamping photos');
     try {
       const uris: string[] = [];
-      for (const lot of withPhotos) uris.push(await getStamped(lot.photoUri!, profile, growerNumber(profile, sale.formatId)));
+      for (const photo of allPhotos) uris.push(await getStamped(photo, profile));
       setSaving('Saving');
       const ok = await saveToGallery(uris);
       setSaving(ok ? `Saved ${uris.length} photos` : 'Photos not allowed');
@@ -51,18 +55,51 @@ export default function SaleScreen() {
           </Row>
         }
       >
+        {isPhil() ? <Note>Room: {room.name}</Note> : null}
+        {isPhil() ? <Field
+          label="A note from you"
+          value={sale.note ?? ''}
+          onChangeText={(note) => store.saveSale({ ...sale, note })}
+          placeholder="Leave blank to print none"
+          hint="Your own words, printed at the top of the announcement. Change it any time before you copy."
+          multiline
+        /> : null}
+        {store.pro ? (
+          <>
+            {sale.kind === 'sale' ? (
+              <>
+                <WhenPicker label="When the sale ends" value={sale.endsAt ?? null} onChange={(t) => store.saveSale({ ...sale, endsAt: isComplete(t) ? t : null })} />
+                {!sale.endsAt ? <Note tone="warn">Add when the sale ends and the buyer contact deadline prints as a real clock time.</Note> : null}
+              </>
+            ) : null}
+            <Choice
+              label="Buyers get in touch within"
+              value={String(contactHoursOf(sale, profile))}
+              options={CONTACT_HOURS.map((h) => ({ value: String(h), label: `${h} hours` }))}
+              onChange={(v) => store.saveSale({ ...sale, contactHours: Number(v) })}
+            />
+            {contactDeadlineText(sale, profile) ? <Note>The deadline prints as {contactDeadlineText(sale, profile)}.</Note> : null}
+            <Field
+              label="What your checkout form calls this sale"
+              value={sale.name ?? ''}
+              onChangeText={(name) => store.saveSale({ ...sale, name })}
+              placeholder={saleName({ ...sale, name: '' }, profile)}
+              hint="Leave blank to use the name above. Winners’ forms arrive tagged with it."
+            />
+          </>
+        ) : null}
         <H>Announcement</H>
         <CardText text={announcement} copyKey="announcement" label="Copy announcement" />
-        <CardImageButton text={announcement} profile={profile} formatId={sale.formatId} />
+        {isPhil() ? null : <CardImageButton text={announcement} profile={profile} formatId={sale.formatId} />}
 
         <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <H>Lots</H>
           <Button kind="quiet" title="Add a lot" onPress={() => router.push(`/sale/${sale.id}/lot`)} />
         </Row>
-        {withPhotos.length ? (
+        {allPhotos.length ? (
           <Button
             kind="secondary"
-            title={saving ?? `Save all ${withPhotos.length} stamped photos`}
+            title={saving ?? `Save all ${allPhotos.length} stamped photos`}
             disabled={saving === 'Stamping photos' || saving === 'Saving'}
             onPress={saveAll}
             style={{ marginBottom: 12 }}

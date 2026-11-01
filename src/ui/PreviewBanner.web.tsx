@@ -1,3 +1,4 @@
+import { isPhil } from '../core/variant';
 import { router, usePathname, useRootNavigationState } from 'expo-router';
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
@@ -32,8 +33,9 @@ export function PreviewBanner() {
 export function SealHint() {
   return (
     <Note>
-      To see the grower seal, open Profile, pick Hoya and Orchid Commons as the card format, type any grower number,
-      and give a plant a photo.
+      {isPhil()
+        ? 'To see the circle marker, open Profile, type a number for your room, and give a plant a photo.'
+        : 'To see the grower seal, open Profile, pick Hoya and Orchid Commons as the card format, type any grower number, and give a plant a photo.'}
     </Note>
   );
 }

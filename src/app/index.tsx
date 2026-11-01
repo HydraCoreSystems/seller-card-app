@@ -2,6 +2,8 @@ import { Link, Stack, router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../core/formats';
+import { isPhil } from '../core/variant';
+import { venueOf } from '../core/venues';
 import { formatDay, formatPrice, plantDisplayName } from '../core/text';
 import { useLeftovers, useStore } from '../lib/store';
 import { Button, Note, Panel, Row, Screen, Thumb, colors } from '../ui/kit';
@@ -113,7 +115,7 @@ export default function Home() {
                   {s.kind === 'auction' ? 'Grower Showcase auction' : 'Grower Showcase'}, {s.lots.length} lots
                   {s.opens ? `, ${formatDay(s.opens.day)}` : ''}
                 </Text>
-                <Text style={{ color: colors.soft, fontSize: 13 }}>{getFormat(s.formatId).name} format. Tap to open.</Text>
+                <Text style={{ color: colors.soft, fontSize: 13 }}>{isPhil() && store.profile ? `${venueOf(store.profile, s).name}. Tap to open.` : `${getFormat(s.formatId).name} format. Tap to open.`}</Text>
               </Pressable>
             ))}
           </View>

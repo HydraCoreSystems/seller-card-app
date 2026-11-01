@@ -1,7 +1,8 @@
 import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
 import { formatPrice, formatSaleTime, joinLines } from '../text';
 import type { FormatId, Lot, Profile, Sale, SaleKind } from '../types';
-import { lotName, shippingLine } from './parts';
+import { locationLine, lotName, noteLines, shippingLine } from './parts';
+import { isPhil } from '../variant';
 import type { CardFormat } from './types';
 
 // The room's name appears only inside this format, never on generic output.
@@ -62,15 +63,20 @@ function plantLines(kind: SaleKind, lot: Lot, closes: string | null) {
 
 export const commons: CardFormat = {
   id: 'commons',
-  name: 'Hoya and Orchid Commons',
+  // The Phil build carries the corrected label. The closed test build keeps the one it shipped with.
+  get name() {
+    return isPhil() ? 'Commons sales card' : 'Hoya and Orchid Commons';
+  },
   blurb: 'The Commons sales card, filled in.',
 
   // Layer one: everything on the card that's the same for every lot, posted once.
-  announcement({ profile, sale }) {
+  announcement({ profile, sale, note, contactLine }) {
     const auction = sale.kind === 'auction';
     const closes = closesText(sale, profile);
     return joinLines([
       sellerLine(profile),
+      locationLine(profile),
+      ...noteLines(note),
       sale.lots.length
         ? `${auction ? `${SHOWCASE} auction` : SHOWCASE}: ${sale.lots.length} plants, each on its own ${MARKET_LISTING} in the comments below`
         : null,
@@ -81,6 +87,7 @@ export const commons: CardFormat = {
       '',
       auction ? BIDS_LINE : CLAIMS_LINE,
       extraRules(sale.claimRules),
+      contactLine ?? null,
       '',
       ORIGIN_LINE,
     ]);
@@ -95,6 +102,7 @@ export const commons: CardFormat = {
   single({ profile, sale, lot, claimRules }) {
     return joinLines([
       sellerLine(profile),
+      locationLine(profile),
       ...plantLines(sale.kind, lot, null),
       ...termsLines(profile, ''),
       '',

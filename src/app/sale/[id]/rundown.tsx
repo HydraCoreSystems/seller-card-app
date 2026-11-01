@@ -1,10 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, Share, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { buyerKey, historyLine } from '../../../core/buyers';
+import {
+  formReminder,
+  mergeChances,
+  noContactChances,
+  noContactList,
+  paidNoForm,
+  profileForReminder,
+  type CheckoutRow,
+  type Stage,
+} from '../../../core/checkout';
 import { reminderMessage } from '../../../core/chase';
 import {
-  buildRundown,
   claimOrderOf,
   salesRecordHtml,
   unclaimedLots,
@@ -14,9 +23,10 @@ import {
 import { formatDeadline, offerMessage, secondChances, windowMs, type ChanceCard } from '../../../core/secondChance';
 import { formatDay, formatPrice } from '../../../core/text';
 import type { Profile } from '../../../core/types';
-import { readClaims } from '../../../lib/claimReport';
 import { sharePdf } from '../../../lib/exportPdf';
 import { useLeftovers, useNow, useSale, useStore } from '../../../lib/store';
+import { useCheckout } from '../../../lib/useCheckout';
+import { ProExplainer } from '../../../ui/ProExplainer';
 import { Button, Choice, H, Note, Panel, Row, Screen, colors, styles, useCopy } from '../../../ui/kit';
 
 export default function RundownScreen() {
@@ -28,17 +38,20 @@ export default function RundownScreen() {
   const now = useNow();
   const window = windowMs(store.profile);
 
-  const rundown = useMemo(() => {
-    if (!sale || !store.profile) return null;
-    const report = readClaims(sale.claimText, sale, store.profile);
-    return buildRundown({ sale, profile: store.profile, report, records: store.records });
-  }, [sale, store.profile, store.records]);
+  const checkout = useCheckout(sale);
 
-  if (!sale || !rundown || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
+  if (!sale || !checkout || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
 
-  const profile = store.profile;
+  // Everything below reads the room this showcase ran in, so its shipping, payment and wording are the ones used.
+  const { rundown, room: profile, rows, deadline, link } = checkout;
+  const pro = store.pro;
+  const rowOf = (name: string) => rows.find((r) => r.buyer === name);
+  const deadlineMs = deadline.state === 'none' ? null : deadline.ms;
+  const noContact = pro && sale.closedAt ? noContactList(rows, deadline) : [];
+  const noForm = pro && sale.closedAt ? paidNoForm(rows) : [];
   const ties = rundown.lots.filter((l) => l.tie);
-  const chances = secondChances(sale, store.records, window, now);
+  const baseChances = secondChances(sale, store.records, window, now);
+  const chances = pro && sale.closedAt ? mergeChances(baseChances, noContactChances(sale, rows, store.records, deadline)) : baseChances;
   const payBy = sale.closedMs ? sale.closedMs + window : null;
   // Marking a buyer paid moves them off the chase list and down to a single line.
   const waiting = rundown.buyers.filter((b) => !b.payment);
@@ -104,6 +117,26 @@ export default function RundownScreen() {
         ) : null}
       </Panel>
 
+      {sale.closedAt ? (
+        pro ? (
+          <ProPanel
+            saleId={sale.id}
+            rows={rows}
+            deadlineLine={
+              deadline.state === 'none'
+                ? 'No contact deadline yet.'
+                : deadline.state === 'open'
+                  ? `Winners have until ${formatDeadline(deadline.ms, profile.timeZone)} to send the form.`
+                  : `The contact deadline passed ${formatDeadline(deadline.ms, profile.timeZone)}.`
+            }
+            noContact={noContact.length}
+            paidNoForm={noForm.map((r) => r.buyer)}
+          />
+        ) : (
+          <ProExplainer compact />
+        )
+      ) : null}
+
       {ties.length ? (
         <View style={{ backgroundColor: colors.warnTint, borderRadius: 10, padding: 12, marginBottom: 12 }}>
           <Text style={{ color: colors.warn, fontWeight: '700' }}>
@@ -118,7 +151,21 @@ export default function RundownScreen() {
         <>
           <H>Second chance</H>
           {chances.map((c) => (
-            <ChanceView key={c.lot} card={c} saleId={sale.id} profile={profile} window={window} />
+            <ChanceView
+              key={c.lot}
+              card={c}
+              saleId={sale.id}
+              profile={profile}
+              window={window}
+              reminder={
+                c.kind === 'nocontact' && link.url
+                  ? (() => {
+                      const r = rowOf(c.buyer);
+                      return r ? formReminder(r, profile, link.url, deadlineMs) : undefined;
+                    })()
+                  : undefined
+              }
+            />
           ))}
         </>
       ) : null}
@@ -142,7 +189,8 @@ export default function RundownScreen() {
                 buyer={b}
                 saleId={sale.id}
                 closed
-                reminder={reminderMessage(b, profile, rundown.day, payBy && payBy > now ? payBy : null)}
+                row={pro ? rowOf(b.name) : undefined}
+                reminder={reminderMessage(b, pro && rowOf(b.name) ? profileForReminder(rowOf(b.name)!, profile) : profile, rundown.day, payBy && payBy > now ? payBy : null)}
               />
             ))
           ) : (
@@ -150,11 +198,11 @@ export default function RundownScreen() {
           )}
           {paid.length ? <H>Paid</H> : null}
           {paid.map((b) => (
-            <DoneLine key={b.name} buyer={b} saleId={sale.id} />
+            <DoneLine key={b.name} buyer={b} saleId={sale.id} row={pro ? rowOf(b.name) : undefined} />
           ))}
           {never.length ? <H>Never paid</H> : null}
           {never.map((b) => (
-            <DoneLine key={b.name} buyer={b} saleId={sale.id} />
+            <DoneLine key={b.name} buyer={b} saleId={sale.id} row={pro ? rowOf(b.name) : undefined} />
           ))}
         </>
       )}
@@ -186,7 +234,7 @@ export default function RundownScreen() {
 }
 
 /** One lot that can go to the next in line: offer it, or settle the offer that's out. */
-function ChanceView({ card, saleId, profile, window }: { card: ChanceCard; saleId: string; profile: Profile; window: number }) {
+function ChanceView({ card, saleId, profile, window, reminder }: { card: ChanceCard; saleId: string; profile: Profile; window: number; reminder?: string }) {
   const store = useStore();
   const [copied, copy] = useCopy();
   const runner = card.runnerUp;
@@ -228,7 +276,11 @@ function ChanceView({ card, saleId, profile, window }: { card: ChanceCard; saleI
     <Panel style={{ borderColor: colors.warn, borderWidth: 1.5 }}>
       {head}
       <Text style={{ color: colors.warn }}>
-        {card.kind === 'overdue' ? `${card.buyer} hasn’t paid.` : `${card.buyer} never paid.`}{' '}
+        {card.kind === 'nocontact'
+          ? `${card.buyer} hasn’t sent the checkout form, and the deadline has passed.`
+          : card.kind === 'overdue'
+            ? `${card.buyer} hasn’t paid.`
+            : `${card.buyer} never paid.`}{' '}
         {runner ? `${runner} is next in line.` : 'Nobody is next in line.'}
       </Text>
       <Row style={{ marginTop: 8 }}>
@@ -241,6 +293,9 @@ function ChanceView({ card, saleId, profile, window }: { card: ChanceCard; saleI
           <Button kind="secondary" title="Back to open" onPress={() => store.sendSecondChance(saleId, card.lot, card.buyer, null)} style={{ flex: 1 }} />
         )}
       </Row>
+      {card.kind === 'nocontact' && reminder ? (
+        <Button kind="quiet" title={copied ? '✓ Copied' : 'Send a reminder instead'} onPress={() => copy(`remind${card.lot}`, reminder)} style={{ marginTop: 4 }} />
+      ) : null}
       {card.kind === 'overdue' ? (
         <Button kind="quiet" title={`${card.buyer} paid after all`} onPress={() => store.setPayment(saleId, card.buyer, 'paid')} style={{ marginTop: 4 }} />
       ) : null}
@@ -254,9 +309,9 @@ type PayChoice = 'waiting' | 'paid' | 'never';
 const sum = (buyers: RundownBuyer[]) => buyers.reduce((n, b) => n + b.total, 0);
 
 /** A buyer who's paid or never paid: one line, opened back up with a tap. */
-function DoneLine({ buyer, saleId }: { buyer: RundownBuyer; saleId: string }) {
+function DoneLine({ buyer, saleId, row }: { buyer: RundownBuyer; saleId: string; row?: CheckoutRow }) {
   const [open, setOpen] = useState(false);
-  if (open) return <BuyerCard buyer={buyer} saleId={saleId} closed onFold={() => setOpen(false)} />;
+  if (open) return <BuyerCard buyer={buyer} saleId={saleId} closed row={row} onFold={() => setOpen(false)} />;
   return (
     <Pressable
       onPress={() => setOpen(true)}
@@ -274,6 +329,7 @@ function BuyerCard({
   saleId,
   closed,
   reminder,
+  row,
   onFold,
 }: {
   buyer: RundownBuyer;
@@ -281,6 +337,8 @@ function BuyerCard({
   closed: boolean;
   /** The payment reminder, for a buyer still waiting to pay. */
   reminder?: string;
+  /** The Pro checkout row for this buyer: stage, total with shipping, payment method. */
+  row?: CheckoutRow;
   onFold?: () => void;
 }) {
   const store = useStore();
@@ -291,8 +349,9 @@ function BuyerCard({
     <Panel>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Text style={{ fontWeight: '700', color: colors.ink, flex: 1 }}>{buyer.name}</Text>
-        <Text style={{ fontWeight: '700', color: colors.ink }}>{formatPrice(buyer.total) || '$0'}</Text>
+        <Text style={{ fontWeight: '700', color: colors.ink }}>{formatPrice(row ? row.totalOwed : buyer.total) || '$0'}</Text>
       </View>
+      {row ? <CheckoutLines row={row} saleId={saleId} closed={closed} /> : null}
       {buyer.history ? (
         <Text style={{ color: buyer.history.unpaidSales ? colors.warn : colors.moss, fontSize: 13, marginBottom: 2 }}>
           Repeat buyer: {historyLine(buyer.history)}
@@ -352,5 +411,122 @@ function LotLine({ lot }: { lot: RundownLot }) {
       </Text>
       {lot.line.length ? <Text style={{ color: colors.soft, fontSize: 13 }}>Next in line: {lot.line.join(', ')}</Text> : null}
     </View>
+  );
+}
+
+const STAGES: { stage: Stage; label: string }[] = [
+  { stage: 'won', label: 'Won' },
+  { stage: 'contacted', label: 'Contacted' },
+  { stage: 'paid', label: 'Paid' },
+  { stage: 'shipped', label: 'Shipped' },
+];
+
+/** The four states for one buyer, what they owe with shipping, and how they said they would pay. */
+function CheckoutLines({ row, saleId, closed }: { row: CheckoutRow; saleId: string; closed: boolean }) {
+  const store = useStore();
+  const [via, setVia] = useState(row.paidVia);
+  const [charge, setCharge] = useState(row.shippingCharge === null ? '' : String(row.shippingCharge));
+  const reached = STAGES.findIndex((x) => x.stage === row.stage);
+  return (
+    <View style={{ marginBottom: 6 }}>
+      <View style={{ flexDirection: 'row', gap: 6, marginVertical: 4 }}>
+        {STAGES.map((x, i) => (
+          <Text
+            key={x.stage}
+            style={{
+              fontSize: 12,
+              fontWeight: '600',
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 10,
+              overflow: 'hidden',
+              backgroundColor: i <= reached ? colors.mossTint : colors.line,
+              color: i <= reached ? colors.mossDark : colors.soft,
+            }}
+          >
+            {x.label}
+          </Text>
+        ))}
+      </View>
+      {row.contactState === 'late' ? <Text style={{ color: colors.warn, fontSize: 13 }}>No form by the deadline.</Text> : null}
+      {row.contactState === 'waiting' && closed ? <Text style={{ color: colors.soft, fontSize: 13 }}>No form yet.</Text> : null}
+      <Text style={{ color: colors.soft, fontSize: 13 }}>
+        {row.pickup
+          ? `Local pickup. Owes ${formatPrice(row.totalOwed) || '$0'}.`
+          : row.totalKnown
+            ? `${formatPrice(row.plantsTotal) || '$0'} in plants, ${formatPrice(row.shippingCharge ?? 0) || '$0'} shipping. Owes ${formatPrice(row.totalOwed) || '$0'}.`
+            : `${formatPrice(row.plantsTotal) || '$0'} in plants. Shipping isn’t added up yet${row.shippingNote ? ` (${row.shippingNote})` : ''}.`}
+      </Text>
+      {!row.pickup && row.shippingCharge === null && closed ? (
+        <TextInput
+          value={charge}
+          onChangeText={setCharge}
+          onBlur={() => {
+            const n = parseFloat(charge);
+            store.setFulfillment(saleId, row.key, { shippingCharge: Number.isFinite(n) && n >= 0 ? n : null });
+          }}
+          keyboardType="decimal-pad"
+          placeholder="Shipping for this buyer, in dollars"
+          placeholderTextColor="#9AA39A"
+          accessibilityLabel={`Shipping charge for ${row.buyer}`}
+          style={[styles.input, { fontSize: 14, paddingVertical: 6, marginTop: 6 }]}
+        />
+      ) : null}
+      {row.intendedMethod ? <Text style={{ color: colors.soft, fontSize: 13 }}>Plans to pay with: {row.intendedMethod}</Text> : null}
+      {closed && row.paid ? (
+        <TextInput
+          value={via}
+          onChangeText={setVia}
+          onBlur={() => store.setFulfillment(saleId, row.key, { paidVia: via.trim() })}
+          placeholder="Paid with"
+          placeholderTextColor="#9AA39A"
+          accessibilityLabel={`What ${row.buyer} paid with`}
+          style={[styles.input, { fontSize: 14, paddingVertical: 6, marginTop: 6 }]}
+        />
+      ) : null}
+      {row.methodMismatch ? (
+        <Text style={{ color: colors.warn, fontSize: 13 }}>
+          The form said {row.intendedMethod} and you marked {row.paidVia}. Worth a look.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** The checkout summary for a closed sale: the deadline, forms in, and the two screens. */
+function ProPanel({
+  saleId,
+  rows,
+  deadlineLine,
+  noContact,
+  paidNoForm,
+}: {
+  saleId: string;
+  rows: CheckoutRow[];
+  deadlineLine: string;
+  noContact: number;
+  paidNoForm: string[];
+}) {
+  const inCount = rows.filter((r) => r.contacted).length;
+  return (
+    <Panel>
+      <Text style={{ fontWeight: '700', color: colors.ink, fontSize: 16 }}>Buyer checkout</Text>
+      <Text style={{ color: colors.soft }}>{deadlineLine}</Text>
+      <Text style={{ color: colors.ink, marginTop: 2 }}>
+        {inCount} of {rows.length} winners have sent the form.
+      </Text>
+      {noContact ? (
+        <Text style={{ color: colors.warn }}>
+          {noContact} {noContact === 1 ? 'winner has' : 'winners have'} not sent it. Their lots are in Second chance below.
+        </Text>
+      ) : null}
+      {paidNoForm.length ? (
+        <Text style={{ color: colors.warn }}>Paid but no address yet: {paidNoForm.join(', ')}.</Text>
+      ) : null}
+      <Row style={{ marginTop: 8 }}>
+        <Button title="Checkout form" onPress={() => router.push({ pathname: '/sale/[id]/checkout', params: { id: saleId } })} style={{ flex: 1 }} />
+        <Button kind="secondary" title="Packing" onPress={() => router.push({ pathname: '/sale/[id]/packing', params: { id: saleId } })} style={{ flex: 1 }} />
+      </Row>
+    </Panel>
   );
 }

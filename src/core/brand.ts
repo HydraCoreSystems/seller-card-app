@@ -13,3 +13,10 @@ export const MARKET_LISTING = 'Market Listing';
 
 /** The SprigList: Feature Suggestions form. Suggestions go to the team for the weekly read. */
 export const SUGGESTIONS_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeqyTCBVGbXSpM6xs7R93fhsWX29JUXmnaTcKU3zAJbwRqD-A/viewform';
+
+/**
+ * The template Google Form a seller makes their own copy of: its link ending in /copy. Left blank
+ * until the template form is published. While it is blank, the app walks the seller through making
+ * the form by hand from the field list instead, which makes the same form.
+ */
+export const CHECKOUT_FORM_TEMPLATE_URL = '';

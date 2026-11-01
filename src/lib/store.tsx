@@ -8,7 +8,9 @@ import { plantsOnList, type SheetLot } from '../core/saleSheet';
 import { markPayment } from '../core/records';
 import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
 import { toDay } from '../core/text';
-import type { Lot, Plant, Profile, Sale, SaleRecord } from '../core/types';
+import type { CheckoutResponse, Fulfillment, Lot, Plant, Profile, Sale, SaleRecord, SaleTemplate } from '../core/types';
+import { resolveProfile, venuesOf, withVenues } from '../core/venues';
+import { isPhil } from '../core/variant';
 import { loadJson, saveJson } from './storage';
 
 export const EMPTY_PROFILE: Profile = {
@@ -32,6 +34,10 @@ interface Data {
   buyerNotes: Record<string, string>;
   /** Leftovers the seller removed or relisted. */
   leftoversDone: string[];
+  /** Saved sale settings, for sellers with a standing way of opening a sale. */
+  templates: SaleTemplate[];
+  /** True when the checkout chain is on. Test build one has no payment, so the seller switches it on. */
+  pro: boolean;
 }
 
 type SaleSettings = Omit<Sale, 'id' | 'lots' | 'createdAt'>;
@@ -70,6 +76,15 @@ interface Store extends Data {
   setPayment(saleId: string, buyer: string, payment: SaleRecord['payment']): void;
   saveBuyerNote(buyer: string, note: string): void;
   deleteRecord(id: string): void;
+  saveTemplate(template: SaleTemplate): void;
+  deleteTemplate(id: string): void;
+  setPro(on: boolean): void;
+  /** Keeps the responses read from the seller's checkout sheet on the sale. Earlier hand pairings stay. */
+  importCheckout(saleId: string, responses: CheckoutResponse[]): void;
+  /** Pairs a response with a winner the seller picked, or clears the pairing. */
+  linkResponse(saleId: string, row: number, buyerKey: string | null): void;
+  /** Packing and shipping marks for one buyer in one sale. */
+  setFulfillment(saleId: string, buyerKey: string, patch: Partial<Fulfillment>): void;
 }
 
 const KEYS = {
@@ -79,6 +94,8 @@ const KEYS = {
   records: 'records.v1',
   buyerNotes: 'buyerNotes.v1',
   leftoversDone: 'leftoversDone.v1',
+  templates: 'templates.v1',
+  pro: 'pro.v1',
 } as const;
 
 /** The plants behind some of a sale's lots, so a record can find its plant. */
@@ -100,13 +117,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!saved) return null;
       // Before the grower number had its own field, a Commons seller's seller number stood in for it.
       const growerNumber = saved.growerNumber ?? (saved.defaultFormat === 'commons' ? saved.sellerNumber : '');
-      return { ...EMPTY_PROFILE, ...saved, growerNumber };
+      const merged = { ...EMPTY_PROFILE, ...saved, growerNumber };
+      // Before rooms existed, the profile's own lines stood for the one room. Make that room.
+      // The closed test build has no rooms, so its saved profile is left exactly as it was.
+      if (!isPhil()) return merged;
+      return merged.venues?.length ? merged : withVenues(merged, venuesOf(merged), merged.defaultVenueId ?? 'venue-1');
     })(),
     plants: loadJson<Plant[]>(KEYS.plants, []),
     sales: loadJson<Sale[]>(KEYS.sales, []),
     records: loadJson<SaleRecord[]>(KEYS.records, []),
     buyerNotes: loadJson<Record<string, string>>(KEYS.buyerNotes, {}),
     leftoversDone: loadJson<string[]>(KEYS.leftoversDone, []),
+    templates: loadJson<SaleTemplate[]>(KEYS.templates, []),
+    // The Phil build has Pro unlocked, with no gate and no switch. The closed test build never has it.
+    pro: isPhil(),
   }));
   const last = useRef(data);
   // The seller's own data, set aside while the sample is open.
@@ -132,7 +156,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       openSample: () => {
         if (sample) return;
         setOwnData(data);
-        setData(sampleData());
+        setData({ ...sampleData(), templates: [], pro: data.pro });
       },
       leaveSample: () => {
         if (!ownData) return;
@@ -196,7 +220,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             closedMs: Date.now(),
             leftovers: unclaimed,
             claimOrder,
-            shippingCharge: flatShipping(d.profile?.shipping ?? ''),
+            shippingCharge: flatShipping(d.profile ? resolveProfile(d.profile, sale).shipping : ''),
           };
           return {
             records: [...winners.map((w) => ({ ...w, saleId: sale.id, date, id: newId() })), ...d.records],
@@ -257,6 +281,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return { buyerNotes: notes };
         }),
       deleteRecord: (id) => update((d) => ({ records: d.records.filter((r) => r.id !== id) })),
+      saveTemplate: (template) =>
+        update((d) => ({
+          templates: d.templates.some((t) => t.id === template.id)
+            ? d.templates.map((t) => (t.id === template.id ? template : t))
+            : [...d.templates, template],
+        })),
+      deleteTemplate: (id) => update((d) => ({ templates: d.templates.filter((t) => t.id !== id) })),
+      setPro: (_on) => update(() => ({ pro: isPhil() })),
+      importCheckout: (saleId, responses) =>
+        update((d) => ({
+          sales: d.sales.map((s) =>
+            s.id === saleId ? { ...s, checkout: { links: s.checkout?.links, responses, importedMs: Date.now() } } : s,
+          ),
+        })),
+      linkResponse: (saleId, row, buyerKey) =>
+        update((d) => ({
+          sales: d.sales.map((s) => {
+            if (s.id !== saleId || !s.checkout) return s;
+            const links = { ...(s.checkout.links ?? {}) };
+            if (buyerKey) links[row] = buyerKey;
+            else delete links[row];
+            return { ...s, checkout: { ...s.checkout, links } };
+          }),
+        })),
+      setFulfillment: (saleId, buyerKey, patch) =>
+        update((d) => ({
+          sales: d.sales.map((s) =>
+            s.id === saleId ? { ...s, fulfillment: { ...(s.fulfillment ?? {}), [buyerKey]: { ...(s.fulfillment?.[buyerKey] ?? {}), ...patch } } } : s,
+          ),
+        })),
     }),
     [data, update, sample, ownData],
   );

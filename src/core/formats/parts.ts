@@ -1,4 +1,6 @@
+import { isPhil } from '../variant';
 import { SHORT_DAYS, formatPrice, formatSaleTime, joinWords, plantDisplayName } from '../text';
+import { locationText } from '../venues';
 import type { Lot, Profile, Sale, SaleKind } from '../types';
 
 export function sellerLine(profile: Profile): string {
@@ -40,4 +42,18 @@ export function shippingLine(profile: Profile): string | null {
   const closedBase = base && daysSentence && !/[.!?]$/.test(base) ? `${base}.` : base;
   const combined = [closedBase, daysSentence].filter(Boolean).join(' ');
   return combined ? `Shipping: ${combined}` : null;
+}
+
+/** "Location: Fort Wayne 46802", from the room's own city and ZIP. Null when the room has neither. */
+export function locationLine(profile: Profile): string | null {
+  if (!isPhil()) return null;
+  const where = locationText(profile);
+  return where ? `Location: ${where}` : null;
+}
+
+/** The seller's note for the sale as its own paragraph, or nothing. */
+export function noteLines(note: string | undefined): (string | null)[] {
+  if (!isPhil()) return [];
+  const n = note?.trim();
+  return n ? [n, ''] : [];
 }

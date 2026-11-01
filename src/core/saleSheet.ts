@@ -168,7 +168,7 @@ export function sheetState(lots: RundownLot[], closed: boolean): Map<number, She
 export function parseCsv(text: string): string[][] {
   const src = text.replace(/^﻿/, '');
   // Excel in some countries saves with semicolons; go by whichever the heading line uses.
-  const headingLine = src.split(/\r?\n/).find((l) => /plant name/i.test(l)) ?? src;
+  const headingLine = src.split(/\r?\n/).find((l) => /plant name/i.test(l)) ?? src.split(/\r?\n/)[0];
   const sep = (headingLine.match(/;/g)?.length ?? 0) > (headingLine.match(/,/g)?.length ?? 0) ? ';' : ',';
   const rows: string[][] = [];
   let row: string[] = [];

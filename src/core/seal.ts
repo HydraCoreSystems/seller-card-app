@@ -107,6 +107,34 @@ export function sealShapes(number: string, cx: number, cy: number, diameter: num
   ];
 }
 
+/** Most letters of a room's name the ring carries. A longer name is cut here. */
+const RING_MAX = 36;
+
+/**
+ * The circular marker for any room that isn't the Commons: the same circle, leaf and number, with
+ * the room's own name around the top. No grower words, no motto, no verification wording: the
+ * marker prints the number the seller typed and says nothing more about it.
+ */
+export function venueSealShapes(number: string, venueName: string, cx: number, cy: number, diameter: number): Shape[] {
+  const k = diameter / 2000;
+  const u = (n: number) => n * k;
+  const ring = venueName.trim().toUpperCase().slice(0, RING_MAX);
+  // Letters sit 8 degrees apart on the Commons ring; a short name is centered, a long one shrinks to fit.
+  const span = Math.min(208, 8 * Math.max(ring.length - 1, 0));
+  const size = ring.length > 27 ? (118 * 27) / ring.length : 118;
+  return [
+    { kind: 'circle', cx, cy, r: u(960), fill: SEAL_COLORS.green },
+    { kind: 'circle', cx, cy, r: u(801), stroke: SEAL_COLORS.gold, width: u(10) },
+    { kind: 'circle', cx, cy, r: u(780), fill: SEAL_COLORS.cream },
+    { kind: 'circle', cx, cy, r: u(777), stroke: SEAL_COLORS.greenDark, width: u(6) },
+    ...(ring ? ringText(ring, cx, cy, u(884), -span / 2, span / 2, u(size), false) : []),
+    { kind: 'circle', cx: cx - u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
+    { kind: 'circle', cx: cx + u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
+    ...leaf(cx, cy - u(210), u(760), u(210), 38, k),
+    { kind: 'text', text: `No. ${number.trim()}`, x: cx, y: cy + u(250), size: u(300), font: 'serif', bold: true, color: SEAL_COLORS.greenDark, align: 'center', maxWidth: u(1300) },
+  ];
+}
+
 export interface BannerInput {
   number: string;
   name: string;

@@ -1,11 +1,13 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { getFormat } from '../../../core/formats';
-import { growerNumber } from '../../../core/formats/commons';
+import { announcementFor, listingFor } from '../../../core/announce';
+import { photosOf } from '../../../core/photos';
+import { isPhil } from '../../../core/variant';
+import { resolveProfile } from '../../../core/venues';
 import { CardImageButton } from '../../../ui/CardImageButton';
 import { useSale, useStore } from '../../../lib/store';
 import { Button, CardText, Note, Row, Screen } from '../../../ui/kit';
-import { StampedPhoto } from '../../../ui/StampedPhoto';
+import { StampedPhotos } from '../../../ui/StampedPhoto';
 
 /** Walks the seller through the paste: the announcement first, then each lot in order. */
 export default function PostScreen() {
@@ -16,8 +18,7 @@ export default function PostScreen() {
   const [step, setStep] = useState(Math.max(0, startIndex));
 
   if (!sale || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
-  const profile = store.profile;
-  const format = getFormat(sale.formatId);
+  const profile = resolveProfile(store.profile, sale);
   const total = sale.lots.length;
   const lot = step > 0 ? sale.lots[step - 1] : null;
   const last = step >= total;
@@ -40,8 +41,9 @@ export default function PostScreen() {
         {lot ? (
           <>
             <Note>Comment on your Grower Showcase post: attach the photo, paste the Market Listing.</Note>
-            <StampedPhoto photoUri={lot.photoUri} profile={profile} seal={growerNumber(profile, sale.formatId)} />
-            <CardText text={format.listing({ profile, sale, lot })} copyKey={`lot${lot.number}`} />
+            {photosOf(lot).length > 1 ? <Note>Photo 1 goes with the listing. Post the others as replies under it.</Note> : null}
+            <StampedPhotos uris={photosOf(lot)} profile={profile} />
+            <CardText text={listingFor(store.profile, sale, lot)} copyKey={`lot${lot.number}`} />
             <Button
               kind="quiet"
               title="Change this lot"
@@ -51,8 +53,8 @@ export default function PostScreen() {
         ) : (
           <>
             <Note>Start the Grower Showcase post with this. Then go lot by lot.</Note>
-            <CardText text={format.announcement({ profile, sale })} copyKey="announcement" label="Copy announcement" />
-            <CardImageButton text={format.announcement({ profile, sale })} profile={profile} formatId={sale.formatId} />
+            <CardText text={announcementFor(store.profile, sale, store.pro)} copyKey="announcement" label="Copy announcement" />
+            {isPhil() ? null : <CardImageButton text={announcementFor(store.profile, sale, store.pro)} profile={profile} formatId={sale.formatId} />}
           </>
         )}
       </Screen>

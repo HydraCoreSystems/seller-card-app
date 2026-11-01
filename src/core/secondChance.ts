@@ -48,8 +48,8 @@ export interface ChanceCard {
   /** The winner who hasn't paid. */
   buyer: string;
   runnerUp: string | null;
-  /** overdue: still marked waiting past the window. never: marked never paid. offered: out to the runner up. */
-  kind: 'overdue' | 'never' | 'offered';
+  /** overdue: still marked waiting past the window. never: marked never paid. offered: out to the runner up. nocontact: no checkout form by the contact deadline. */
+  kind: 'overdue' | 'never' | 'offered' | 'nocontact';
   offer?: SecondChance;
   /** When the payment window, or the runner up's window, runs out. */
   dueMs: number;
