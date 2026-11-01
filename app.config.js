@@ -1,4 +1,4 @@
-// One codebase, two apps. app.json holds the closed test app exactly as it ships on Google Play.
+// One codebase, two apps. app.json holds the production app, Skrybix.
 // Building with EXPO_PUBLIC_APP_VARIANT=phil makes Phil's test version, which installs beside it
 // under its own package name and its own data, so neither can touch the other.
 module.exports = ({ config }) => {

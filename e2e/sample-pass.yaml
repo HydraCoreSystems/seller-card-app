@@ -60,8 +60,8 @@ appId: com.gatheringmoss.sellercard
 # Switch the sample seller to the Commons format with a grower number. Nothing here is saved.
 - tapOn: "Profile"
 - scrollUntilVisible:
-    element: "Hoya and Orchid Commons"
-- tapOn: "Hoya and Orchid Commons"
+    element: "The Commons | Hoyas, Orchids and Other Rare Plants"
+- tapOn: "The Commons | Hoyas, Orchids and Other Rare Plants"
 - scrollUntilVisible:
     element: "Leave blank until the desk issues one"
 - tapOn: "Leave blank until the desk issues one"

@@ -87,12 +87,12 @@ npx expo export -p web   # browser build for a quick look
 
 The build variant is the `EXPO_PUBLIC_APP_VARIANT` setting, read in `src/core/variant.ts`.
 
-* **Closed test** (nothing set): the version on Google Play. It behaves as it did before the checkout
-  chain and the room work. None of the new screens or settings are reachable in it.
+* **Production** (nothing set): the app that goes to the App Store, installed as "Skrybix". The checkout
+  chain is in it but locked behind Pro, which is an auto renewable subscription (see `src/lib/iap.ts`).
 * **Phil test version** (`EXPO_PUBLIC_APP_VARIANT=phil`): the same app with the whole buyer checkout chain
-  and every Part Two item on and unlocked. There is no paywall in it. It installs beside the closed test
+  and every Part Two item on and unlocked. There is no paywall in it. It installs beside the production
   app as "Skrybix Phil" (package `com.gatheringmoss.sellercard.phil`) with its own data. `app.config.js`
-  makes that switch, and `app.json` stays the closed test app.
+  makes that switch, and `app.json` is the production app.
 
 ```bash
 npm run test:phil       # the same checks, run as the Phil version

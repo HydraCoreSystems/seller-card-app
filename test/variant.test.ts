@@ -4,7 +4,8 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { APP_NAME, SUGGESTIONS_URL, appName, originLine } from '../src/core/brand';
 import { announcementFor } from '../src/core/announce';
-import { commons } from '../src/core/formats/commons';
+import { FORM_TOKEN } from '../src/core/checkout';
+import { COMMONS_NAME, commons } from '../src/core/formats/commons';
 import { markerFor, stampFor } from '../src/core/marker';
 import { numberLots } from '../src/core/sale';
 import type { Plant, Profile, Sale } from '../src/core/types';
@@ -56,9 +57,10 @@ describe('the two builds', () => {
     expect(stampFor({ ...plain, sellerNumber: '', venueName: 'Quiet Corner' } as Profile, '2026-11-01').main).toBe('Gathering Moss  ·  November 1, 2026');
   });
 
-  it('closed test: keeps the Commons label it shipped with, and the Phil build corrects it', () => {
+  it('production: names the Commons format in full, and the Phil build keeps its corrected label', () => {
     as(undefined);
-    expect(commons.name).toBe('Hoya and Orchid Commons');
+    expect(commons.name).toBe('The Commons | Hoyas, Orchids and Other Rare Plants');
+    expect(commons.name).toBe(COMMONS_NAME);
     as('phil');
     expect(commons.name).toBe('Commons sales card');
   });
@@ -78,19 +80,21 @@ describe('the two builds', () => {
 });
 
 describe('the app name', () => {
-  const closedTestLine = 'Made with SprigList by Gathering Moss';
+  const productionLine = 'Made with Skrybix by Gathering Moss';
   const philLine = 'Made with Skrybix by Gathering Moss';
 
   it('is Skrybix, and cannot silently go back', () => {
     expect(APP_NAME).toBe('Skrybix');
   });
 
-  it('closed test: keeps the name it ships under on the origin line, the stamp and the announcement', () => {
+  it('production: says Skrybix on the origin line, the stamp and the announcement, and SprigList nowhere', () => {
     as(undefined);
-    expect(appName()).toBe('SprigList');
-    expect(originLine()).toBe(closedTestLine);
-    expect(stampFor(profile, '2026-11-01').origin).toBe(closedTestLine);
-    expect(announcementFor(profile, sale(), true)).toContain(closedTestLine);
+    expect(appName()).toBe('Skrybix');
+    expect(originLine()).toBe(productionLine);
+    expect(stampFor(profile, '2026-11-01').origin).toBe(productionLine);
+    const text = announcementFor(profile, sale(), false);
+    expect(text).toContain(productionLine);
+    expect(text).not.toMatch(/sprig/i);
   });
 
   it('Phil build: says Skrybix on the origin line, the stamp and the announcement, and SprigList nowhere', () => {
@@ -103,20 +107,26 @@ describe('the app name', () => {
     expect(text).not.toMatch(/sprig/i);
   });
 
-  it('Phil build: installs beside the closed test app as Skrybix Phil, and the closed test config is left exactly as it is', () => {
+  it('installs as Skrybix in production and as Skrybix Phil beside it in the Phil build', () => {
     const appConfig = createRequire(join(__dirname, 'variant.test.ts'))('../app.config.js') as (a: { config: Record<string, unknown> }) => Record<string, unknown>;
-    const config = { name: 'SprigList', slug: 'seller-card-app' };
+    const config = { name: 'Skrybix', slug: 'seller-card-app' };
+    expect((JSON.parse(readFileSync(join(__dirname, '..', 'app.json'), 'utf8')) as { expo: { name: string } }).expo.name).toBe('Skrybix');
     as(undefined);
     expect(appConfig({ config })).toBe(config);
     as('phil');
     expect(appConfig({ config })).toMatchObject({ name: 'Skrybix Phil' });
   });
 
+  it('production: writes the form word SKRYBSALE', () => {
+    as(undefined);
+    expect(FORM_TOKEN).toBe('SKRYBSALE');
+  });
+
   it('leaves the suggestions link exactly as it is, since that form keeps its own title', () => {
     expect(SUGGESTIONS_URL).toBe('https://docs.google.com/forms/d/e/1FAIpQLSeqyTCBVGbXSpM6xs7R93fhsWX29JUXmnaTcKU3zAJbwRqD-A/viewform');
   });
 
-  it('keeps the dead name out of the source, apart from the two constants that keep it on purpose and comments', () => {
+  it('keeps the dead name out of the source, apart from the old form word that keeps working and comments', () => {
     const found: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -126,7 +136,7 @@ describe('the app name', () => {
           readFileSync(path, 'utf8').split('\n').forEach((line, i) => {
             const code = line.trim();
             const comment = /^(\/\/|\/?\*)/.test(code);
-            const kept = /CLOSED_TEST_APP_NAME = 'SprigList'|LEGACY_FORM_TOKEN = 'SPRIGSALE'/.test(code);
+            const kept = /LEGACY_FORM_TOKEN = 'SPRIGSALE'/.test(code);
             if (/sprig/i.test(code) && !comment && !kept) found.push(`${path}:${i + 1}`);
           });
         }

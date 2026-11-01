@@ -63,9 +63,9 @@ function plantLines(kind: SaleKind, lot: Lot, closes: string | null) {
 
 export const commons: CardFormat = {
   id: 'commons',
-  // The Phil build carries the corrected label. The closed test build keeps the one it shipped with.
+  // The Phil build carries the corrected label. The production build names the room in full, as it was renamed on November 1, 2026.
   get name() {
-    return isPhil() ? 'Commons sales card' : 'Hoya and Orchid Commons';
+    return isPhil() ? 'Commons sales card' : COMMONS_NAME;
   },
   blurb: 'The Commons sales card, filled in.',
 

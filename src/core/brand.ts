@@ -1,18 +1,9 @@
-import { isPhil } from './variant';
-
 // Change the product name here and every card, photo and screen follows.
 export const APP_NAME = 'Skrybix';
 export const MAKER_NAME = 'Gathering Moss';
 
-/**
- * The name the closed test build still ships under on Google Play. That build keeps it on its cards
- * and photos so nothing testers see changes, until the closed test is renamed too. To rename it, make
- * appName() return APP_NAME for every build and delete this.
- */
-export const CLOSED_TEST_APP_NAME = 'SprigList';
-
-/** The name this build shows: Skrybix in the Phil build, the shipped name in the closed test. Read when asked, like the variant. */
-export const appName = (): string => (isPhil() ? APP_NAME : CLOSED_TEST_APP_NAME);
+/** The name every build shows. The closed test's old name ended when Skrybix went to production. */
+export const appName = (): string => APP_NAME;
 
 /** The origin line. Always present on every card and every stamped photo. */
 export const originLine = (): string => `Made with ${appName()} by ${MAKER_NAME}`;

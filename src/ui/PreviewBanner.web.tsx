@@ -35,7 +35,7 @@ export function SealHint() {
     <Note>
       {isPhil()
         ? 'To see the circle marker, open Profile, type a number for your room, and give a plant a photo.'
-        : 'To see the grower seal, open Profile, pick Hoya and Orchid Commons as the card format, type any grower number, and give a plant a photo.'}
+        : 'To see the grower seal, open Profile, pick The Commons | Hoyas, Orchids and Other Rare Plants as the card format, type any grower number, and give a plant a photo.'}
     </Note>
   );
 }
