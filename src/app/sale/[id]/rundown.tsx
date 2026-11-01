@@ -27,7 +27,8 @@ import { sharePdf } from '../../../lib/exportPdf';
 import { useLeftovers, useNow, useSale, useStore } from '../../../lib/store';
 import { useCheckout } from '../../../lib/useCheckout';
 import { ProExplainer } from '../../../ui/ProExplainer';
-import { Button, Choice, H, Note, Panel, Row, Screen, colors, styles, useCopy } from '../../../ui/kit';
+import { Button, Choice, H, Note, Panel, Row, Screen, T, colors, styles, useCopy } from '../../../ui/kit';
+import { DeadlineChip, StageChip } from '../../../ui/phil';
 
 export default function RundownScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -257,9 +258,18 @@ function ChanceView({ card, saleId, profile, window, reminder }: { card: ChanceC
     return (
       <Panel>
         {head}
-        <Text style={{ color: colors.soft, marginBottom: 8 }}>
-          Offered to {runner}. They have until {formatDeadline(card.dueMs, profile.timeZone)} to answer.
-        </Text>
+        {T.name === 'phil' ? (
+          // The answer deadline is a gold chip with the clock time, set into the same sentence.
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 4, marginBottom: 8 }}>
+            <Text style={{ color: colors.soft }}>Offered to {runner}. They have until</Text>
+            <DeadlineChip>{formatDeadline(card.dueMs, profile.timeZone)}</DeadlineChip>
+            <Text style={{ color: colors.soft }}>to answer.</Text>
+          </View>
+        ) : (
+          <Text style={{ color: colors.soft, marginBottom: 8 }}>
+            Offered to {runner}. They have until {formatDeadline(card.dueMs, profile.timeZone)} to answer.
+          </Text>
+        )}
         <Row style={{ marginBottom: 6 }}>
           <Button title={`${runner} took it`} onPress={() => store.settleSecondChance(saleId, card.lot, 'took')} style={{ flex: 1 }} />
           <Button kind="secondary" title="Passed" onPress={() => store.settleSecondChance(saleId, card.lot, 'passed')} style={{ flex: 1 }} />
@@ -430,7 +440,11 @@ function CheckoutLines({ row, saleId, closed }: { row: CheckoutRow; saleId: stri
   return (
     <View style={{ marginBottom: 6 }}>
       <View style={{ flexDirection: 'row', gap: 6, marginVertical: 4 }}>
-        {STAGES.map((x, i) => (
+        {STAGES.map((x, i) => T.name === 'phil' ? (
+          <StageChip key={x.stage} stage={x.stage} reached={i <= reached}>
+            {x.label}
+          </StageChip>
+        ) : (
           <Text
             key={x.stage}
             style={{

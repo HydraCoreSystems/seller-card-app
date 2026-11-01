@@ -1,5 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import {
   Animated,
   Image,
@@ -8,25 +8,21 @@ import {
   Text,
   TextInput,
   View,
+  type ImageStyle,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { buttonLook, styleDefs } from './styleDefs';
+import { theme } from './theme';
 
-export const colors = {
-  bg: '#F6F4EE',
-  card: '#FFFFFF',
-  ink: '#1F2A1F',
-  soft: '#5E6B5E',
-  line: '#DCD8CC',
-  moss: '#3E6B3A',
-  mossDark: '#2C4F29',
-  mossTint: '#E4EEDF',
-  warn: '#9A5B00',
-  warnTint: '#FFF1D6',
-  danger: '#A33A2B',
-};
+/** The theme this build wears: the closed test build keeps the original look, the Phil build gets the layered one. */
+export const T = theme();
+export const colors = T.colors;
+
+/** True inside the deep green action bars, where buttons switch to cream. */
+const OnBar = createContext(false);
 
 export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   // Android draws edge to edge, so keep buttons clear of the system navigation bar.
@@ -42,12 +38,24 @@ export function Screen({ children, footer }: { children: ReactNode; footer?: Rea
       >
         {children}
       </KeyboardAwareScrollView>
-      {footer ? <View style={[styles.footer, { paddingBottom: 12 + bottom }]}>{footer}</View> : null}
+      {footer ? (
+        <View style={[styles.footer, { paddingBottom: 12 + bottom }]}>
+          <OnBar.Provider value={T.name === 'phil'}>{footer}</OnBar.Provider>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 export function H({ children }: { children: ReactNode }) {
+  if (T.name === 'phil') {
+    return (
+      <View style={styles.headRow}>
+        <View style={styles.headTick} />
+        <Text style={styles.headText}>{children}</Text>
+      </View>
+    );
+  }
   return <Text style={styles.h}>{children}</Text>;
 }
 
@@ -87,6 +95,7 @@ export function Button({
   disabled?: boolean;
   style?: ViewStyle;
 }) {
+  const onBar = useContext(OnBar);
   const [scale] = useState(() => new Animated.Value(1));
   const animateTo = (v: number) =>
     Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
@@ -98,25 +107,9 @@ export function Button({
         onPressIn={() => animateTo(0.96)}
         onPressOut={() => animateTo(1)}
         disabled={disabled}
-        style={({ pressed }) => [
-          styles.btn,
-          kind === 'primary' && { backgroundColor: pressed ? colors.mossDark : colors.moss },
-          kind === 'secondary' && { backgroundColor: pressed ? colors.mossTint : colors.card, borderColor: colors.moss, borderWidth: 1.5 },
-          kind === 'quiet' && { backgroundColor: 'transparent', paddingHorizontal: 8 },
-          kind === 'danger' && { backgroundColor: 'transparent', borderColor: colors.danger, borderWidth: 1 },
-          disabled && { opacity: 0.4 },
-        ]}
+        style={({ pressed }) => [styles.btn, buttonLook(T, kind, pressed, onBar).box, disabled && { opacity: 0.4 }]}
       >
-        <Text
-          style={[
-            styles.btnText,
-            kind === 'primary' && { color: '#fff' },
-            (kind === 'secondary' || kind === 'quiet') && { color: colors.moss },
-            kind === 'danger' && { color: colors.danger },
-          ]}
-        >
-          {title}
-        </Text>
+        <Text style={[styles.btnText, buttonLook(T, kind, false, onBar).text]}>{title}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -237,82 +230,19 @@ export function Thumb({ uri, size = 56 }: { uri: string | null; size?: number })
       </View>
     );
   }
-  return <Image source={{ uri }} style={[styles.thumb, { width: size, height: size }]} />;
+  if (T.name === 'phil') {
+    // A thin inner edge, so the photo reads as set into its card.
+    return (
+      <View style={[styles.thumb, { width: size, height: size, overflow: 'hidden' }]}>
+        <Image source={{ uri }} style={{ width: size, height: size }} />
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(31,42,31,0.16)' }}
+        />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={[styles.thumb as ImageStyle, { width: size, height: size }]} />;
 }
 
-// A soft lift so cards read as raised, not just outlined boxes.
-const cardShadow = {
-  shadowColor: '#1F2A1F',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 6,
-  elevation: 2,
-};
-
-export const styles = StyleSheet.create({
-  screen: { padding: 16, paddingBottom: 40, maxWidth: 720, width: '100%', alignSelf: 'center' },
-  footer: { padding: 12, borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
-  h: { fontSize: 18, fontWeight: '700', color: colors.ink, marginTop: 8, marginBottom: 10 },
-  note: { fontSize: 14, color: colors.soft, marginBottom: 12, lineHeight: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.ink, marginBottom: 6 },
-  hint: { fontSize: 12, color: colors.soft, marginTop: 4 },
-  input: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: colors.ink,
-  },
-  btn: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  btnText: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  chipOn: { backgroundColor: colors.moss, borderColor: colors.moss },
-  chipText: { fontSize: 14, color: colors.ink, fontWeight: '500' },
-  panel: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 14,
-    marginBottom: 12,
-    ...cardShadow,
-  },
-  cardText: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 14,
-    marginBottom: 12,
-    ...cardShadow,
-  },
-  cardBody: { fontSize: 15, lineHeight: 22, color: colors.ink },
-  thumb: {
-    borderRadius: 8,
-    backgroundColor: colors.mossTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: colors.line,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxOn: { backgroundColor: colors.moss, borderColor: colors.moss },
-  checkboxMark: { color: '#fff', fontSize: 13, fontWeight: '700' },
-});
+export const styles = StyleSheet.create(styleDefs(T));

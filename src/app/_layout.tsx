@@ -1,11 +1,19 @@
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { StoreProvider } from '../lib/store';
-import { colors } from '../ui/kit';
+import { T, colors } from '../ui/kit';
 import { PreviewBanner } from '../ui/PreviewBanner';
+import { DISPLAY_FONT } from '../ui/theme';
+
+// Headings and the wordmark use Fraunces in the Phil build. The closed test build loads no fonts at all.
+const FONTS = T.name === 'phil' ? { [DISPLAY_FONT]: require('../../assets/fonts/Fraunces_600SemiBold.ttf') } : {};
 
 export default function Layout() {
+  const [fontsLoaded, fontError] = useFonts(FONTS);
+  // Wait for the font, but never get stuck on it: if it fails to load, headings quietly use the system font.
+  if (T.name === 'phil' && !fontsLoaded && !fontError) return null;
   return (
     // Android draws edge to edge, so the keyboard controller needs to know the system
     // bars are translucent to measure keyboard insets correctly.
@@ -17,7 +25,9 @@ export default function Layout() {
           screenOptions={{
             headerStyle: { backgroundColor: colors.bg },
             headerTintColor: colors.mossDark,
-            headerTitleStyle: { fontWeight: '700', color: colors.ink },
+            headerTitleStyle: T.display
+              ? { fontFamily: T.display, fontWeight: 'normal', fontSize: 19, color: colors.ink }
+              : { fontWeight: '700', color: colors.ink },
             headerShadowVisible: false,
             contentStyle: { backgroundColor: colors.bg },
           }}

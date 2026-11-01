@@ -1,15 +1,25 @@
 import { Link, Stack, router } from 'expo-router';
-import { useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { Fragment, useState, type ElementType } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../core/formats';
 import { isPhil } from '../core/variant';
 import { venueOf } from '../core/venues';
 import { formatDay, formatPrice, plantDisplayName } from '../core/text';
 import { useLeftovers, useStore } from '../lib/store';
-import { Button, Note, Panel, Row, Screen, Thumb, colors } from '../ui/kit';
+import { EmptyState } from '../ui/EmptyState';
+import { Button, Note, Panel, Row, Screen, T, Thumb, colors } from '../ui/kit';
+import { BrandBand, PlantRow } from '../ui/phil';
 import { SealHint } from '../ui/PreviewBanner';
+import { ACCENT } from '../ui/theme';
+import { PHIL_SHADOW } from '../ui/styleDefs';
+
+const NO_PLANTS_YET = 'No plants yet. Add your first plant and it will live here.';
 
 export default function Home() {
+  const phil = T.name === 'phil';
+  // The closed test build has no wrapper at all, so its screen is built exactly as it was.
+  const Wrap: ElementType = phil ? View : Fragment;
   const store = useStore();
   const { profile, plants, sales } = store;
   const leftovers = useLeftovers();
@@ -55,18 +65,21 @@ export default function Home() {
 
   return (
     <>
+      {phil ? <StatusBar style="light" /> : null}
       <Stack.Screen
         options={{
+          // The Phil build's brand band sits right under the bar, so the bar joins it: same green, no title of its own.
+          ...(phil ? { title: '', headerStyle: { backgroundColor: ACCENT.deep }, headerTintColor: ACCENT.cream } : {}),
           headerRight: () => (
             <Row style={{ gap: 4 }}>
               <Link href="/sales" asChild>
                 <Pressable accessibilityRole="button" style={{ padding: 8 }}>
-                  <Text style={{ color: colors.moss, fontWeight: '600', fontSize: 15 }}>Sales</Text>
+                  <Text style={{ color: phil ? ACCENT.cream : colors.moss, fontWeight: '600', fontSize: 15 }}>Sales</Text>
                 </Pressable>
               </Link>
               <Link href="/profile" asChild>
                 <Pressable accessibilityRole="button" style={{ padding: 8 }}>
-                  <Text style={{ color: colors.moss, fontWeight: '600', fontSize: 15 }}>Profile</Text>
+                  <Text style={{ color: phil ? ACCENT.cream : colors.moss, fontWeight: '600', fontSize: 15 }}>Profile</Text>
                 </Pressable>
               </Link>
             </Row>
@@ -74,9 +87,12 @@ export default function Home() {
         }}
       />
       <Screen footer={footer}>
+        {phil ? <BrandBand style={{ marginHorizontal: -16, marginTop: -16 }} /> : null}
+        {/* In the Phil build the first card is pulled up over the band's bottom edge. */}
+        <Wrap {...(phil ? { style: { marginTop: -12 } } : {})}>
         {!profile ? (
           <Panel style={{ backgroundColor: colors.mossTint, borderColor: colors.mossTint }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink, marginBottom: 6 }}>Welcome</Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink, marginBottom: 6, ...(T.display ? { fontFamily: T.display, fontWeight: 'normal' as const } : {}) }}>Welcome</Text>
             <Note>
               Save your seller details once. Every card you make pulls them in, so you never type your shipping
               or payment terms again.
@@ -104,12 +120,15 @@ export default function Home() {
                 key={s.id}
                 accessibilityRole="button"
                 onPress={() => router.push(`/sale/${s.id}`)}
-                style={{
-                  backgroundColor: colors.mossTint,
-                  borderRadius: 12,
-                  padding: 12,
-                  marginBottom: 8,
-                }}
+                style={[
+                  {
+                    backgroundColor: colors.mossTint,
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 8,
+                  },
+                  phil ? { borderRadius: 16, padding: 14, marginBottom: 12, ...PHIL_SHADOW.raised } : null,
+                ]}
               >
                 <Text style={{ fontWeight: '700', color: colors.ink, fontSize: 15 }}>
                   {s.kind === 'auction' ? 'Grower Showcase auction' : 'Grower Showcase'}, {s.lots.length} lots
@@ -130,15 +149,42 @@ export default function Home() {
           />
         ) : null}
 
-        {picking ? <Note>Tap plants in the order you want the lots numbered.</Note> : null}
+        {picking ? (
+          phil ? (
+            <Panel>
+              <Note>Tap plants in the order you want the lots numbered.</Note>
+            </Panel>
+          ) : (
+            <Note>Tap plants in the order you want the lots numbered.</Note>
+          )
+        ) : null}
 
         {profile && !plants.length ? (
-          <Note>No plants yet. Add one with a photo and a price, and the card is ready right away.</Note>
+          phil ? (
+            <Panel>
+              <EmptyState line={NO_PLANTS_YET} />
+            </Panel>
+          ) : (
+            <Note>No plants yet. Add one with a photo and a price, and the card is ready right away.</Note>
+          )
         ) : null}
 
         {ordered.map((p) => {
           const index = picked.indexOf(p.id);
           const on = index >= 0;
+          if (phil) {
+            return (
+              <PlantRow
+                key={p.id}
+                plant={p}
+                picking={picking}
+                on={on}
+                index={index}
+                thumb={<Thumb uri={p.photoUri} size={72} />}
+                onPress={() => (picking ? toggle(p.id) : router.push(`/plant/${p.id}`))}
+              />
+            );
+          }
           return (
             <Pressable
               key={p.id}
@@ -188,6 +234,7 @@ export default function Home() {
             </Pressable>
           );
         })}
+        </Wrap>
       </Screen>
     </>
   );

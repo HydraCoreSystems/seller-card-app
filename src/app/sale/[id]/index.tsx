@@ -15,7 +15,8 @@ import { CONTACT_HOURS, resolveProfile, venueOf } from '../../../core/venues';
 import { CardImageButton } from '../../../ui/CardImageButton';
 import { saveToGallery } from '../../../lib/stampPhoto';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
-import { Button, CardText, Choice, Field, H, Note, Row, Screen, Thumb, colors } from '../../../ui/kit';
+import { Button, CardText, Choice, Field, H, Note, Row, Screen, T, Thumb, colors } from '../../../ui/kit';
+import { PHIL_SHADOW } from '../../../ui/styleDefs';
 import { getStamped } from '../../../ui/StampedPhoto';
 import { WhenPicker, isComplete } from '../../../ui/WhenPicker';
 
@@ -113,17 +114,21 @@ export default function SaleScreen() {
               key={lot.number}
               accessibilityRole="button"
               onPress={() => router.push({ pathname: '/sale/[id]/post', params: { id: sale.id, lot: String(lot.number) } })}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                padding: 10,
-                borderRadius: 12,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.line,
-                marginBottom: 8,
-              }}
+              style={[
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 10,
+                  borderRadius: 12,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  marginBottom: 8,
+                },
+                // The Phil build's lot rows are raised cards, with no outline.
+                T.name === 'phil' ? { borderRadius: 16, padding: 12, borderWidth: 0, marginBottom: 12, ...PHIL_SHADOW.raised } : null,
+              ]}
             >
               <Thumb uri={lot.photoUri} size={48} />
               <View style={{ flex: 1 }}>
