@@ -9,7 +9,7 @@ import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
 import { fillFromZip, type Place } from '../core/zip';
 import type { FormatId, Profile, Venue } from '../core/types';
-import { CONTACT_HOURS, defaultVenue, emptyVenue, venuesOf, withVenues } from '../core/venues';
+import { CONTACT_HOURS, ROOM_PRESETS, applyRoomPreset, defaultVenue, emptyVenue, venuesOf, withVenues } from '../core/venues';
 import { EMPTY_PROFILE, newId, useStore } from '../lib/store';
 import { Button, Checkboxes, Choice, Field, H, Note, Panel, Row, Screen, colors } from '../ui/kit';
 import { FormSetup } from '../ui/FormSetup';
@@ -42,6 +42,12 @@ export default function ProfilePhil() {
     const id = newId();
     setVenues((all) => [...all, emptyVenue(id, '')]);
     setEditingId(id);
+  };
+  // Preset buttons: one tap selects the room if it exists, or makes it.
+  const pickPreset = (preset: (typeof ROOM_PRESETS)[number]) => {
+    const next = applyRoomPreset(venues, preset, newId);
+    setVenues(next.venues);
+    setEditingId(next.id);
   };
   const removeRoom = () => {
     const rest = venues.filter((v) => v.id !== room.id);
@@ -104,6 +110,11 @@ export default function ProfilePhil() {
         options={venues.map((v, i) => ({ value: v.id, label: (v.name.trim() || `Room ${i + 1}`) + (v.id === defaultId ? ' (main)' : '') }))}
         onChange={setEditingId}
       />
+      <Row style={{ marginBottom: 12 }}>
+        {ROOM_PRESETS.map((preset) => (
+          <Button key={preset.key} kind="secondary" title={preset.name} onPress={() => pickPreset(preset)} style={{ flex: 1 }} />
+        ))}
+      </Row>
       <Panel>
         <Field label="Room name" value={room.name} onChangeText={setRoom('name')} placeholder="The group’s name, the way you’d say it" hint="Type whatever the room is called today. It prints on your stamped photo circle." />
         <Choice<FormatId>

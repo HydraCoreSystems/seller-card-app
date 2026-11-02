@@ -6,7 +6,7 @@ import { numberLots } from '../src/core/sale';
 import type { Shape } from '../src/core/seal';
 import { DASH_PATTERN } from '../src/core/text';
 import type { Plant, Profile, Sale, Venue } from '../src/core/types';
-import { emptyVenue, legacyVenue, locationText, markerNumber, profileForVenue, resolveProfile, venuesOf, withVenues } from '../src/core/venues';
+import { ROOM_PRESETS, applyRoomPreset, emptyVenue, legacyVenue, locationText, markerNumber, profileForVenue, resolveProfile, venuesOf, withVenues } from '../src/core/venues';
 
 // These cover what the Phil test version adds, so they run in that build.
 process.env.EXPO_PUBLIC_APP_VARIANT = 'phil';
@@ -152,5 +152,38 @@ describe('the circle marker', () => {
   it('keeps the existing stamp wording for a numbered room', () => {
     expect(stampFor(profileForVenue(profile, marketRoom), '2026-11-01').main).toBe('Gathering Moss  ·  Seller #48  ·  November 1, 2026');
     expect(stampFor(profileForVenue(profile, commonsRoom), '2026-11-01').main).toContain('Commons Verified Grower No. 001');
+  });
+});
+
+describe('room presets', () => {
+  let n = 0;
+  const mint = () => `new-${++n}`;
+  const find = (key: string) => ROOM_PRESETS.find((p) => p.key === key)!;
+
+  it('puts US Hoya Market right after The Commons', () => {
+    expect(ROOM_PRESETS.map((p) => p.name)).toEqual(['The Commons', 'US Hoya Market']);
+  });
+
+  it('makes the room once, with empty lines of its own, and selects it after that', () => {
+    const first = applyRoomPreset([emptyVenue('a', 'My main room')], find('us-hoya-market'), mint);
+    expect(first.venues).toHaveLength(2);
+    const room = first.venues.find((v) => v.id === first.id)!;
+    expect(room).toMatchObject({ name: 'US Hoya Market', formatId: 'generic', number: '', shipping: '', payment: '', claimRules: '' });
+    const again = applyRoomPreset(first.venues, find('us-hoya-market'), mint);
+    expect(again.venues).toHaveLength(2);
+    expect(again.id).toBe(first.id);
+  });
+
+  it('finds a room by name however it is spaced or cased', () => {
+    const have = [emptyVenue('a', '  us  HOYA market ')];
+    const out = applyRoomPreset(have, find('us-hoya-market'), mint);
+    expect(out.venues).toHaveLength(1);
+    expect(out.id).toBe('a');
+  });
+
+  it('the Commons button finds a room already on Commons wording', () => {
+    const have = [emptyVenue('a', 'My Commons room', 'commons')];
+    expect(applyRoomPreset(have, find('commons'), mint).id).toBe('a');
+    expect(applyRoomPreset([emptyVenue('b', 'Other')], find('commons'), mint).venues).toHaveLength(2);
   });
 });

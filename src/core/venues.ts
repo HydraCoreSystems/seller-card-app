@@ -152,3 +152,25 @@ export function locationText(profile: Pick<Profile, 'city' | 'zip'> & { state?: 
   const place = city && state ? `${city}, ${state}` : city;
   return [place, !city ? state : '', zip].filter(Boolean).join(' ');
 }
+
+/** A room Phil sells in often enough to earn a button. Tapping it makes the room, or finds the one he already has. */
+export type RoomPreset = { key: string; name: string; formatId: FormatId };
+
+export const ROOM_PRESETS: RoomPreset[] = [
+  { key: 'commons', name: 'The Commons', formatId: 'commons' },
+  { key: 'us-hoya-market', name: 'US Hoya Market', formatId: 'generic' },
+];
+
+const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * The room a preset button lands on. An existing room wins, so a button never makes a duplicate: the
+ * Commons button also finds a room already set to Commons wording, and any preset finds its own name.
+ * Otherwise a fresh room is added with the preset's name and wording, and every other line empty.
+ */
+export function applyRoomPreset(venues: Venue[], preset: RoomPreset, newId: () => string): { venues: Venue[]; id: string } {
+  const found = venues.find((v) => norm(v.name) === norm(preset.name) || (preset.key === 'commons' && v.formatId === 'commons'));
+  if (found) return { venues, id: found.id };
+  const id = newId();
+  return { venues: [...venues, emptyVenue(id, preset.name, preset.formatId)], id };
+}
