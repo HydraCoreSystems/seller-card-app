@@ -1,14 +1,17 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { flatShipping } from '../core/chase';
 import { hasUncountedShipping, periodOf, seasonCsv, seasonTotals, type PeriodTotals, type Span } from '../core/season';
+import { keptWords, profitPeriods, type PeriodMoney } from '../core/profit';
+import { PROFIT_COUNTED, PROFIT_TEASER } from '../core/profitCopy';
 import { formatPrice, toDay } from '../core/text';
 import { shareTextFile } from '../lib/exportFile';
 import { useStore } from '../lib/store';
 import { Button, Choice, Note, Panel, Screen, colors } from '../ui/kit';
 
 export default function TotalsScreen() {
-  const { records, sales, profile } = useStore();
+  const { records, sales, profile, plants, pro } = useStore();
   const [span, setSpan] = useState<Span>('month');
   const fallback = flatShipping(profile?.shipping ?? '');
   const today = toDay(new Date());
@@ -18,6 +21,9 @@ export default function TotalsScreen() {
   const now = periodOf(today, span);
   const current = periods.find((p) => p.key === now.key) ?? { ...now, plants: 0, gross: 0, shipping: 0, unpaid: 0 };
   const earlier = periods.filter((p) => p.key !== now.key);
+
+  const money = pro ? profitPeriods(records, sales, plants, span) : [];
+  const moneyFor = (key: string) => money.find((m) => m.key === key);
 
   const exportYear = (y: string) => shareTextFile(`season_${y}.csv`, seasonCsv(records, sales, y, fallback), 'text/csv');
 
@@ -33,10 +39,18 @@ export default function TotalsScreen() {
         onChange={setSpan}
       />
       <View style={{ height: 12 }} />
-      <PeriodPanel period={current} big />
+      <PeriodPanel period={current} money={moneyFor(current.key)} big />
       {earlier.map((p) => (
-        <PeriodPanel key={p.key} period={p} onExport={span === 'season' ? () => exportYear(p.key) : undefined} />
+        <PeriodPanel key={p.key} period={p} money={moneyFor(p.key)} onExport={span === 'season' ? () => exportYear(p.key) : undefined} />
       ))}
+      {pro ? (
+        <Note>{PROFIT_COUNTED}</Note>
+      ) : (
+        <Panel>
+          <Note>{PROFIT_TEASER}</Note>
+          <Button kind="secondary" title="See Skrybix Pro" onPress={() => router.push('/paywall')} />
+        </Panel>
+      )}
       {!records.length ? <Note>Nothing sold yet. Totals fill in as your showcases close.</Note> : null}
       {hasUncountedShipping(records, sales) ? (
         <Note>Showcases with tiered shipping don’t add to shipping collected, since the app can’t know what each buyer paid.</Note>
@@ -46,7 +60,7 @@ export default function TotalsScreen() {
   );
 }
 
-function PeriodPanel({ period, big, onExport }: { period: PeriodTotals; big?: boolean; onExport?: () => void }) {
+function PeriodPanel({ period, money, big, onExport }: { period: PeriodTotals; money?: PeriodMoney; big?: boolean; onExport?: () => void }) {
   const figures: [string, string][] = [
     ['Plants sold', String(period.plants)],
     ['Gross taken', formatPrice(period.gross) || '$0'],
@@ -66,6 +80,16 @@ function PeriodPanel({ period, big, onExport }: { period: PeriodTotals; big?: bo
           </View>
         ))}
       </View>
+      {money ? (
+        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.mossTint, paddingTop: 8, marginTop: 2 }}>
+          {([['Taken in', money.takenIn], ['Costs', money.costs], [keptWords(money), money.kept]] as [string, number][]).map(([label, value]) => (
+            <View key={label} style={{ flex: 1 }}>
+              <Text style={{ color: colors.ink, fontSize: big ? 18 : 15, fontWeight: '700' }}>{formatPrice(value) || '$0'}</Text>
+              <Text style={{ color: colors.soft, fontSize: 13 }}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       {onExport ? <Button kind="quiet" title="Export this season" onPress={onExport} /> : null}
     </Panel>
   );

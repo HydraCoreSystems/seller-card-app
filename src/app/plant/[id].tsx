@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { getFormat } from '../../core/formats';
 import { droppedPhotos, photoFields, photosOf } from '../../core/photos';
 import { lastSold, priceMemoryLine } from '../../core/records';
-import { toDay } from '../../core/text';
+import { COST_HINT } from '../../core/profitCopy';
+import { parsePrice, toDay } from '../../core/text';
 import type { Plant, SaleKind } from '../../core/types';
 import { deletePhoto } from '../../lib/photos';
 import { newId, useStore } from '../../lib/store';
-import { Button, CardText, Choice, H, Note, Screen } from '../../ui/kit';
+import { Button, CardText, Choice, Field, H, Note, Screen } from '../../ui/kit';
 import { PlantFields, draftPrice, priceText, type PlantDraft } from '../../ui/PlantFields';
 import { StampedPhotos } from '../../ui/StampedPhoto';
 import { CardImageButton } from '../../ui/CardImageButton';
@@ -21,6 +22,7 @@ export default function PlantScreen() {
   const isNew = !existing;
 
   const [editing, setEditing] = useState(isNew);
+  const [costText, setCostText] = useState(existing?.cost != null ? String(existing.cost) : '');
   const [kind, setKind] = useState<SaleKind>(existing?.kind ?? 'sale');
   const [draft, setDraft] = useState<PlantDraft>({
     name: existing?.name ?? '',
@@ -46,6 +48,8 @@ export default function PlantScreen() {
       name: draft.name.trim(),
       noid: draft.noid,
       price: draftPrice(draft),
+      // Only Pro sees the field, so a plant saved without it keeps whatever cost it had.
+      cost: store.pro ? parsePrice(costText) : (existing?.cost ?? null),
       kind,
       photoUri: photos.photoUri,
       photoUris: photos.photoUris,
@@ -108,6 +112,7 @@ export default function PlantScreen() {
           descriptionLabel="Notes"
           memory={memory ? priceMemoryLine(memory) : null}
         />
+        {store.pro ? <Field label="What it cost you" value={costText} onChangeText={setCostText} placeholder="4" keyboardType="decimal-pad" hint={COST_HINT} /> : null}
         {isPhil() && draft.photoUris.length && room ? (
           <>
             <H>{draft.photoUris.length === 1 ? 'Your stamped photo' : 'Your stamped photos'}</H>

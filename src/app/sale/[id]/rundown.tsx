@@ -540,6 +540,7 @@ function ProPanel({
       <Row style={{ marginTop: 8 }}>
         <Button title="Checkout form" onPress={() => router.push({ pathname: '/sale/[id]/checkout', params: { id: saleId } })} style={{ flex: 1 }} />
         <Button kind="secondary" title="Packing" onPress={() => router.push({ pathname: '/sale/[id]/packing', params: { id: saleId } })} style={{ flex: 1 }} />
+        <Button kind="secondary" title="Money" onPress={() => router.push({ pathname: '/sale/[id]/money', params: { id: saleId } })} style={{ flex: 1 }} />
       </Row>
     </Panel>
   );

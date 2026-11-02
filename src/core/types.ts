@@ -92,6 +92,8 @@ export interface Plant {
   noid: boolean;
   /** Price, or the opening price for an auction. Null when not set yet. */
   price: number | null;
+  /** What the plant cost the seller, when they choose to note it. Pro. */
+  cost?: number | null;
   kind: SaleKind;
   /** App copy of the first photo. The seller's original is never touched. */
   photoUri: string | null;
@@ -132,6 +134,10 @@ export interface Sale {
   contactHours?: number;
   /** Responses imported from the seller's own checkout sheet. Pro. */
   checkout?: CheckoutImport;
+  /** What shipping cost the seller for the whole sale, when entered. Pro. */
+  shippingCost?: number | null;
+  /** One other cost for the whole sale, like boxes or fees, when entered. Pro. */
+  otherCosts?: number | null;
   /** Per buyer packing and shipping marks, keyed by buyerKey. Pro. */
   fulfillment?: Record<string, Fulfillment>;
   /** Other rooms or sites where the same plants are listed. */
