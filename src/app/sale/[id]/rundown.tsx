@@ -28,6 +28,7 @@ import { sharePdf } from '../../../lib/exportPdf';
 import { useLeftovers, useNow, useSale, useStore } from '../../../lib/store';
 import { useCheckout } from '../../../lib/useCheckout';
 import { ProExplainer } from '../../../ui/ProExplainer';
+import { useSizeClass } from '../../../ui/layout';
 import { Button, Choice, H, Note, Panel, Row, Screen, T, colors, styles, useCopy } from '../../../ui/kit';
 import { DeadlineChip, StageChip } from '../../../ui/phil';
 
@@ -36,6 +37,8 @@ export default function RundownScreen() {
   const store = useStore();
   const sale = useSale(id);
   const [status, setStatus] = useState<string | null>(null);
+  const [pick, setPick] = useState<string | null>(null);
+  const regular = useSizeClass() === 'regular';
   const leftovers = useLeftovers().filter((l) => l.saleId === id);
   const now = useNow();
   const window = windowMs(store.profile);
@@ -85,16 +88,28 @@ export default function RundownScreen() {
     save();
   };
 
-  return (
-    <Screen
-      footer={
-        <Button
-          title={status ?? (sale.closedAt ? 'Save the Sales Record' : 'Close the showcase and save the record')}
-          disabled={status === 'Making the record'}
-          onPress={sale.closedAt ? save : close}
-        />
+  const waitingNames = new Set(waiting.map((b) => b.name));
+  const chosen = rundown.buyers.find((b) => b.name === pick) ?? waiting[0] ?? rundown.buyers[0];
+  const detail = chosen ? (
+    <BuyerCard
+      key={chosen.name}
+      buyer={chosen}
+      saleId={sale.id}
+      closed={!!sale.closedAt}
+      row={pro && sale.closedAt ? rowOf(chosen.name) : undefined}
+      invoice={sale.closedAt ? invoiceFor(chosen.name) : undefined}
+      reminder={
+        sale.closedAt && waitingNames.has(chosen.name)
+          ? reminderMessage(chosen, pro && rowOf(chosen.name) ? profileForReminder(rowOf(chosen.name)!, profile) : profile, rundown.day, payBy && payBy > now ? payBy : null)
+          : undefined
       }
-    >
+    />
+  ) : (
+    <Note>{sale.closedAt ? 'No winners on this showcase.' : 'No winners yet.'}</Note>
+  );
+
+  const notices = (
+    <>
       {!sale.claimText?.trim() ? (
         <Note tone="warn">Paste the comment thread in Claims first, so the rundown knows who won.</Note>
       ) : null}
@@ -113,6 +128,10 @@ export default function RundownScreen() {
         />
       ) : null}
 
+    </>
+  );
+  const top = (
+    <>
       <Panel>
         <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink }}>
           {rundown.lotsClaimed} of {rundown.lotsOffered} lots claimed
@@ -155,6 +174,10 @@ export default function RundownScreen() {
         </View>
       ) : null}
 
+    </>
+  );
+  const chancesNode = (
+    <>
       {chances.length ? (
         <>
           <H>Second chance</H>
@@ -178,6 +201,10 @@ export default function RundownScreen() {
         </>
       ) : null}
 
+    </>
+  );
+  const buyersNode = (
+    <>
       {!sale.closedAt ? (
         <>
           <H>Buyers</H>
@@ -216,11 +243,19 @@ export default function RundownScreen() {
         </>
       )}
 
+    </>
+  );
+  const lotsNode = (
+    <>
       <H>Winners by lot</H>
       {rundown.lots.map((l) => (
         <LotLine key={l.number} lot={l} />
       ))}
 
+    </>
+  );
+  const questionsNode = (
+    <>
       <H>Open buyer questions</H>
       {rundown.questions.length ? (
         rundown.questions.map((q, i) => (
@@ -238,6 +273,48 @@ export default function RundownScreen() {
       ) : (
         <Note>None.</Note>
       )}
+    </>
+  );
+  const footerNode = (
+    <Button
+      title={status ?? (sale.closedAt ? 'Save the Sales Record' : 'Close the showcase and save the record')}
+      disabled={status === 'Making the record'}
+      onPress={sale.closedAt ? save : close}
+    />
+  );
+
+  if (regular) {
+    // Open wide: the winners as a table on one side, and whoever is picked, with what to do about them, on the other.
+    return (
+      <Screen
+        footer={footerNode}
+        panes={[
+          <>
+            {notices}
+            {top}
+            <H>Winners</H>
+            <WinnersTable buyers={rundown.buyers} rows={rows} pro={pro && !!sale.closedAt} chosen={chosen?.name} onPick={setPick} />
+          </>,
+          <>
+            {detail}
+            {chancesNode}
+            <H>Winners by lot</H>
+            <LotsTable lots={rundown.lots} />
+            {questionsNode}
+          </>,
+        ]}
+      />
+    );
+  }
+
+  return (
+    <Screen footer={footerNode}>
+      {notices}
+      {top}
+      {chancesNode}
+      {buyersNode}
+      {lotsNode}
+      {questionsNode}
     </Screen>
   );
 }
@@ -568,5 +645,72 @@ function ProPanel({
         <Button kind="secondary" title="Money" onPress={() => router.push({ pathname: '/sale/[id]/money', params: { id: saleId } })} style={{ flex: 1 }} />
       </Row>
     </Panel>
+  );
+}
+
+const cell = { paddingVertical: 10, paddingHorizontal: 6 } as const;
+
+/** Every winner on one table: who, how many lots, what they owe, where they stand. The picked row opens beside it. */
+function WinnersTable({ buyers, rows, pro, chosen, onPick }: { buyers: RundownBuyer[]; rows: CheckoutRow[]; pro: boolean; chosen?: string; onPick: (name: string) => void }) {
+  if (!buyers.length) return <Note>No winners yet.</Note>;
+  const head = { color: colors.soft, fontSize: 12, fontWeight: '600' as const };
+  const state = (b: RundownBuyer) => {
+    const r = pro ? rows.find((x) => x.buyer === b.name) : undefined;
+    if (b.payment === 'never') return 'Never paid';
+    if (r) return r.stage === 'won' ? 'Won' : r.stage === 'contacted' ? 'Contacted' : r.stage === 'paid' ? 'Paid' : 'Shipped';
+    return b.payment === 'paid' ? 'Paid' : 'Waiting';
+  };
+  return (
+    <View accessibilityRole="table">
+      <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.line }}>
+        <Text style={[cell, head, { flex: 3 }]}>Buyer</Text>
+        <Text style={[cell, head, { flex: 1, textAlign: 'right' }]}>Lots</Text>
+        <Text style={[cell, head, { flex: 2, textAlign: 'right' }]}>Total</Text>
+        <Text style={[cell, head, { flex: 3, textAlign: 'right' }]}>Status</Text>
+      </View>
+      {buyers.map((b) => {
+        const row = pro ? rows.find((x) => x.buyer === b.name) : undefined;
+        const on = b.name === chosen;
+        return (
+          <Pressable
+            key={b.name}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            onPress={() => onPick(b.name)}
+            style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: colors.line, backgroundColor: on ? colors.mossTint : 'transparent' }}
+          >
+            <Text style={[cell, { flex: 3, color: colors.ink, fontWeight: '600' }]} numberOfLines={1}>{b.name}</Text>
+            <Text style={[cell, { flex: 1, textAlign: 'right', color: colors.soft }]}>{b.lots.length}</Text>
+            <Text style={[cell, { flex: 2, textAlign: 'right', color: colors.ink }]}>{formatPrice(row ? row.totalOwed : b.total) || '$0'}</Text>
+            <Text style={[cell, { flex: 3, textAlign: 'right', color: b.payment === 'never' ? colors.warn : colors.soft }]} numberOfLines={1}>{state(b)}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** The lots as a table: number, plant, price, and who has it. */
+function LotsTable({ lots }: { lots: RundownLot[] }) {
+  const head = { color: colors.soft, fontSize: 12, fontWeight: '600' as const };
+  return (
+    <View accessibilityRole="table">
+      <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.line }}>
+        <Text style={[cell, head, { width: 36 }]}>Lot</Text>
+        <Text style={[cell, head, { flex: 3 }]}>Plant</Text>
+        <Text style={[cell, head, { flex: 1, textAlign: 'right' }]}>Price</Text>
+        <Text style={[cell, head, { flex: 2, textAlign: 'right' }]}>Winner</Text>
+      </View>
+      {lots.map((l) => (
+        <View key={l.number} style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: colors.line }}>
+          <Text style={[cell, { width: 36, color: colors.soft }]}>{l.number}</Text>
+          <Text style={[cell, { flex: 3, color: colors.ink }]} numberOfLines={2}>{l.name}</Text>
+          <Text style={[cell, { flex: 1, textAlign: 'right', color: colors.soft }]}>{l.price !== null ? formatPrice(l.price) : ''}</Text>
+          <Text style={[cell, { flex: 2, textAlign: 'right', color: l.winner ? colors.moss : l.tie ? colors.warn : colors.soft }]} numberOfLines={2}>
+            {l.winner ?? (l.tie ? 'Tie' : 'Unclaimed')}
+          </Text>
+        </View>
+      ))}
+    </View>
   );
 }

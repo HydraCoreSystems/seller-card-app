@@ -1,4 +1,5 @@
 import { googleReady } from '../lib/googleAuth';
+import { Grid } from '../ui/layout';
 import { Link, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Fragment, useState, type ElementType } from 'react';
@@ -171,6 +172,7 @@ export default function Home() {
           )
         ) : null}
 
+        <Grid min={270}>
         {ordered.map((p) => {
           const index = picked.indexOf(p.id);
           const on = index >= 0;
@@ -236,6 +238,7 @@ export default function Home() {
             </Pressable>
           );
         })}
+        </Grid>
         </Wrap>
       </Screen>
     </>

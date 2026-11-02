@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { READABLE_WIDTH } from '../core/layout';
+import { useSizeClass } from './layout';
 import { buttonLook, styleDefs } from './styleDefs';
 import { theme } from './theme';
 
@@ -24,20 +26,40 @@ export const colors = T.colors;
 /** True inside the deep green action bars, where buttons switch to cream. */
 const OnBar = createContext(false);
 
-export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+/**
+ * One screen. On a compact width it is a single scrolling column. On a regular width, plain content
+ * is kept to a readable column, and a screen that has two things to show side by side passes them as
+ * `panes`: two equal panes that scroll on their own, with the gutter at the middle, so an open
+ * foldable's fold falls between them. On a compact width the same two things simply follow each other.
+ */
+export function Screen({ children, footer, panes }: { children?: ReactNode; footer?: ReactNode; panes?: [ReactNode, ReactNode] }) {
   // Android draws edge to edge, so keep buttons clear of the system navigation bar.
   const { bottom } = useSafeAreaInsets();
+  const regular = useSizeClass() === 'regular';
+  const scrollProps = {
+    keyboardShouldPersistTaps: 'handled' as const,
+    // Clears the fixed footer bar (which sits outside the scroll content, on top of
+    // the keyboard) so a focused field isn't hidden behind it either.
+    bottomOffset: footer ? 70 : 20,
+  };
+  const pad = [styles.screen, !footer && { paddingBottom: 40 + bottom }];
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <KeyboardAwareScrollView
-        contentContainerStyle={[styles.screen, !footer && { paddingBottom: 40 + bottom }]}
-        keyboardShouldPersistTaps="handled"
-        // Clears the fixed footer bar (which sits outside the scroll content, on top of
-        // the keyboard) so a focused field isn't hidden behind it either.
-        bottomOffset={footer ? 70 : 20}
-      >
-        {children}
-      </KeyboardAwareScrollView>
+      {panes && regular ? (
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          {panes.map((pane, i) => (
+            <KeyboardAwareScrollView key={i} style={{ flex: 1 }} contentContainerStyle={pad} {...scrollProps}>
+              {pane}
+            </KeyboardAwareScrollView>
+          ))}
+        </View>
+      ) : (
+        <KeyboardAwareScrollView contentContainerStyle={pad} {...scrollProps}>
+          <View style={regular ? { width: '100%', maxWidth: READABLE_WIDTH, alignSelf: 'center' } : undefined}>
+            {panes ?? children}
+          </View>
+        </KeyboardAwareScrollView>
+      )}
       {footer ? (
         <View style={[styles.footer, { paddingBottom: 12 + bottom }]}>
           <OnBar.Provider value={T.name === 'phil'}>{footer}</OnBar.Provider>
@@ -88,12 +110,15 @@ export function Button({
   kind = 'primary',
   disabled,
   style,
+  big,
 }: {
   title: string;
   onPress: () => void;
   kind?: 'primary' | 'secondary' | 'quiet' | 'danger';
   disabled?: boolean;
   style?: ViewStyle;
+  /** Larger, for a screen read from arm's length, like packing with the phone propped open. */
+  big?: boolean;
 }) {
   const onBar = useContext(OnBar);
   const [scale] = useState(() => new Animated.Value(1));
@@ -107,9 +132,9 @@ export function Button({
         onPressIn={() => animateTo(0.96)}
         onPressOut={() => animateTo(1)}
         disabled={disabled}
-        style={({ pressed }) => [styles.btn, buttonLook(T, kind, pressed, onBar).box, disabled && { opacity: 0.4 }]}
+        style={({ pressed }) => [styles.btn, buttonLook(T, kind, pressed, onBar).box, big && { paddingVertical: 20 }, disabled && { opacity: 0.4 }]}
       >
-        <Text style={[styles.btnText, buttonLook(T, kind, false, onBar).text]}>{title}</Text>
+        <Text style={[styles.btnText, buttonLook(T, kind, false, onBar).text, big && { fontSize: 20 }]}>{title}</Text>
       </Pressable>
     </Animated.View>
   );

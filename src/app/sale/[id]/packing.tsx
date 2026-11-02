@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useState } from 'react';
 import { Share, Text, TextInput, View } from 'react-native';
 import { addressLines, buildLabelFile, packingListHtml, packingRows, shippedMessage, type CheckoutRow } from '../../../core/checkout';
@@ -7,6 +8,7 @@ import { sharePdf } from '../../../lib/exportPdf';
 import { shareTextFile } from '../../../lib/exportFile';
 import { useSale, useStore } from '../../../lib/store';
 import { useCheckout } from '../../../lib/useCheckout';
+import { Grid, useSizeClass } from '../../../ui/layout';
 import { Button, H, Note, Panel, Row, Screen, colors, styles, useCopy } from '../../../ui/kit';
 import { ProExplainer } from '../../../ui/ProExplainer';
 
@@ -17,6 +19,9 @@ export default function PackingScreen() {
   const sale = useSale(id);
   const c = useCheckout(sale);
   const [status, setStatus] = useState<string | null>(null);
+  // Packing happens with the phone propped open and hands full of boxes, so the screen stays on.
+  useKeepAwake();
+  const big = useSizeClass() === 'regular';
 
   if (!sale || !c) return <Screen><Note>This showcase is gone.</Note></Screen>;
   if (!store.pro) return <Screen><ProExplainer /></Screen>;
@@ -53,7 +58,11 @@ export default function PackingScreen() {
       <Button title={status === 'Making the list' ? status : 'Print the packing list'} disabled={!toPack.length || !!status} onPress={print} />
 
       <H>To pack ({toPack.length})</H>
-      {toPack.length ? toPack.map((r) => <PackCard key={r.key} row={r} saleId={sale.id} />) : <Note>Nobody is ready to pack yet.</Note>}
+      {toPack.length ? (
+        <Grid min={290}>{toPack.map((r) => <PackCard key={r.key} row={r} saleId={sale.id} big={big} />)}</Grid>
+      ) : (
+        <Note>Nobody is ready to pack yet.</Note>
+      )}
 
       <H>Label file for Pirate Ship</H>
       <Note>
@@ -88,7 +97,7 @@ export default function PackingScreen() {
   );
 }
 
-function PackCard({ row, saleId }: { row: CheckoutRow; saleId: string }) {
+function PackCard({ row, saleId, big }: { row: CheckoutRow; saleId: string; big?: boolean }) {
   const store = useStore();
   const [copied, copy] = useCopy();
   const [tracking, setTracking] = useState(row.tracking);
@@ -99,11 +108,11 @@ function PackCard({ row, saleId }: { row: CheckoutRow; saleId: string }) {
   return (
     <Panel>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ fontWeight: '700', color: colors.ink, flex: 1 }}>{row.buyer}</Text>
-        <Text style={{ color: colors.soft }}>{row.pickup ? 'Local pickup' : row.shipped ? 'Shipped' : row.packed ? 'Packed' : 'To pack'}</Text>
+        <Text style={{ fontWeight: '700', color: colors.ink, flex: 1, fontSize: big ? 22 : 16 }}>{row.buyer}</Text>
+        <Text style={{ color: colors.soft, fontSize: big ? 16 : 14 }}>{row.pickup ? 'Local pickup' : row.shipped ? 'Shipped' : row.packed ? 'Packed' : 'To pack'}</Text>
       </View>
       {row.lots.map((l) => (
-        <Text key={l.number} style={{ color: colors.ink }}>
+        <Text key={l.number} style={{ color: colors.ink, fontSize: big ? 18 : 15 }}>
           Lot {l.number}, {l.name}
           {l.price !== null ? `, ${formatPrice(l.price)}` : ''}
         </Text>
@@ -111,7 +120,7 @@ function PackCard({ row, saleId }: { row: CheckoutRow; saleId: string }) {
       {!row.pickup && address.length ? (
         <View style={{ marginTop: 6 }}>
           {address.map((line, i) => (
-            <Text key={i} selectable style={{ color: colors.ink }}>{line}</Text>
+            <Text key={i} selectable style={{ color: colors.ink, fontSize: big ? 18 : 15 }}>{line}</Text>
           ))}
         </View>
       ) : null}
@@ -122,6 +131,7 @@ function PackCard({ row, saleId }: { row: CheckoutRow; saleId: string }) {
           kind={row.packed ? 'secondary' : 'primary'}
           title={row.packed ? 'Packed ✓' : 'Mark packed'}
           onPress={() => store.setFulfillment(saleId, row.key, { packed: !row.packed })}
+          big={big}
           style={{ flex: 1 }}
         />
       </Row>
@@ -159,6 +169,7 @@ function PackCard({ row, saleId }: { row: CheckoutRow; saleId: string }) {
           kind={row.shipped ? 'secondary' : 'primary'}
           title={row.shipped ? 'Shipped ✓' : row.pickup ? 'Mark handed over' : 'Mark shipped'}
           onPress={() => store.setFulfillment(saleId, row.key, { shipped: !row.shipped, tracking: tracking.trim() })}
+          big={big}
           style={{ flex: 1 }}
         />
       </Row>

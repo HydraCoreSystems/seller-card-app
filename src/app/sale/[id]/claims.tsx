@@ -8,12 +8,14 @@ import { formatPrice, plantDisplayName, toDay } from '../../../core/text';
 import type { Lot } from '../../../core/types';
 import { readClaims } from '../../../core/claimReport';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
+import { useSizeClass } from '../../../ui/layout';
 import { Button, H, Note, Panel, Row, Screen, colors, styles } from '../../../ui/kit';
 
 export default function ClaimsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStore();
   const sale = useSale(id);
+  const regular = useSizeClass() === 'regular';
   const [text, setText] = useState(sale?.claimText ?? '');
   const [shown, setShown] = useState(sale?.claimText ?? '');
 
@@ -51,14 +53,8 @@ export default function ClaimsScreen() {
     store.saveSale({ ...sale, claimText: text });
   };
 
-  return (
-    <Screen
-      footer={
-        report ? (
-          <Button title="After the showcase" onPress={() => router.push(`/sale/${sale.id}/rundown`)} />
-        ) : undefined
-      }
-    >
+  const thread = (
+    <>
       <Note>
         Open your Grower Showcase post, copy all the comments, and paste them here. Claims come back in thread order, lot by lot.
       </Note>
@@ -69,13 +65,18 @@ export default function ClaimsScreen() {
         placeholder="Paste the comment thread"
         placeholderTextColor="#9AA39A"
         accessibilityLabel="Comment thread"
-        style={[styles.input, { ...(isRead ? { height: 96 } : { minHeight: 140, maxHeight: 260 }), textAlignVertical: 'top', marginBottom: 10 }]}
+        // Side by side, the thread keeps its whole height. Alone, it folds down once read so the claims stay in reach.
+        style={[styles.input, { ...(regular ? { minHeight: 420 } : isRead ? { height: 96 } : { minHeight: 140, maxHeight: 260 }), textAlignVertical: 'top', marginBottom: 10 }]}
       />
       <Row style={{ marginBottom: 16 }}>
         <Button title="Read claims" disabled={!text.trim()} onPress={read} style={{ flex: 2 }} />
         <Button kind="secondary" title="Clear" onPress={() => { setText(''); setShown(''); }} style={{ flex: 1 }} />
       </Row>
+    </>
+  );
 
+  const results = (
+    <>
       {report && !report.lots.length && !report.unplaced.length ? (
         <Note tone="warn">No claims found in that paste. Check that the whole thread was copied.</Note>
       ) : null}
@@ -147,7 +148,14 @@ export default function ClaimsScreen() {
           ))}
         </>
       ) : null}
-    </Screen>
+    </>
+  );
+
+  return (
+    <Screen
+      footer={report ? <Button title="After the showcase" onPress={() => router.push(`/sale/${sale.id}/rundown`)} /> : undefined}
+      panes={[thread, results]}
+    />
   );
 }
 

@@ -15,6 +15,7 @@ import { CONTACT_HOURS, resolveProfile, venueOf } from '../../../core/venues';
 import { CardImageButton } from '../../../ui/CardImageButton';
 import { saveToGallery } from '../../../lib/stampPhoto';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
+import { Grid } from '../../../ui/layout';
 import { Button, CardText, Choice, Field, H, Note, Row, Screen, T, Thumb, colors } from '../../../ui/kit';
 import { PHIL_SHADOW } from '../../../ui/styleDefs';
 import { getStamped } from '../../../ui/StampedPhoto';
@@ -106,6 +107,7 @@ export default function SaleScreen() {
             style={{ marginBottom: 12 }}
           />
         ) : null}
+        <Grid min={250}>
         {sale.lots.map((lot) => {
           const record = lotRecorded(store.records, sale.id, lot);
           const memory = record ? null : lastSold(store.records, lot.name, lot.noid, sale.id);
@@ -147,6 +149,7 @@ export default function SaleScreen() {
             </Pressable>
           );
         })}
+        </Grid>
         {!sale.lots.length ? <Note>No lots yet. Add one with a photo, a name and a price.</Note> : null}
         {sale.lots.length ? (
           <Button
