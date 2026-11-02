@@ -42,6 +42,7 @@
       "expo-router",
       "expo-sqlite",
       "expo-sharing",
+      "expo-iap",
       [
         "expo-image-picker",
         {

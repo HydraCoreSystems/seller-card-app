@@ -10,13 +10,14 @@ import { isPhil } from './variant';
 import { resolveProfile } from './venues';
 
 export function announcementFor(profile: Profile, sale: Sale, pro: boolean): string {
-  // The closed test build prints the announcement as it always did.
-  if (!isPhil()) return getFormat(sale.formatId).announcement({ profile, sale });
+  // Without the Phil build's rooms and Pro, the announcement prints as it always did.
+  if (!isPhil() && !pro) return getFormat(sale.formatId).announcement({ profile, sale });
   const room = resolveProfile(profile, sale);
   return getFormat(sale.formatId).announcement({
     profile: room,
     sale,
-    note: sale.note,
+    // The seller's per sale note belongs to the Phil build's Part Two. The store product adds only the Pro contact line.
+    note: isPhil() ? sale.note : undefined,
     contactLine: pro ? contactLine(sale, room) : null,
   });
 }

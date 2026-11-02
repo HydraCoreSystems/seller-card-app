@@ -22,3 +22,10 @@ export const SUGGESTIONS_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeqyTCB
  * "Make a copy" page. The setup always sends the seller here. There is no build it by hand route.
  */
 export const CHECKOUT_FORM_TEMPLATE_URL = 'https://docs.google.com/forms/d/1EsRdlHm6XPlchFB5IQdq4W9vTPNzuGH3LMaRjmP9zoE/copy';
+
+/**
+ * Where the privacy policy (public/privacy.html) is hosted. The paywall links to it, and App Review
+ * expects that link next to any subscription. Set this to the live address before the store build;
+ * while it is empty the paywall shows no Privacy link.
+ */
+export const PRIVACY_URL = '';

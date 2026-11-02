@@ -67,10 +67,16 @@ describe('the two builds', () => {
 
   it('closed test: the announcement carries no note, no deadline line and no location', () => {
     as(undefined);
-    const text = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), true);
+    const text = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), false);
     expect(text).not.toContain('A note from me');
     expect(text).not.toContain('Fort Wayne');
     expect(text).not.toMatch(/within 24 hours/);
+    // With Pro on in the store product, the only addition is the buyer contact line.
+    const pro = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), false);
+    expect(pro).toBe(text);
+    const paid = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), true);
+    expect(paid).not.toContain('A note from me');
+    expect(paid).toMatch(/within 24 hours/);
     as('phil');
     const phil = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), true);
     expect(phil).toContain('A note from me');

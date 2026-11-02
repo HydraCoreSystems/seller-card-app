@@ -11,6 +11,7 @@ import { toDay } from '../core/text';
 import type { CheckoutResponse, Fulfillment, Lot, Plant, Profile, Sale, SaleRecord, SaleTemplate } from '../core/types';
 import { resolveProfile, venuesOf, withVenues } from '../core/venues';
 import { isPhil } from '../core/variant';
+import { cachedPro, startIap } from './iap';
 import { loadJson, saveJson } from './storage';
 
 export const EMPTY_PROFILE: Profile = {
@@ -36,7 +37,7 @@ interface Data {
   leftoversDone: string[];
   /** Saved sale settings, for sellers with a standing way of opening a sale. */
   templates: SaleTemplate[];
-  /** True when the checkout chain is on. Test build one has no payment, so the seller switches it on. */
+  /** True when the checkout chain is on: always in the Phil build, and in the store product while a Pro subscription is active. Never saved here; the store is asked. */
   pro: boolean;
 }
 
@@ -78,7 +79,6 @@ interface Store extends Data {
   deleteRecord(id: string): void;
   saveTemplate(template: SaleTemplate): void;
   deleteTemplate(id: string): void;
-  setPro(on: boolean): void;
   /** Keeps the responses read from the seller's checkout sheet on the sale. Earlier hand pairings stay. */
   importCheckout(saleId: string, responses: CheckoutResponse[]): void;
   /** Pairs a response with a winner the seller picked, or clears the pairing. */
@@ -95,7 +95,6 @@ const KEYS = {
   buyerNotes: 'buyerNotes.v1',
   leftoversDone: 'leftoversDone.v1',
   templates: 'templates.v1',
-  pro: 'pro.v1',
 } as const;
 
 /** The plants behind some of a sale's lots, so a record can find its plant. */
@@ -129,8 +128,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     buyerNotes: loadJson<Record<string, string>>(KEYS.buyerNotes, {}),
     leftoversDone: loadJson<string[]>(KEYS.leftoversDone, []),
     templates: loadJson<SaleTemplate[]>(KEYS.templates, []),
-    // The Phil build has Pro unlocked, with no gate and no switch. The closed test build never has it.
-    pro: isPhil(),
+    // The Phil build has Pro unlocked, with no gate and no switch. The store product starts from the last
+    // paid answer it saw, so Pro stays on with no signal, and the store corrects it in a moment.
+    pro: isPhil() || cachedPro(),
   }));
   const last = useRef(data);
   // The seller's own data, set aside while the sample is open.
@@ -140,7 +140,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // The sample lives in memory only, so the phone always holds the seller's own data.
     if (!sample) {
-      for (const key of Object.keys(KEYS) as (keyof Data)[]) {
+      for (const key of Object.keys(KEYS) as (keyof typeof KEYS)[]) {
         if (data[key] !== last.current[key]) saveJson(KEYS[key], data[key]);
       }
     }
@@ -148,6 +148,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [data, sample]);
 
   const update = useCallback((fn: (d: Data) => Partial<Data>) => setData((d) => ({ ...d, ...fn(d) })), []);
+
+  // In the store product, Pro follows the Apple subscription. The Phil build never opens the store.
+  useEffect(() => {
+    if (isPhil()) return;
+    return startIap((on) => setData((d) => (d.pro === on ? d : { ...d, pro: on })));
+  }, []);
 
   const store = useMemo<Store>(
     () => ({
@@ -162,7 +168,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!ownData) return;
         // Marked as already saved, so leaving writes nothing.
         last.current = ownData;
-        setData(ownData);
+        setData({ ...ownData, pro: data.pro });
         setOwnData(null);
       },
       saveProfile: (profile) => update(() => ({ profile })),
@@ -288,7 +294,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : [...d.templates, template],
         })),
       deleteTemplate: (id) => update((d) => ({ templates: d.templates.filter((t) => t.id !== id) })),
-      setPro: (_on) => update(() => ({ pro: isPhil() })),
       importCheckout: (saleId, responses) =>
         update((d) => ({
           sales: d.sales.map((s) =>

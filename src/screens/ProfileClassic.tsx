@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking } from 'react-native';
+import { PRO_PRIVACY } from '../core/pro';
+import { CONTACT_HOURS } from '../core/venues';
 import { FORMAT_LIST } from '../core/formats';
 import { originLine, SUGGESTIONS_URL } from '../core/brand';
 import { VERIFIED_GROWER } from '../core/formats/commons';
@@ -8,7 +10,9 @@ import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
 import type { FormatId, Profile } from '../core/types';
 import { EMPTY_PROFILE, useStore } from '../lib/store';
-import { Button, Checkboxes, Choice, Field, H, Note, Screen } from '../ui/kit';
+import { FormSetup } from '../ui/FormSetup';
+import { Button, Checkboxes, Choice, Field, H, Note, Panel, Screen } from '../ui/kit';
+import { ProExplainer } from '../ui/ProExplainer';
 
 const ZONES = ['Eastern', 'Central', 'Mountain', 'Pacific', 'Alaska', 'Hawaii'];
 const DAY_OPTIONS = SHORT_DAYS.map((label, value) => ({ value, label }));
@@ -121,6 +125,31 @@ export default function ProfileClassic() {
           />
         </>
       ) : null}
+      <H>Checkout</H>
+      {store.pro ? (
+        <Panel>
+          <Choice
+            label="Buyers get in touch within"
+            value={String(p.contactHours ?? 24)}
+            options={CONTACT_HOURS.map((h) => ({ value: String(h), label: `${h} hours` }))}
+            onChange={(v) => set('contactHours')(Number(v))}
+          />
+          <Note>This prints in your announcement as a real clock time, counted from when the sale ends. You can change it for any one sale.</Note>
+          <Field
+            label="Default box weight, in ounces"
+            value={p.weightOz == null ? '' : String(p.weightOz)}
+            onChangeText={(t) => set('weightOz')(/^\d+(\.\d+)?$/.test(t.trim()) ? Number(t.trim()) : null)}
+            placeholder="12"
+            keyboardType="decimal-pad"
+            hint="Goes in your label file for any box you don't give its own weight."
+          />
+          <FormSetup link={p.formLink ?? ''} resetKey="profile" perRoom={false} onLink={set('formLink')} />
+          <Note>{PRO_PRIVACY}</Note>
+        </Panel>
+      ) : (
+        <ProExplainer />
+      )}
+
       <H>On every card</H>
       <Note>{originLine()}</Note>
       <H>Try it out</H>

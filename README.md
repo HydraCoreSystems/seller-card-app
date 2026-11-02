@@ -100,8 +100,16 @@ npm run start:phil      # run the Phil version
 EXPO_PUBLIC_APP_VARIANT=phil npx eas-cli@latest build --platform android   # a Phil build
 ```
 
-The paywall belongs to the shipping product later. Pro is a flag in the store that the Phil version holds
-on, so a real check can replace that one line when payment exists.
+### Pro and the paywall
+
+Pro is two Apple auto renewable subscriptions, `com.gatheringmoss.sellercard.pro.monthly` and
+`com.gatheringmoss.sellercard.pro.annual`, in one subscription group. The annual plan carries the seven
+day free trial, set as an introductory offer in App Store Connect. The app shows prices and the trial
+only from what the App Store reports. The library is `expo-iap` (pinned exactly), used only in
+`src/lib/iap.ts`, and only in the production build on iOS. `src/core/entitlement.ts` holds the logic that
+needs no phone. In the store, `pro` is on while a Pro subscription is active, and the last paid answer
+is remembered so Pro stays on with no signal. Anything locked sends the seller to `/paywall`. The Phil
+version holds `pro` on and never opens the store.
 
 House style for anything a member reads (app copy, card text, store text): plain words,
 contractions welcome, and no dashes of any kind. A test checks every format for dashes.

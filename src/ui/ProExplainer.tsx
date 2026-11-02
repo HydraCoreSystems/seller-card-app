@@ -1,19 +1,17 @@
 import { Text, View } from 'react-native';
-import { PRO_POINTS, PRO_PRIVACY, PRO_TEST_NOTE, PRO_TITLE } from '../core/pro';
-import { isPhil } from '../core/variant';
+import { router } from 'expo-router';
+import { PRO_POINTS, PRO_PRIVACY, PRO_TITLE } from '../core/pro';
 import { useStore } from '../lib/store';
-import { Button, Note, colors } from './kit';
+import { Button, colors } from './kit';
 
 /**
  * What a free seller sees where the checkout chain would be: the chain explained in plain words,
- * with nothing in it that looks broken or half working. In this test build there is no payment, so
- * the seller can switch the chain on to try it.
+ * with nothing in it that looks broken or half working, and a way to the paywall. The Phil build
+ * has Pro always on, so it never shows this.
  */
 export function ProExplainer({ compact = false }: { compact?: boolean }) {
   const store = useStore();
-  // The closed test build shows nothing new. The Phil build has Pro unlocked, so there is nothing to explain there.
-  // The explainer stays for the shipping product, where the paywall will gate Pro.
-  if (!isPhil() || store.pro) return null;
+  if (store.pro) return null;
   return (
     <View style={{ backgroundColor: colors.mossTint, borderRadius: 12, padding: 14, marginBottom: 14 }}>
       <Text style={{ fontWeight: '700', color: colors.ink, fontSize: 16, marginBottom: 6 }}>{PRO_TITLE}</Text>
@@ -23,9 +21,8 @@ export function ProExplainer({ compact = false }: { compact?: boolean }) {
           {'•'} {p}
         </Text>
       ))}
-      <Text style={{ color: colors.mossDark, fontWeight: '600', marginTop: 6 }}>{PRO_PRIVACY}</Text>
-      <Note>{PRO_TEST_NOTE}</Note>
-      <Button title="Turn on Pro to try it" onPress={() => store.setPro(true)} />
+      <Text style={{ color: colors.mossDark, fontWeight: '600', marginTop: 6, marginBottom: 8 }}>{PRO_PRIVACY}</Text>
+      <Button title="See Skrybix Pro" onPress={() => router.push('/paywall')} />
     </View>
   );
 }
