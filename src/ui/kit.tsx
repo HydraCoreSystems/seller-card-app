@@ -48,9 +48,11 @@ export function Screen({ children, footer, panes }: { children?: ReactNode; foot
       {panes && regular ? (
         <View style={{ flex: 1, flexDirection: 'row' }}>
           {panes.map((pane, i) => (
-            <KeyboardAwareScrollView key={i} style={{ flex: 1 }} contentContainerStyle={pad} {...scrollProps}>
-              {pane}
-            </KeyboardAwareScrollView>
+            <View key={i} style={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
+              <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={pad} {...scrollProps}>
+                {pane}
+              </KeyboardAwareScrollView>
+            </View>
           ))}
         </View>
       ) : (

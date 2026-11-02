@@ -1,0 +1,126 @@
+diff --git a/src/core/demo.ts b/src/core/demo.ts
+index c18e50c..27aa7ae 100644
+--- a/src/core/demo.ts
++++ b/src/core/demo.ts
+@@ -17,6 +17,8 @@ export interface SampleData {
+ }
+ 
+ export const SAMPLE_SELLER = 'Rowan Ellery';
++// SCREENSHOT HARNESS ONLY (scratch copy, never committed): the page address picks the demo data.
++const DATA = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('data') ?? '' : '';
+ export const SAMPLE_SALE_ID = 'sample-showcase';
+ 
+ const SAMPLE_PLANTS: [id: string, name: string, noid: boolean, price: number, notes: string, sold: boolean][] = [
+@@ -40,8 +42,10 @@ export function sampleThread(): string {
+     'Marcus Bell', 'Claim!!', '2d', 'Like', 'Reply',
+     'Theo Marsh', 'claim if Marcus passes', '2d', 'Like', 'Reply',
+     SAMPLE_SELLER, 'Author', 'Lot 3: Hoya NOID', '$12', 'Big fuzzy leaves, no tag', '2d', 'Like', 'Reply',
+-    'Priya Lund', 'so pretty, does it come potted?', '2d', 'Like', 'Reply',
++    'Priya Lund', DATA === 'rundown' ? 'claim' : 'so pretty, does it come potted?', '2d', 'Like', 'Reply',
+     SAMPLE_SELLER, 'Author', 'Lot 4: Dischidia ruscifolia', '$15', '4 inch pot, trailing', '2d', 'Like', 'Reply',
++    ...(DATA === 'tie' ? ['Priya Lund', 'claim', '3m', 'Like', 'Reply', 'Theo Marsh', 'claim', '3m', 'Like', 'Reply'] : []),
++    ...(DATA === 'rundown' ? ['Theo Marsh', 'claim', '2d', 'Like', 'Reply'] : []),
+   ].join('\n');
+ }
+ 
+@@ -57,6 +61,13 @@ export function sampleData(now = new Date()): SampleData {
+   const plants: Plant[] = SAMPLE_PLANTS.map(([id, name, noid, price, notes, sold]) => ({
+     id, name, noid, price, notes, sold, kind: 'sale', photoUri: null, createdAt: day(9),
+   }));
++  if (DATA === 'photos') {
++    plants[5].photoUri = '/shots/p1.jpg';
++    plants[5].photoUris = ['/shots/p1.jpg', '/shots/p2.jpg', '/shots/p3.jpg'];
++    plants[1].photoUri = '/shots/p2.jpg';
++    plants[2].photoUri = '/shots/p3.jpg';
++    plants[3].photoUri = '/shots/p1.jpg';
++  }
+   const lots = plants.slice(0, 4).map((p, i) => lotOf(p, i + 1));
+   const sale: Sale = {
+     id: SAMPLE_SALE_ID,
+@@ -80,11 +91,40 @@ export function sampleData(now = new Date()): SampleData {
+   const records: SaleRecord[] = [
+     record('sample-r1', { saleId: SAMPLE_SALE_ID, lotNumber: 1, plantName: lots[0].name, buyer: 'Jada Winslow', price: 25, date: closed, payment: 'paid', paidDate: closed }),
+     record('sample-r2', { saleId: SAMPLE_SALE_ID, lotNumber: 2, plantName: lots[1].name, buyer: 'Marcus Bell', price: 18, date: closed }),
++    ...(DATA === 'rundown'
++      ? [
++          record('sample-r6', { saleId: SAMPLE_SALE_ID, lotNumber: 3, plantName: lots[2].name, buyer: 'Priya Lund', price: 12, date: closed }),
++          record('sample-r7', { saleId: SAMPLE_SALE_ID, lotNumber: 4, plantName: lots[3].name, buyer: 'Theo Marsh', price: 15, date: closed, payment: 'paid' as const, paidDate: closed }),
++        ]
++      : []),
+     // A little history from earlier showcases, entered by hand.
+     record('sample-r3', { saleId: null, lotNumber: null, plantName: 'Hoya carnosa Krimson Queen', buyer: 'Jada Winslow', price: 22, date: day(30), payment: 'paid', paidDate: day(30) }),
+     record('sample-r4', { saleId: null, lotNumber: null, plantName: 'Hoya pubicalyx', buyer: 'Theo Marsh', price: 16, date: day(30), payment: 'paid', paidDate: day(29) }),
+     record('sample-r5', { saleId: null, lotNumber: null, plantName: 'Hoya obovata', buyer: 'Priya Lund', price: 19, date: day(45), payment: 'paid', paidDate: day(45) }),
+   ];
++  if (DATA === 'rundown') {
++    sale.leftovers = [];
++    sale.closedMs = now.getTime() - 6 * 3_600_000;
++    sale.closedAt = toDay(new Date(sale.closedMs));
++    sale.claimOrder = { 1: ['Jada Winslow', 'Marcus Bell'], 2: ['Marcus Bell', 'Theo Marsh'], 3: ['Priya Lund'], 4: ['Theo Marsh'] };
++    sale.endsAt = { day: closed, time: '19:00' };
++    sale.contactHours = 72;
++    const resp = (row: number, who: string, street: string, city: string, state: string, zip: string) => ({
++      row, timestamp: closed, saleName: '', facebookName: who, email: '', shipToName: who, street, city, state, zip, pickup: false, paymentMethod: 'PayPal', note: '',
++    });
++    sale.checkout = {
++      importedMs: closedMs + 3_600_000,
++      responses: [
++        resp(1, 'Jada Winslow', '412 Alder Lane', 'Columbus', 'OH', '43215'),
++        resp(2, 'Marcus Bell', '88 Quarry Road', 'Tulsa', 'OK', '74103'),
++        resp(3, 'Theo Marsh', '1500 Birch Street', 'Madison', 'WI', '53703'),
++      ],
++    };
++    sale.fulfillment = {
++      jadawinslow: { packed: true, shipped: true, tracking: '9400 1111 2222 3333 4444 55', weightOz: 10 },
++      theomarsh: { weightOz: 14 },
++    };
++  }
+   return {
+     profile: {
+       sellerName: SAMPLE_SELLER,
+diff --git a/src/lib/iap.ts b/src/lib/iap.ts
+index d53bf44..ba0bea4 100644
+--- a/src/lib/iap.ts
++++ b/src/lib/iap.ts
+@@ -26,11 +26,15 @@ const iap = (): Iap => (loaded ??= require('expo-iap') as Iap);
+ 
+ const CACHE_KEY = 'entitlement.v1';
+ 
++// SCREENSHOT HARNESS ONLY (scratch copy, never committed): the page address picks the entitlement state.
++const SHOT = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('shot') ?? '' : '';
++
+ /** True when this build can sell Pro on this device. */
+-export const iapAvailable = (): boolean => canSell(Platform.OS, isPhil());
++export const iapAvailable = (): boolean => SHOT === 'paywall' || canSell(Platform.OS, isPhil());
+ 
+ /** What was last confirmed paid, so Pro stays on with no signal. Only ever read in the store product. */
+ export function cachedPro(now = Date.now()): boolean {
++  if (SHOT === 'pro') return true;
+   if (!iapAvailable()) return false;
+   return isEntitled(loadJson<Entitlement | null>(CACHE_KEY, null), now);
+ }
+@@ -56,6 +60,7 @@ async function ask(): Promise<Entitlement | null> {
+  * `onChange` gets true or false each time the store gives a clear answer, and nothing when it can't be reached.
+  */
+ export function startIap(onChange: (pro: boolean) => void): () => void {
++  if (SHOT) return () => undefined;
+   if (!iapAvailable()) return () => undefined;
+   let live = true;
+   const sync = () =>
+@@ -97,6 +102,16 @@ export interface Plans {
+ 
+ /** The two plans with the store's own prices. Throws when the store can't be reached. */
+ export async function loadPlans(): Promise<Plans> {
++  if (SHOT === 'paywall') {
++    // The store's answer as StoreKit gives it for the two products: localized price strings, and the annual plan's one week free introductory offer.
++    return {
++      eligible: true,
++      products: [
++        { id: 'com.gatheringmoss.sellercard.pro.annual', title: 'Skrybix Pro Annual', displayPrice: '$59.99', introductoryPricePaymentModeIOS: 'free-trial', introductoryPriceNumberOfPeriodsIOS: '1', introductoryPriceSubscriptionPeriodIOS: 'week' },
++        { id: 'com.gatheringmoss.sellercard.pro.monthly', title: 'Skrybix Pro Monthly', displayPrice: '$7.99', introductoryPricePaymentModeIOS: 'empty' },
++      ],
++    };
++  }
+   const lib = iap();
+   await lib.initConnection();
+   const found = ((await lib.fetchProducts({ skus: [...PRO_SKUS], type: 'subs' })) ?? []) as (PlanProduct & {
