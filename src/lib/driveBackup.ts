@@ -48,9 +48,9 @@ function photoPort(): PhotoPort {
 const drive = () => createDrive(getAccessToken);
 
 /** Backs up now. Remembers the new revision when it worked. */
-export async function backupNow(data: BackupData, force = false): Promise<BackupResult> {
+export async function backupNow(data: BackupData, pro: boolean, force = false): Promise<BackupResult> {
   const state = loadBackupState();
-  const result = await runBackup(drive(), photoPort(), data, { lastRevision: state.lastRevision, now: Date.now(), force });
+  const result = await runBackup(drive(), photoPort(), data, { lastRevision: state.lastRevision, now: Date.now(), force, pro });
   if (result.status === 'ok') saveBackupState({ lastRevision: result.revision, lastAt: Date.now(), stamp: digest(data) });
   return result;
 }
@@ -59,10 +59,10 @@ export async function backupNow(data: BackupData, force = false): Promise<Backup
 export const findRemoteBackup = (): Promise<Found | null> => findBackup(drive());
 
 /** Pulls the backup down and remembers its revision, so the next backup carries on from it. */
-export async function restoreRemote(found: Found): Promise<BackupData> {
-  const data = await restoreBackup(drive(), photoPort(), found);
+export async function restoreRemote(found: Found): Promise<{ data: BackupData; missingPhotos: number }> {
+  const { data, missingPhotos } = await restoreBackup(drive(), photoPort(), found);
   saveBackupState({ lastRevision: found.backup.revision, lastAt: Date.now(), stamp: null });
-  return { ...EMPTY_BACKUP_DATA, ...data };
+  return { data: { ...EMPTY_BACKUP_DATA, ...data }, missingPhotos };
 }
 
 /** Forgets what this phone knew about the backup, for a disconnect. */

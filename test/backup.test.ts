@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BACKUP_FILE,
   BACKUP_GAP_MS,
+  BACKUP_PHOTO_FILES,
   BACKUP_VERSION,
   EMPTY_BACKUP_DATA,
   PHOTO_PREFIX,
@@ -130,18 +131,29 @@ function fakes() {
 }
 
 describe('running a backup', () => {
-  it('writes the photos before the data, and the first backup is revision 1', async () => {
+  it('keeps photos as references only: no photo file goes to Drive', async () => {
     const f = fakes();
-    const r = await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1 });
+    const r = await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1, pro: true });
+    expect(r).toMatchObject({ status: 'ok', revision: 1 });
+    expect(f.writes).toEqual([BACKUP_FILE]);
+    const file = JSON.parse(f.files.get(BACKUP_FILE)!.text!);
+    expect(file.photos).toEqual(['a1.jpg', 'a2.jpg']);
+    expect(file.meta).toEqual({ pro: true });
+    expect(BACKUP_PHOTO_FILES).toBe(false);
+  });
+
+  it('writes the photos before the data when photo files are switched on, and the first backup is revision 1', async () => {
+    const f = fakes();
+    const r = await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1, photoFiles: true });
     expect(r).toMatchObject({ status: 'ok', revision: 1 });
     expect(f.writes).toEqual(['a1.jpg', 'a2.jpg', BACKUP_FILE]);
   });
 
   it('writes only what is new the next time, and bumps the revision', async () => {
     const f = fakes();
-    await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1 });
+    await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1, photoFiles: true });
     f.writes.length = 0;
-    const r = await runBackup(f.drive, f.photos, data(), { lastRevision: 1, now: 2 });
+    const r = await runBackup(f.drive, f.photos, data(), { lastRevision: 1, now: 2, photoFiles: true });
     expect(r).toMatchObject({ status: 'ok', revision: 2 });
     expect(f.writes).toEqual([BACKUP_FILE]);
   });
@@ -179,17 +191,40 @@ describe('restoring', () => {
   it('finds nothing when there is no backup, and rebuilds data and photos on a fresh phone', async () => {
     const f = fakes();
     expect(await findBackup(f.drive)).toBeNull();
-    await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1 });
+    await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1, photoFiles: true });
     const found = await findBackup(f.drive);
     expect(found?.backup.revision).toBe(1);
 
     const fresh = fakes();
     fresh.local.clear();
-    const restored = await restoreBackup(f.drive, { ...fresh.photos, dir: 'file:///new/photos' }, found!);
+    const { data: restored } = await restoreBackup(f.drive, { ...fresh.photos, dir: 'file:///new/photos' }, found!);
     expect(restored.plants[0].photoUris).toEqual(['file:///new/photos/a1.jpg', 'file:///new/photos/a2.jpg']);
     expect([...fresh.local.keys()].sort()).toEqual(['a1.jpg', 'a2.jpg']);
     expect([...(fresh.local.get('a1.jpg') ?? [])]).toEqual([1, 2, 3]);
     expect(restored.buyerNotes.jada).toBe('Pays fast');
+  });
+});
+
+describe('restoring with photos as references', () => {
+  it('keeps the photos this phone has, leaves out the ones it does not, and counts them', async () => {
+    const f = fakes();
+    await runBackup(f.drive, f.photos, data(), { lastRevision: null, now: 1 });
+    const found = await findBackup(f.drive);
+    const fresh = fakes();
+    fresh.local.delete('a2.jpg');
+    const r = await restoreBackup(f.drive, { ...fresh.photos, dir: 'file:///new/photos' }, found!);
+    expect(r.missingPhotos).toBe(1);
+    expect(r.data.plants[0].photoUris).toEqual(['file:///new/photos/a1.jpg']);
+    expect(r.data.plants[0].photoUri).toBe('file:///new/photos/a1.jpg');
+
+    const bare = fakes();
+    bare.local.clear();
+    const none = await restoreBackup(f.drive, { ...bare.photos, dir: 'file:///new/photos' }, found!);
+    expect(none.missingPhotos).toBe(2);
+    expect(none.data.plants[0].photoUris).toEqual([]);
+    expect(none.data.plants[0].photoUri).toBeNull();
+    expect(JSON.stringify(none.data)).not.toContain('a1.jpg');
+    expect(none.data.buyerNotes.jada).toBe('Pays fast');
   });
 });
 

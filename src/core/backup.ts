@@ -12,7 +12,8 @@
  *              (the phone, and later the computer) never silently overwrite each other.
  *   savedAt    ISO time of the write
  *   savedBy    "phone" or "computer"
- *   photos     file names of the photos the data uses
+ *   photos     file names of the photos the data uses (names only, unless BACKUP_PHOTO_FILES is on)
+ *   meta       { pro }: whether the phone had Pro when it wrote, for the computer version
  *   data       profile, plants, sales, records, buyerNotes, leftoversDone, templates
  *
  * Photo addresses inside data are stored as "skrybix-photo:NAME" so they mean the same on any device,
@@ -43,8 +44,16 @@ export interface Backup {
   savedAt: string;
   savedBy: 'phone' | 'computer';
   photos: string[];
+  /** Said by the phone for the computer version, which has no way to ask Apple. */
+  meta: { pro: boolean };
   data: BackupData;
 }
+
+/**
+ * Photos stay on the phone: the backup holds their names only, not the files. Flip this to also
+ * upload the files beside the backup, so a new phone gets its photos back too.
+ */
+export const BACKUP_PHOTO_FILES = false;
 
 const PHOTO_PATH = /(?:^|\/)photos\/([^/?#]+\.(?:jpe?g|png|webp|heic))$/i;
 
@@ -79,7 +88,7 @@ export const EMPTY_BACKUP_DATA: BackupData = {
 /** Builds the file to write, and says which photos it needs beside it. */
 export function packBackup(
   data: BackupData,
-  opts: { revision: number; now: number; savedBy?: 'phone' | 'computer' },
+  opts: { revision: number; now: number; savedBy?: 'phone' | 'computer'; pro?: boolean },
 ): Backup {
   const names = new Set<string>();
   const portable = mapStrings(data, (s) => {
@@ -95,6 +104,7 @@ export function packBackup(
     savedAt: new Date(opts.now).toISOString(),
     savedBy: opts.savedBy ?? 'phone',
     photos: [...names].sort(),
+    meta: { pro: !!opts.pro },
     data: portable,
   };
 }
@@ -130,6 +140,7 @@ export function parseBackup(text: string): Parsed {
       revision: Number.isFinite(b.revision) ? (b.revision as number) : 0,
       savedAt: typeof b.savedAt === 'string' ? b.savedAt : '',
       savedBy: b.savedBy === 'computer' ? 'computer' : 'phone',
+      meta: { pro: (b as { meta?: { pro?: unknown } }).meta?.pro === true },
       photos: Array.isArray(b.photos) ? b.photos.filter((p): p is string => typeof p === 'string') : [],
       data: {
         profile: d.profile ?? null,
@@ -189,4 +200,24 @@ export function shouldBackUp(c: BackupClock): boolean {
   if (!c.connected || !c.allowed || !c.dirty || c.blocked) return false;
   if (c.closedNow) return true;
   return c.lastAt === null || c.now - c.lastAt >= BACKUP_GAP_MS;
+}
+
+/**
+ * Takes out every reference to a photo file the phone does not have, so nothing points at a photo
+ * that is not there. `dir` is the photos folder, no trailing slash. Returns how many photos were left out.
+ */
+export function dropMissingPhotos(data: BackupData, dir: string, missing: Set<string>): { data: BackupData; dropped: number } {
+  const gone = new Set([...missing].map((n) => `${dir}/${n}`));
+  let dropped = 0;
+  const walk = <T,>(value: T): T => {
+    if (Array.isArray(value)) return value.filter((v) => !(typeof v === 'string' && gone.has(v))).map(walk) as unknown as T;
+    if (value && typeof value === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value)) out[k] = typeof v === 'string' && gone.has(v) ? null : walk(v);
+      return out as T;
+    }
+    return value;
+  };
+  for (const n of missing) if (n) dropped += 1;
+  return { data: walk(data), dropped };
 }

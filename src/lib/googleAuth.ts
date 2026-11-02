@@ -8,14 +8,15 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { DRIVE_SCOPE } from '../core/drive';
-import { GOOGLE_DISCOVERY, GOOGLE_SCOPES, GOOGLE_USERINFO, isClientId, redirectUri } from '../core/googleAuthConfig';
+import { GOOGLE_DISCOVERY, GOOGLE_SCOPES, GOOGLE_USERINFO, iosClientFor, isClientId, redirectUri } from '../core/googleAuthConfig';
+import { isPhil } from '../core/variant';
 import { loadJson, saveJson } from './storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const REFRESH_KEY = 'google.refresh';
 const ACCOUNT_KEY = 'google.account.v1';
-const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const CLIENT_ID = iosClientFor(isPhil(), process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
 
 /** True when this build has a Google client and runs where the sign in works. */
 export const googleReady = (): boolean => Platform.OS === 'ios' && isClientId(CLIENT_ID);

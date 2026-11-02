@@ -120,9 +120,14 @@ describe('the app name', () => {
     const config = { name: 'Skrybix', slug: 'seller-card-app' };
     expect((JSON.parse(readFileSync(join(__dirname, '..', 'app.json'), 'utf8')) as { expo: { name: string } }).expo.name).toBe('Skrybix');
     as(undefined);
-    expect(appConfig({ config })).toBe(config);
+    const scheme = (c: Record<string, unknown>) =>
+      ((c.ios as { infoPlist: { CFBundleURLTypes: { CFBundleURLSchemes: string[] }[] } }).infoPlist.CFBundleURLTypes[0].CFBundleURLSchemes[0]);
+    // Each build registers the Google sign in scheme of the client made for its own bundle ID.
+    expect(appConfig({ config })).toMatchObject({ name: 'Skrybix' });
+    expect(scheme(appConfig({ config }))).toBe('com.googleusercontent.apps.289863330767-73jnsfp2d7r35iqdn2i0b2evh7lqks03');
     as('phil');
     expect(appConfig({ config })).toMatchObject({ name: 'Skrybix Phil' });
+    expect(scheme(appConfig({ config }))).toBe('com.googleusercontent.apps.289863330767-9dqbfbgarn5pl8ek8tk898gdp4akcp86');
   });
 
   it('production: writes the form word SKRYBSALE', () => {

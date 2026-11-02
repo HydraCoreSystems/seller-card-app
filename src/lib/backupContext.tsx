@@ -96,7 +96,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     setMessage(null);
     const sent = digest(dataRef.current);
     try {
-      const r = await backupNow(dataRef.current, force);
+      const r = await backupNow(dataRef.current, live.current.pro, force);
       if (r.status === 'ok') {
         backedUp.current = sent;
         setLastAt(Date.now());
@@ -200,8 +200,9 @@ export function BackupProvider({ children }: { children: ReactNode }) {
         setStatus('idle');
         return;
       }
-      const restored = await restoreRemote(found);
+      const { data: restored, missingPhotos } = await restoreRemote(found);
       store.restoreData(restored);
+      if (missingPhotos) setMessage(`${missingPhotos} ${missingPhotos === 1 ? 'photo is' : 'photos are'} not on this phone, so those plants need their photos added again.`);
       backedUp.current = null;
       setOffer(null);
       setConflict(null);

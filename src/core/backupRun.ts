@@ -9,6 +9,8 @@
  */
 import {
   BACKUP_FILE,
+  BACKUP_PHOTO_FILES,
+  dropMissingPhotos,
   packBackup,
   parseBackup,
   unpackData,
@@ -46,7 +48,7 @@ export async function runBackup(
   drive: DrivePort,
   photos: PhotoPort,
   data: BackupData,
-  opts: { lastRevision: number | null; now: number; force?: boolean },
+  opts: { lastRevision: number | null; now: number; force?: boolean; pro?: boolean; photoFiles?: boolean },
 ): Promise<BackupResult> {
   const folderId = (await drive.folder(true)) as string;
   const files = await drive.files(folderId);
@@ -64,9 +66,9 @@ export async function runBackup(
     }
   }
 
-  const backup = packBackup(data, { revision: Math.max(remoteRevision, opts.lastRevision ?? 0) + 1, now: opts.now });
-  // Photos first. A photo never changes once saved, so one already on Drive is left alone.
-  for (const name of backup.photos) {
+  const backup = packBackup(data, { revision: Math.max(remoteRevision, opts.lastRevision ?? 0) + 1, now: opts.now, pro: opts.pro });
+  // Photos first, when the files are backed up at all. A photo never changes once saved, so one already on Drive is left alone.
+  for (const name of opts.photoFiles ?? BACKUP_PHOTO_FILES ? backup.photos : []) {
     if (files.has(name)) continue;
     const bytes = await photos.read(name);
     if (bytes) await drive.writePhoto(folderId, name, bytes);
@@ -92,13 +94,18 @@ export async function findBackup(drive: DrivePort): Promise<Found | null> {
   return { backup: parsed.backup, files };
 }
 
-/** Brings the photos down that this phone is missing, and returns the data with this phone's photo addresses. */
-export async function restoreBackup(drive: DrivePort, photos: PhotoPort, found: Found): Promise<BackupData> {
+/**
+ * Rebuilds the data for this phone. Photos that came as files are brought down; any photo the phone
+ * still does not have is left out of the data, and counted so the seller can be told.
+ */
+export async function restoreBackup(drive: DrivePort, photos: PhotoPort, found: Found): Promise<{ data: BackupData; missingPhotos: number }> {
+  const missing = new Set<string>();
   for (const name of found.backup.photos) {
     if (photos.has(name)) continue;
     const id = found.files.get(name);
-    if (!id) continue;
-    await photos.write(name, new Uint8Array(await drive.readBytes(id)));
+    if (id) await photos.write(name, new Uint8Array(await drive.readBytes(id)));
+    else missing.add(name);
   }
-  return unpackData(found.backup, photos.dir);
+  const cut = dropMissingPhotos(unpackData(found.backup, photos.dir), photos.dir, missing);
+  return { data: cut.data, missingPhotos: cut.dropped };
 }

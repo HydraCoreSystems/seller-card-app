@@ -2,7 +2,7 @@
 export const BACKUP_TITLE = 'Backup to your Google Drive';
 
 export const BACKUP_INTRO =
-  'Skrybix keeps a copy of your plants, photos, showcases, sales and settings in a folder called Skrybix in your own Google Drive. Connect once, and it backs up by itself after each sale and while you use the app. If you get a new phone, connect the same Google account and everything comes back.';
+  'Skrybix keeps a copy of your plants, showcases, sales, costs and settings in a folder called Skrybix in your own Google Drive. Connect once, and it backs up by itself after each sale and while you use the app. If you get a new phone, connect the same Google account and everything comes back. Photos stay on your phone and are not copied to Drive.';
 
 export const BACKUP_PRIVACY =
   'The copy lives in your Drive, under your Google account. Skrybix can only see the files it made itself, nothing else in your Drive. There is no server of ours and no copy on our side.';

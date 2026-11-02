@@ -4,6 +4,8 @@
  * which is a public identifier and holds no secret. The ID comes from the build, so the Phil build
  * and the store build can each use the client made for their own bundle ID.
  */
+import clients from './googleClients.json';
+
 export const GOOGLE_DISCOVERY = {
   authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
   tokenEndpoint: 'https://oauth2.googleapis.com/token',
@@ -12,6 +14,16 @@ export const GOOGLE_DISCOVERY = {
 
 export const GOOGLE_USERINFO = 'https://openidconnect.googleapis.com/v1/userinfo';
 export const GOOGLE_SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/drive.file'];
+
+/** The iOS client for a build: the one made for its own bundle ID, unless the build sets its own. */
+export function iosClientFor(phil: boolean, fromEnv?: string): string {
+  return fromEnv && fromEnv.endsWith('.apps.googleusercontent.com') ? fromEnv : phil ? clients.ios.phil : clients.ios.production;
+}
+
+/** The web client for the computer version, or null until one is made in the same Google Cloud project. */
+export function webClient(fromEnv?: string): string | null {
+  return fromEnv && fromEnv.endsWith('.apps.googleusercontent.com') ? fromEnv : (clients.web as string | null);
+}
 
 const SUFFIX = '.apps.googleusercontent.com';
 
