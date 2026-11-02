@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Linking } from 'react-native';
+import { useRef, useState } from 'react';
+import { Linking, Text } from 'react-native';
 import { PRO_PRIVACY } from '../core/pro';
 import { CONTACT_HOURS } from '../core/venues';
 import { FORMAT_LIST } from '../core/formats';
@@ -8,10 +8,11 @@ import { originLine, SUGGESTIONS_URL } from '../core/brand';
 import { VERIFIED_GROWER } from '../core/formats/commons';
 import { DEFAULT_PAY_WINDOW, PAY_WINDOWS } from '../core/secondChance';
 import { SHORT_DAYS } from '../core/text';
+import { fillFromZip, type Place } from '../core/zip';
 import type { FormatId, Profile } from '../core/types';
 import { EMPTY_PROFILE, useStore } from '../lib/store';
 import { FormSetup } from '../ui/FormSetup';
-import { Button, Checkboxes, Choice, Field, H, Note, Panel, Screen } from '../ui/kit';
+import { Button, Checkboxes, Choice, Field, H, Note, Panel, Screen, colors } from '../ui/kit';
 import { ProExplainer } from '../ui/ProExplainer';
 
 const ZONES = ['Eastern', 'Central', 'Mountain', 'Pacific', 'Alaska', 'Hawaii'];
@@ -21,6 +22,13 @@ export default function ProfileClassic() {
   const store = useStore();
   const [p, setP] = useState<Profile>(store.profile ?? EMPTY_PROFILE);
   const set = <K extends keyof Profile>(k: K) => (v: Profile[K]) => setP((x) => ({ ...x, [k]: v }));
+  // What the ZIP last filled in, so only the app's own fill is ever replaced, never the seller's words.
+  const zipFill = useRef<Place | null>(null);
+  const setZip = (zip: string) => {
+    const next = fillFromZip({ zip: p.zip ?? '', city: p.city ?? '', state: p.state ?? '' }, zip, zipFill.current);
+    zipFill.current = next.fill;
+    setP((x) => ({ ...x, zip, city: next.city, state: next.state }));
+  };
   const zoneIsListed = ZONES.includes(p.timeZone);
   const ready = p.sellerName.trim().length > 0;
 
@@ -53,6 +61,16 @@ export default function ProfileClassic() {
         placeholder="Leave blank if your room doesn't use one"
         keyboardType="number-pad"
       />
+      <Field label="ZIP code" value={p.zip ?? ''} onChangeText={setZip} placeholder="46802" keyboardType="number-pad" hint="Type your ZIP first. The city and state fill in. City and ZIP print on your cards as a location line. Leave them blank to print none." />
+      <Field label="City" value={p.city ?? ''} onChangeText={set('city')} placeholder="Fort Wayne" hint="Type over it if your cards should show a different city. Yours is what saves and prints." />
+      <Field label="State" value={p.state ?? ''} onChangeText={set('state')} placeholder="IN" autoCapitalize="characters" autoCorrect={false} maxLength={2} />
+      <Text style={{ fontSize: 12, color: colors.soft, marginTop: -8, marginBottom: 14 }}>
+        ZIP lookup data from{' '}
+        <Text style={{ textDecorationLine: 'underline' }} onPress={() => Linking.openURL('https://simplemaps.com/data/us-zips').catch(() => undefined)}>
+          SimpleMaps
+        </Text>
+        , used under CC BY 4.0.
+      </Text>
       <Field
         label="Shipping"
         value={p.shipping}

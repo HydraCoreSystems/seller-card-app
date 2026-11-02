@@ -57,14 +57,14 @@ export default function SaleScreen() {
         }
       >
         {isPhil() ? <Note>Room: {room.name}</Note> : null}
-        {isPhil() ? <Field
+        <Field
           label="A note from you"
           value={sale.note ?? ''}
           onChangeText={(note) => store.saveSale({ ...sale, note })}
           placeholder="Leave blank to print none"
           hint="Your own words, printed at the top of the announcement. Change it any time before you copy."
           multiline
-        /> : null}
+        />
         {store.pro ? (
           <>
             {sale.kind === 'sale' ? (

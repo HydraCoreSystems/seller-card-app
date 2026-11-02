@@ -65,18 +65,20 @@ describe('the two builds', () => {
     expect(commons.name).toBe('Commons sales card');
   });
 
-  it('closed test: the announcement carries no note, no deadline line and no location', () => {
+  it('production: the note and the location line print when filled in, and stay absent when empty', () => {
     as(undefined);
-    const text = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), false);
-    expect(text).not.toContain('A note from me');
-    expect(text).not.toContain('Fort Wayne');
-    expect(text).not.toMatch(/within 24 hours/);
-    // With Pro on in the store product, the only addition is the buyer contact line.
-    const pro = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), false);
-    expect(pro).toBe(text);
-    const paid = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), true);
-    expect(paid).not.toContain('A note from me');
+    const withFields = { ...profile, city: 'Fort Wayne', state: 'IN', zip: '46802' } as Profile;
+    const filled = announcementFor(withFields, sale(), false);
+    expect(filled).toContain('A note from me');
+    expect(filled).toContain('Location: Fort Wayne, IN 46802');
+    expect(filled).not.toMatch(/within 24 hours/);
+    const bare = announcementFor(profile, { ...sale(), note: undefined }, false);
+    expect(bare).not.toContain('Location:');
+    expect(bare).not.toContain('A note from me');
+    // Pro adds only the buyer contact line.
+    const paid = announcementFor(withFields, sale(), true);
     expect(paid).toMatch(/within 24 hours/);
+    expect(paid.replace(/\n[^\n]*within 24 hours[^\n]*\n?/, '\n')).toContain('Location: Fort Wayne, IN 46802');
     as('phil');
     const phil = announcementFor({ ...profile, city: 'Fort Wayne', zip: '46802' } as Profile, sale(), true);
     expect(phil).toContain('A note from me');

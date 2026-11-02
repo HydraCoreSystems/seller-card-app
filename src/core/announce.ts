@@ -6,18 +6,14 @@
 import { contactLine } from './checkout';
 import { getFormat } from './formats';
 import type { Profile, Sale } from './types';
-import { isPhil } from './variant';
 import { resolveProfile } from './venues';
 
 export function announcementFor(profile: Profile, sale: Sale, pro: boolean): string {
-  // Without the Phil build's rooms and Pro, the announcement prints as it always did.
-  if (!isPhil() && !pro) return getFormat(sale.formatId).announcement({ profile, sale });
   const room = resolveProfile(profile, sale);
   return getFormat(sale.formatId).announcement({
     profile: room,
     sale,
-    // The seller's per sale note belongs to the Phil build's Part Two. The store product adds only the Pro contact line.
-    note: isPhil() ? sale.note : undefined,
+    note: sale.note,
     contactLine: pro ? contactLine(sale, room) : null,
   });
 }

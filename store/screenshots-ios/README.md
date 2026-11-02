@@ -11,4 +11,6 @@ The harness (harness folder) is a scratch copy of cc04f5b with two changes, both
 
 Shot 7 is a filled render, not a live store capture. Off device the App Store products cannot load, so the paywall shows the two products as StoreKit returns them: annual 59.99 with a seven day free trial, monthly 7.99.
 
-Shot 2 shows the production announcement. It prints no city or ZIP, because the location line is part of the Phil variant only.
+Shot 2 shows the production announcement with the location line, from a seeded profile with city, state and ZIP.
+
+Shot 7 on the iPhone was rendered at a wider logical width (550 by 1195, scale 2.4) so the whole paywall fits from the top of its scroll in the same 1320 by 2868 canvas.
