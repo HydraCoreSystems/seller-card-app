@@ -133,5 +133,18 @@ consent screen. Each build uses the iOS client made for its own bundle ID, kept 
 `app.config.js` adds the reversed client ID as the URL scheme. The computer version needs a Web client in
 the same project (`web` in the same file). Android is not wired yet.
 
+### The computer version (Pro)
+
+`/desk` in the web export, built into the same Expo app (`src/ui/desk/`, `src/core/desk.ts`). The seller
+signs in with Google in the browser (Google's own sign in library, a short lived token, no server of
+ours). It reads `skrybix-backup.json`, shows the rundown, packing list, label file and what you kept,
+and writes changes back as the next revision with `savedBy: "computer"`. Each change is applied to the
+newest copy on Drive and changes are made one at a time, so a change from the phone is never lost. The
+phone looks for a newer copy every five minutes while it has nothing unsaved, and takes it silently; if
+both changed, the backup screen asks which copy to keep. The page needs a Web OAuth client in the same
+Google Cloud project as the iOS clients (put its ID in `web` in `src/core/googleClients.json`, with the
+page's address as an authorized JavaScript origin), or it cannot see the files the phone made. The
+backup carries `meta.pro`, written by the phone, because a web page cannot ask Apple.
+
 House style for anything a member reads (app copy, card text, store text): plain words,
 contractions welcome, and no dashes of any kind. A test checks every format for dashes.

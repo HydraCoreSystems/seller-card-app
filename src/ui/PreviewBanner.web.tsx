@@ -19,6 +19,8 @@ export function PreviewBanner() {
     if (ready && !sample && /^\/(sale|plant)\/sample-/.test(path)) router.replace('/');
   }, [ready, sample, path]);
 
+  // The computer version is its own page, not a taste of the phone app.
+  if (path.startsWith('/desk')) return null;
   return (
     <View style={{ backgroundColor: colors.mossDark, paddingVertical: 8, paddingHorizontal: 16 }}>
       <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, textAlign: 'center' }}>Preview in your browser</Text>

@@ -6,7 +6,7 @@ import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
 import { plantsOnList, type SheetLot } from '../core/saleSheet';
-import { markPayment } from '../core/records';
+import { applyFulfillment, applyPayment, plantIdsFor } from '../core/mutations';
 import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
 import { toDay } from '../core/text';
 import type { CheckoutResponse, Fulfillment, Lot, Plant, Profile, Sale, SaleRecord, SaleTemplate } from '../core/types';
@@ -99,11 +99,6 @@ const KEYS = {
   leftoversDone: 'leftoversDone.v1',
   templates: 'templates.v1',
 } as const;
-
-/** The plants behind some of a sale's lots, so a record can find its plant. */
-function plantIdsFor(sale: Sale | undefined, lotNumbers: (number | null)[]): string[] {
-  return lotNumbers.map((n) => sale?.lots.find((l) => l.number === n)?.plantId).filter((p): p is string => !!p);
-}
 
 export function newId(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -273,20 +268,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           records: [{ ...entry, id: newId() }, ...d.records],
           plants: plantId ? d.plants.map((p) => (p.id === plantId ? { ...p, sold: true } : p)) : d.plants,
         })),
-      setPayment: (saleId, buyer, payment) =>
-        update((d) => {
-          const k = buyerKey(buyer);
-          const sale = d.sales.find((s) => s.id === saleId);
-          // Lots already passed on to the next in line stay never paid whatever the buyer does now.
-          const passedOn = (r: SaleRecord) => sale?.offers?.some((o) => o.lot === r.lotNumber && buyerKey(o.from) === k);
-          const mine = (r: SaleRecord) => r.saleId === saleId && buyerKey(r.buyer) === k && !passedOn(r);
-          // A buyer who never paid hands the plant back, so it shows as for sale again.
-          const plantIds = new Set(plantIdsFor(d.sales.find((s) => s.id === saleId), d.records.filter(mine).map((r) => r.lotNumber)));
-          return {
-            records: d.records.map((r) => (mine(r) ? markPayment(r, payment, toDay(new Date())) : r)),
-            plants: d.plants.map((p) => (plantIds.has(p.id) ? { ...p, sold: payment !== 'never' } : p)),
-          };
-        }),
+      setPayment: (saleId, buyer, payment) => update((d) => applyPayment(d, saleId, buyer, payment, toDay(new Date()))),
       saveBuyerNote: (buyer, note) =>
         update((d) => {
           const notes = { ...d.buyerNotes };
@@ -318,12 +300,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             return { ...s, checkout: { ...s.checkout, links } };
           }),
         })),
-      setFulfillment: (saleId, buyerKey, patch) =>
-        update((d) => ({
-          sales: d.sales.map((s) =>
-            s.id === saleId ? { ...s, fulfillment: { ...(s.fulfillment ?? {}), [buyerKey]: { ...(s.fulfillment?.[buyerKey] ?? {}), ...patch } } } : s,
-          ),
-        })),
+      setFulfillment: (saleId, key, patch) => update((d) => applyFulfillment(d, saleId, key, patch)),
     }),
     [data, update, sample, ownData],
   );

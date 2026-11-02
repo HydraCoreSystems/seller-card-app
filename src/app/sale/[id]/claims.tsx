@@ -6,7 +6,7 @@ import { cleanMentions, showTime, type Claim } from '../../../core/claims';
 import { priceIn } from '../../../core/rundown';
 import { formatPrice, plantDisplayName, toDay } from '../../../core/text';
 import type { Lot } from '../../../core/types';
-import { readClaims } from '../../../lib/claimReport';
+import { readClaims } from '../../../core/claimReport';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
 import { Button, H, Note, Panel, Row, Screen, colors, styles } from '../../../ui/kit';
 

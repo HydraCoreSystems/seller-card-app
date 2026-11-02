@@ -9,7 +9,7 @@ import {
 import { buildTaggedLink } from '../src/lib/formPage';
 import { buildRundown, type RundownBuyer } from '../src/core/rundown';
 import { sampleData, sampleThread, SAMPLE_SALE_ID } from '../src/core/demo';
-import { readClaims } from '../src/lib/claimReport';
+import { readClaims } from '../src/core/claimReport';
 import { PRO_POINTS, PRO_PRIVACY, PRO_TEST_NOTE, PRO_TITLE } from '../src/core/pro';
 import { DASH_PATTERN } from '../src/core/text';
 import type { CheckoutResponse, Profile, Sale } from '../src/core/types';

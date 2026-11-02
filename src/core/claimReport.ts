@@ -1,5 +1,5 @@
-import { trackClaims, type ClaimReport } from '../core/claims';
-import type { Profile, Sale } from '../core/types';
+import { trackClaims, type ClaimReport } from './claims';
+import type { Profile, Sale } from './types';
 
 /** Reads a pasted thread against the sale's own lots, the same way everywhere in the app. */
 export function readClaims(text: string | undefined, sale: Sale, profile: Profile | null): ClaimReport | null {

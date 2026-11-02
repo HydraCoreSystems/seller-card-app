@@ -50,6 +50,7 @@ export default function Layout() {
           <Stack.Screen name="sale/[id]/checkout" options={{ title: 'Buyer checkout' }} />
           <Stack.Screen name="sale/[id]/packing" options={{ title: 'Packing' }} />
           <Stack.Screen name="sale/[id]/money" options={{ title: 'What you kept' }} />
+          <Stack.Screen name="desk" options={{ title: 'Skrybix on your computer', headerShown: false }} />
           <Stack.Screen name="backup" options={{ title: 'Backup' }} />
           <Stack.Screen name="paywall" options={{ title: 'Skrybix Pro', presentation: 'modal' }} />
         </Stack>

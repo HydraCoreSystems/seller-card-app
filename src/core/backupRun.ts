@@ -109,3 +109,11 @@ export async function restoreBackup(drive: DrivePort, photos: PhotoPort, found: 
   const cut = dropMissingPhotos(unpackData(found.backup, photos.dir), photos.dir, missing);
   return { data: cut.data, missingPhotos: cut.dropped };
 }
+
+/** Writes a backup over the one on Drive. The computer version uses it; the phone goes through runBackup. */
+export async function writeBackup(drive: DrivePort, backup: Backup): Promise<void> {
+  const folderId = await drive.folder(false);
+  if (!folderId) throw new Error('The Skrybix folder is gone from this Drive.');
+  const files = await drive.files(folderId);
+  await drive.writeText(folderId, BACKUP_FILE, JSON.stringify(backup), files.get(BACKUP_FILE));
+}

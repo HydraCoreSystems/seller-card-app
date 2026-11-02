@@ -7,7 +7,7 @@ import { photosOf } from '../../../core/photos';
 import { lastSold, priceMemoryLine } from '../../../core/records';
 import { buildRundown } from '../../../core/rundown';
 import { saleSheet, sheetState, sheetTitle } from '../../../core/saleSheet';
-import { readClaims } from '../../../lib/claimReport';
+import { readClaims } from '../../../core/claimReport';
 import { shareSaleSheet } from '../../../lib/saleSheetFile';
 import { formatPrice, plantDisplayName } from '../../../core/text';
 import { isPhil } from '../../../core/variant';

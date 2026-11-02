@@ -1,33 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { COSTS_BLANK, COST_HINT, PROFIT_COUNTED, PROFIT_TEASER } from '../../../core/profitCopy';
 import { keptWords, saleMoney } from '../../../core/profit';
-import { formatPrice, parsePrice } from '../../../core/text';
+import { formatPrice } from '../../../core/text';
 import { useSale, useStore } from '../../../lib/store';
-import { Button, Field, H, Note, Panel, Screen, colors } from '../../../ui/kit';
+import { CostBox } from '../../../ui/CostBox';
+import { Button, H, Note, Panel, Screen, colors } from '../../../ui/kit';
 
 const dollars = (n: number) => formatPrice(n) || '$0';
-const text = (n: number | null | undefined) => (n == null ? '' : String(n));
-
-/** One cost box. It saves as the seller types, so there is no save step to forget. */
-function CostBox({ label, value, onValue, hint }: { label: string; value: number | null | undefined; onValue: (n: number | null) => void; hint?: string }) {
-  const [t, setT] = useState(text(value));
-  return (
-    <Field
-      label={label}
-      value={t}
-      placeholder="Not entered"
-      keyboardType="decimal-pad"
-      hint={hint}
-      onChangeText={(v) => {
-        setT(v);
-        onValue(parsePrice(v));
-      }}
-    />
-  );
-}
-
 function Figure({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
     <View style={{ flex: 1 }}>
