@@ -111,5 +111,27 @@ needs no phone. In the store, `pro` is on while a Pro subscription is active, an
 is remembered so Pro stays on with no signal. Anything locked sends the seller to `/paywall`. The Phil
 version holds `pro` on and never opens the store.
 
+### Drive backup (Pro)
+
+The seller connects their own Google account once (`/backup`). The app then keeps one file,
+`skrybix-backup.json`, plus the plant photos, in a folder called Skrybix in their Drive. Nothing passes
+through a server of ours and no Google credential leaves the phone: the sign in is OAuth code with PKCE
+through the system browser, the refresh token sits in the phone's secure storage, and the only scope is
+`drive.file`, so the app sees just the files it made.
+
+Format, version 1: `{ app: "skrybix", version, revision, savedAt, savedBy: "phone" | "computer", photos, data }`.
+`revision` goes up by one on every write and is checked before each write, so two devices never overwrite
+each other silently. Photo addresses are stored as `skrybix-photo:NAME` and turned back into the phone's
+own paths on restore. A reader that meets a higher `version` stops. The logic is in `src/core/backup.ts`,
+`drive.ts` and `backupRun.ts` (tested with stand ins); `src/lib/googleAuth.ts` and `driveBackup.ts` are the
+phone side; `src/lib/backupContext.tsx` runs the schedule (after a sale closes, otherwise at most every ten
+minutes while the app is in use, never while the sample showcase is open).
+
+To switch it on in a build: create an iOS OAuth client in a Google Cloud project, with the app's bundle ID,
+turn on the Drive API, put the `drive.file` scope on the consent screen, and set
+`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` for the build. `app.config.js` adds the reversed client ID as the URL
+scheme. The Phil bundle ID needs its own client. Without the variable the Backup screen says it is not
+available in this version. Android is not wired yet.
+
 House style for anything a member reads (app copy, card text, store text): plain words,
 contractions welcome, and no dashes of any kind. A test checks every format for dashes.

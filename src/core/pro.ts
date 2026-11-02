@@ -4,6 +4,8 @@
  * Pro is on. The free tier is exactly as strong as it was before the chain.
  */
 
+import { BACKUP_POINT } from './backupCopy';
+
 export const PRO_TITLE = 'Checkout, from the sale to the shipping label';
 
 export const PRO_POINTS = [
@@ -13,6 +15,7 @@ export const PRO_POINTS = [
   'A rundown that follows each winner from won, to form in, to paid, to shipped.',
   'A packing list you can print, from your paid buyers.',
   'A label file for Pirate Ship’s batch upload, for paid buyers only.',
+  BACKUP_POINT,
 ] as const;
 
 export const PRO_PRIVACY =

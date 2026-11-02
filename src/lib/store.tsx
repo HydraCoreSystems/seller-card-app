@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { buyerKey } from '../core/buyers';
+import type { BackupData } from '../core/backup';
 import { sampleData } from '../core/demo';
 import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
@@ -50,6 +51,8 @@ interface Store extends Data {
   openSample(): void;
   /** Drops the sample and brings the seller's own data back. */
   leaveSample(): void;
+  /** Replaces everything the seller keeps with the contents of a backup. Pro is not part of a backup, so it stays as it is. */
+  restoreData(restored: BackupData): void;
   saveProfile(profile: Profile): void;
   savePlant(plant: Plant): void;
   deletePlant(id: string): void;
@@ -170,6 +173,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         last.current = ownData;
         setData({ ...ownData, pro: data.pro });
         setOwnData(null);
+      },
+      restoreData: (restored) => {
+        // The sample is in memory only, and restoring over it would lose the seller's own data set aside.
+        if (sample) return;
+        update(() => ({ ...restored, profile: restored.profile ? { ...EMPTY_PROFILE, ...restored.profile } : null }));
       },
       saveProfile: (profile) => update(() => ({ profile })),
       savePlant: (plant) =>

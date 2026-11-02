@@ -168,6 +168,10 @@ export default function ProfileClassic() {
         <ProExplainer />
       )}
 
+      <H>Backup</H>
+      <Note>Keep a copy of everything in your own Google Drive.</Note>
+      <Button kind="secondary" title="Backup to Google Drive" onPress={() => router.push('/backup')} />
+
       <H>On every card</H>
       <Note>{originLine()}</Note>
       <H>Try it out</H>

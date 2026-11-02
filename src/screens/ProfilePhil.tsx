@@ -187,6 +187,10 @@ export default function ProfilePhil() {
       )}
       {store.pro ? <Note>{PRO_TEST_NOTE}</Note> : null}
 
+      <H>Backup</H>
+      <Note>Keep a copy of everything in your own Google Drive.</Note>
+      <Button kind="secondary" title="Backup to Google Drive" onPress={() => router.push('/backup')} />
+
       <H>On every card</H>
       <Note>{originLine()}</Note>
       <H>Try it out</H>

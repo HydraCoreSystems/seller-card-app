@@ -1,3 +1,4 @@
+import { googleReady } from '../lib/googleAuth';
 import { Link, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Fragment, useState, type ElementType } from 'react';
@@ -98,6 +99,7 @@ export default function Home() {
               or payment terms again.
             </Note>
             <Button title="Set up my profile" onPress={() => router.push('/profile')} />
+            {googleReady() ? <Button kind="quiet" title="Restore from my Google Drive" onPress={() => router.push('/backup')} /> : null}
             <Button kind="quiet" title="Look around a sample showcase first" onPress={store.openSample} />
           </Panel>
         ) : null}

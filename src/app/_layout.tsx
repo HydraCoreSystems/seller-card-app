@@ -2,6 +2,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { BackupProvider } from '../lib/backupContext';
 import { StoreProvider } from '../lib/store';
 import { T, colors } from '../ui/kit';
 import { PreviewBanner } from '../ui/PreviewBanner';
@@ -19,6 +20,7 @@ export default function Layout() {
     // bars are translucent to measure keyboard insets correctly.
     <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
       <StoreProvider>
+        <BackupProvider>
         <StatusBar style="dark" />
         <PreviewBanner />
         <Stack
@@ -47,8 +49,10 @@ export default function Layout() {
           <Stack.Screen name="sale/[id]/rundown" options={{ title: 'After the showcase' }} />
           <Stack.Screen name="sale/[id]/checkout" options={{ title: 'Buyer checkout' }} />
           <Stack.Screen name="sale/[id]/packing" options={{ title: 'Packing' }} />
+          <Stack.Screen name="backup" options={{ title: 'Backup' }} />
           <Stack.Screen name="paywall" options={{ title: 'Skrybix Pro', presentation: 'modal' }} />
         </Stack>
+        </BackupProvider>
       </StoreProvider>
     </KeyboardProvider>
   );
