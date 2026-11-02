@@ -5,7 +5,7 @@
  */
 
 import { BACKUP_POINT } from './backupCopy';
-import { PROFIT_POINT } from './profitCopy';
+import { INVOICE_POINT, PROFIT_POINT } from './profitCopy';
 
 export const PRO_TITLE = 'Checkout, from the sale to the shipping label';
 
@@ -18,6 +18,7 @@ export const PRO_POINTS = [
   'A label file for Pirate Ship’s batch upload, for paid buyers only.',
   BACKUP_POINT,
   PROFIT_POINT,
+  INVOICE_POINT,
 ] as const;
 
 export const PRO_PRIVACY =

@@ -13,6 +13,7 @@ import {
   type Stage,
 } from '../../../core/checkout';
 import { reminderMessage } from '../../../core/chase';
+import { invoiceFileName, invoiceHtml } from '../../../core/invoice';
 import {
   claimOrderOf,
   salesRecordHtml,
@@ -58,6 +59,12 @@ export default function RundownScreen() {
   const waiting = rundown.buyers.filter((b) => !b.payment);
   const paid = rundown.buyers.filter((b) => b.payment === 'paid');
   const never = rundown.buyers.filter((b) => b.payment === 'never');
+
+  // One tap invoice for a winner. Pro only, because it reads the checkout row.
+  const invoiceFor = (name: string): (() => Promise<void>) | undefined => {
+    const r = pro ? rowOf(name) : undefined;
+    return r ? () => sharePdf(invoiceFileName(r.buyer, rundown.day), invoiceHtml(r, profile, sale.closedAt ?? rundown.day)) : undefined;
+  };
 
   const save = async () => {
     setStatus('Making the record');
@@ -191,6 +198,7 @@ export default function RundownScreen() {
                 saleId={sale.id}
                 closed
                 row={pro ? rowOf(b.name) : undefined}
+                invoice={invoiceFor(b.name)}
                 reminder={reminderMessage(b, pro && rowOf(b.name) ? profileForReminder(rowOf(b.name)!, profile) : profile, rundown.day, payBy && payBy > now ? payBy : null)}
               />
             ))
@@ -199,11 +207,11 @@ export default function RundownScreen() {
           )}
           {paid.length ? <H>Paid</H> : null}
           {paid.map((b) => (
-            <DoneLine key={b.name} buyer={b} saleId={sale.id} row={pro ? rowOf(b.name) : undefined} />
+            <DoneLine key={b.name} buyer={b} saleId={sale.id} row={pro ? rowOf(b.name) : undefined} invoice={invoiceFor(b.name)} />
           ))}
           {never.length ? <H>Never paid</H> : null}
           {never.map((b) => (
-            <DoneLine key={b.name} buyer={b} saleId={sale.id} row={pro ? rowOf(b.name) : undefined} />
+            <DoneLine key={b.name} buyer={b} saleId={sale.id} row={pro ? rowOf(b.name) : undefined} invoice={invoiceFor(b.name)} />
           ))}
         </>
       )}
@@ -319,9 +327,9 @@ type PayChoice = 'waiting' | 'paid' | 'never';
 const sum = (buyers: RundownBuyer[]) => buyers.reduce((n, b) => n + b.total, 0);
 
 /** A buyer who's paid or never paid: one line, opened back up with a tap. */
-function DoneLine({ buyer, saleId, row }: { buyer: RundownBuyer; saleId: string; row?: CheckoutRow }) {
+function DoneLine({ buyer, saleId, row, invoice }: { buyer: RundownBuyer; saleId: string; row?: CheckoutRow; invoice?: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
-  if (open) return <BuyerCard buyer={buyer} saleId={saleId} closed row={row} onFold={() => setOpen(false)} />;
+  if (open) return <BuyerCard buyer={buyer} saleId={saleId} closed row={row} invoice={invoice} onFold={() => setOpen(false)} />;
   return (
     <Pressable
       onPress={() => setOpen(true)}
@@ -340,6 +348,7 @@ function BuyerCard({
   closed,
   reminder,
   row,
+  invoice,
   onFold,
 }: {
   buyer: RundownBuyer;
@@ -349,9 +358,12 @@ function BuyerCard({
   reminder?: string;
   /** The Pro checkout row for this buyer: stage, total with shipping, payment method. */
   row?: CheckoutRow;
+  /** Builds this buyer's invoice and opens the share sheet. Pro. */
+  invoice?: () => Promise<void>;
   onFold?: () => void;
 }) {
   const store = useStore();
+  const [making, setMaking] = useState<'' | 'making' | 'failed'>('');
   const saved = store.buyerNotes[buyerKey(buyer.name)] ?? '';
   const [note, setNote] = useState(saved);
   const [copied, copy] = useCopy();
@@ -373,6 +385,19 @@ function BuyerCard({
           {l.price !== null ? `, ${formatPrice(l.price)}` : ''}
         </Text>
       ))}
+      {invoice ? (
+        <Button
+          kind="secondary"
+          title={making === 'making' ? 'Making the invoice' : 'Invoice'}
+          disabled={making === 'making'}
+          onPress={() => {
+            setMaking('making');
+            invoice().then(() => setMaking(''), () => setMaking('failed'));
+          }}
+          style={{ marginTop: 8 }}
+        />
+      ) : null}
+      {making === 'failed' ? <Text style={{ color: colors.warn, fontSize: 13 }}>The invoice could not be made. Try again.</Text> : null}
       {reminder ? (
         <Row style={{ marginTop: 8 }}>
           <Button

@@ -8,3 +8,5 @@ export const COST_HINT = 'Optional. What this plant cost you. It stays on your p
 export const PROFIT_COUNTED = 'Each showcase counts in the month it closed. Costs are only what you entered.';
 
 export const COSTS_BLANK = 'A blank cost is left out, never counted as zero, so kept says before costs until it is in.';
+
+export const INVOICE_POINT = 'A one tap PDF invoice for any winner, with your room details and payment lines, ready to share.';
