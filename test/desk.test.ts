@@ -113,7 +113,7 @@ describe('the computer version words and sign in', () => {
     const { webClient, iosClientFor } = await import('../src/core/googleAuthConfig');
     expect(webClient(undefined)).toBe('289863330767-7qu9f3pa40mjhdti8mc2tpubn3vgd99e.apps.googleusercontent.com');
     expect(webClient('1-abc.apps.googleusercontent.com')).toBe('1-abc.apps.googleusercontent.com');
-    expect(webClient('nonsense')).toBeNull();
+    expect(webClient('nonsense')).toBe(webClient(undefined));
     expect(iosClientFor(false)).toMatch(/^289863330767-73jn/);
     expect(iosClientFor(true)).toMatch(/^289863330767-9dqb/);
     expect(iosClientFor(true, '1-x.apps.googleusercontent.com')).toBe('1-x.apps.googleusercontent.com');
