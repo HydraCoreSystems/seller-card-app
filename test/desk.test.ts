@@ -109,9 +109,9 @@ describe('the computer version words and sign in', () => {
     for (const t of Object.values(copy)) expect(DASH_PATTERN.test(t)).toBe(false);
   });
 
-  it('uses one Web client from the same project, and is switched off until there is one', async () => {
+  it('uses one Web client from the same project, and is the Skrybix Web client of the same project', async () => {
     const { webClient, iosClientFor } = await import('../src/core/googleAuthConfig');
-    expect(webClient(undefined)).toBeNull();
+    expect(webClient(undefined)).toBe('289863330767-7qu9f3pa40mjhdti8mc2tpubn3vgd99e.apps.googleusercontent.com');
     expect(webClient('1-abc.apps.googleusercontent.com')).toBe('1-abc.apps.googleusercontent.com');
     expect(webClient('nonsense')).toBeNull();
     expect(iosClientFor(false)).toMatch(/^289863330767-73jn/);
