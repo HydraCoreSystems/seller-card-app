@@ -5,13 +5,13 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
-import { digest, hasData, shouldBackUp, type BackupData } from '../core/backup';
+import { digest, hasData, shouldBackUp, shouldPull, type BackupData } from '../core/backup';
 import type { Found } from '../core/backupRun';
 import { BACKUP_NEWER, BACKUP_RECONNECT, BACKUP_RETRY } from '../core/backupCopy';
 import { DriveError } from '../core/drive';
 import { backupNow, findRemoteBackup, forgetBackupState, loadBackupState, restoreRemote } from './driveBackup';
 import { connectGoogle, connectedEmail, disconnectGoogle, googleReady } from './googleAuth';
-import { useStore } from './store';
+import { EMPTY_PROFILE, useStore } from './store';
 
 export type BackupStatus = 'off' | 'idle' | 'working' | 'ok' | 'changed' | 'problem';
 
@@ -78,15 +78,18 @@ export function BackupProvider({ children }: { children: ReactNode }) {
   const busy = useRef(false);
   const backedUp = useRef<string | null>(loadBackupState().stamp ?? null);
   const lastTry = useRef<number | null>(null);
+  const lastLook = useRef<number | null>(null);
   const closed = useRef(store.sales.filter((s) => s.closedAt).length);
   const closedNow = useRef(false);
   const live = useRef({ pro: store.pro, sample: store.sample, email, conflict });
   const offerRef = useRef<Found | null>(null);
+  const storeRef = useRef(store);
   // Kept in step after each render, so the timers always read the latest values.
   useEffect(() => {
     dataRef.current = data;
     live.current = { pro: store.pro, sample: store.sample, email, conflict };
     offerRef.current = offer;
+    storeRef.current = store;
   });
 
   const run = useCallback(async (force: boolean) => {
@@ -119,6 +122,28 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Changes made on the computer arrive here. Only a phone with nothing unsaved takes them, silently.
+  const pull = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
+    lastLook.current = Date.now();
+    try {
+      const found = await findRemoteBackup();
+      const stillClean = backedUp.current === digest(dataRef.current);
+      if (found && stillClean && found.backup.revision !== loadBackupState().lastRevision) {
+        const { data: fresh } = await restoreRemote(found);
+        storeRef.current.restoreData(fresh);
+        // What the store holds after taking it, so it is not backed up again straight away.
+        backedUp.current = digest({ ...fresh, profile: fresh.profile ? { ...EMPTY_PROFILE, ...fresh.profile } : null });
+        setLastAt(Date.now());
+      }
+    } catch {
+      // Looking is quiet. The next backup reports a real problem.
+    } finally {
+      busy.current = false;
+    }
+  }, []);
+
   const tick = useCallback(() => {
     const l = live.current;
     const dirty = backedUp.current !== digest(dataRef.current);
@@ -131,8 +156,20 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       closedNow: closedNow.current,
       blocked: busy.current || !!l.conflict,
     });
-    if (go) void run(false);
-  }, [run]);
+    if (go) {
+      void run(false);
+      return;
+    }
+    const look = shouldPull({
+      connected: !!l.email,
+      allowed: l.pro && !l.sample,
+      dirty,
+      blocked: busy.current || !!l.conflict,
+      lastLook: lastLook.current,
+      now: Date.now(),
+    });
+    if (look) void pull();
+  }, [run, pull]);
 
   // A sale closing is the moment that matters most, so it backs up without waiting out the gap.
   useEffect(() => {

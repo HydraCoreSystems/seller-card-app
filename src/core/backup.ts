@@ -221,3 +221,21 @@ export function dropMissingPhotos(data: BackupData, dir: string, missing: Set<st
   for (const n of missing) if (n) dropped += 1;
   return { data: walk(data), dropped };
 }
+
+/** How often a phone with nothing unsaved looks at Drive for changes made on the computer. */
+export const PULL_GAP_MS = 5 * 60_000;
+
+/**
+ * True when the phone should look at Drive for a newer copy. Only a phone with nothing unsaved does,
+ * so what the seller just did on the phone is never replaced; if both changed, the backup itself
+ * notices and asks.
+ */
+export function shouldPull(c: { connected: boolean; allowed: boolean; dirty: boolean; blocked: boolean; lastLook: number | null; now: number }): boolean {
+  if (!c.connected || !c.allowed || c.dirty || c.blocked) return false;
+  return c.lastLook === null || c.now - c.lastLook >= PULL_GAP_MS;
+}
+
+/** The next revision of a backup that the computer changed: same photos and Pro marker, new data. */
+export function rewriteBackup(prev: Backup, data: BackupData, opts: { now: number }): Backup {
+  return { ...prev, revision: prev.revision + 1, savedAt: new Date(opts.now).toISOString(), savedBy: 'computer', data };
+}

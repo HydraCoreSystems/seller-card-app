@@ -302,3 +302,17 @@ describe('backup extras', () => {
     for (const text of Object.values(copy)) expect(/—|–|--/.test(text)).toBe(false);
   });
 });
+
+describe('looking for computer edits', () => {
+  const base = { connected: true, allowed: true, dirty: false, blocked: false, lastLook: null, now: 1_000_000 };
+  it('looks when connected, allowed and nothing is unsaved, then waits five minutes', async () => {
+    const { shouldPull, PULL_GAP_MS } = await import('../src/core/backup');
+    expect(shouldPull(base)).toBe(true);
+    expect(shouldPull({ ...base, lastLook: base.now - 1000 })).toBe(false);
+    expect(shouldPull({ ...base, lastLook: base.now - PULL_GAP_MS })).toBe(true);
+  });
+  it('never looks while something is unsaved, blocked, not allowed or not connected', async () => {
+    const { shouldPull } = await import('../src/core/backup');
+    for (const off of [{ dirty: true }, { blocked: true }, { allowed: false }, { connected: false }]) expect(shouldPull({ ...base, ...off })).toBe(false);
+  });
+});
