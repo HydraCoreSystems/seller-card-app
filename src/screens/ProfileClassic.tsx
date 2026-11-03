@@ -12,6 +12,7 @@ import { fillFromZip, type Place } from '../core/zip';
 import type { FormatId, Profile } from '../core/types';
 import { EMPTY_PROFILE, useStore } from '../lib/store';
 import { FormSetup } from '../ui/FormSetup';
+import { GuideEntries } from '../ui/GuideEntries';
 import { Button, Checkboxes, Choice, Field, H, Note, Panel, Screen, colors } from '../ui/kit';
 import { ProExplainer } from '../ui/ProExplainer';
 
@@ -167,6 +168,14 @@ export default function ProfileClassic() {
       ) : (
         <ProExplainer />
       )}
+
+      <GuideEntries
+        onWalk={() => {
+          // The walk writes to the saved profile, so what is typed here is saved first.
+          if (ready) store.saveProfile({ ...p, sellerName: p.sellerName.trim() });
+          router.replace({ pathname: '/setup', params: { mode: 'replay' } });
+        }}
+      />
 
       <H>Backup</H>
       <Note>Keep a copy of everything in your own Google Drive.</Note>

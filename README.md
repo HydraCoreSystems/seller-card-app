@@ -148,3 +148,7 @@ backup carries `meta.pro`, written by the phone, because a web page cannot ask A
 
 House style for anything a member reads (app copy, card text, store text): plain words,
 contractions welcome, and no dashes of any kind. A test checks every format for dashes.
+
+## Setup walk, first sale checklist, Help
+
+The setup walk (`src/screens/SetupWalk.tsx`, route `/setup`) opens once on a fresh install and can be rerun from Profile as Setup walkthrough. Its state is `guide.v1` in the same phone storage as the profile (`src/core/guide.ts`), and is not part of a backup. The first sale checklist (`src/ui/FirstSaleChecklist.tsx`) reads each stage from the sale's own data (`src/core/firstSale.ts`). The Help entry in Profile shows only when `SKRYBIX_GUIDE_URL` in `src/core/brand.ts` is not empty.

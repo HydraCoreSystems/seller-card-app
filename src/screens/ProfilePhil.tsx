@@ -14,6 +14,7 @@ import { EMPTY_PROFILE, newId, useStore } from '../lib/store';
 import { Button, Checkboxes, Choice, Field, H, Note, Panel, Row, Screen, colors } from '../ui/kit';
 import { FormSetup } from '../ui/FormSetup';
 import { ProExplainer } from '../ui/ProExplainer';
+import { GuideEntries } from '../ui/GuideEntries';
 
 const ZONES = ['Eastern', 'Central', 'Mountain', 'Pacific', 'Alaska', 'Hawaii'];
 const DAY_OPTIONS = SHORT_DAYS.map((label, value) => ({ value, label }));
@@ -49,6 +50,20 @@ export default function ProfilePhil() {
     setVenues(next.venues);
     setEditingId(next.id);
   };
+  // A room with no name yet is called what it says it is, so it never shows up blank.
+  const save = () => {
+    const named = venues.map((v, i) => ({ ...v, name: v.name.trim() || `Room ${i + 1}`, contactHours: v.contactHours || 24 }));
+    store.saveProfile(withVenues({ ...p, sellerName: p.sellerName.trim() }, named, defaultId));
+    return named;
+  };
+  // The walk works on the saved profile, so what is typed here is saved first, and this screen steps aside for it.
+  const walk = (mode: 'replay' | 'room') => {
+    if (ready) {
+      const named = save();
+      const saved = named.find((v) => v.id === editingId)?.id;
+      router.replace({ pathname: '/setup', params: mode === 'replay' ? { mode, venue: saved ?? defaultId } : { mode } });
+    } else router.replace({ pathname: '/setup', params: { mode } });
+  };
   const removeRoom = () => {
     const rest = venues.filter((v) => v.id !== room.id);
     setVenues(rest);
@@ -63,9 +78,7 @@ export default function ProfilePhil() {
           title="Save profile"
           disabled={!ready}
           onPress={() => {
-            // A room with no name yet is called what it says it is, so it never shows up blank.
-            const named = venues.map((v, i) => ({ ...v, name: v.name.trim() || `Room ${i + 1}`, contactHours: v.contactHours || 24 }));
-            store.saveProfile(withVenues({ ...p, sellerName: p.sellerName.trim() }, named, defaultId));
+            save();
             router.back();
           }}
         />
@@ -197,6 +210,8 @@ export default function ProfilePhil() {
         <ProExplainer />
       )}
       {store.pro ? <Note>{PRO_TEST_NOTE}</Note> : null}
+
+      <GuideEntries onWalk={() => walk('replay')} onRoomWalk={() => walk('room')} />
 
       <H>Backup</H>
       <Note>Keep a copy of everything in your own Google Drive.</Note>

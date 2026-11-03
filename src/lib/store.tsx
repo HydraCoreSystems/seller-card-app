@@ -11,6 +11,7 @@ import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/s
 import { toDay } from '../core/text';
 import type { CheckoutResponse, Fulfillment, Lot, Plant, Profile, Sale, SaleRecord, SaleTemplate } from '../core/types';
 import { resolveProfile, venuesOf, withVenues } from '../core/venues';
+import { readGuide, type GuideState } from '../core/guide';
 import { isPhil } from '../core/variant';
 import { cachedPro, startIap } from './iap';
 import { loadJson, saveJson } from './storage';
@@ -38,6 +39,8 @@ interface Data {
   leftoversDone: string[];
   /** Saved sale settings, for sellers with a standing way of opening a sale. */
   templates: SaleTemplate[];
+  /** The setup walk and first sale checklist state. Stays on the phone and is not part of a backup. */
+  guide: GuideState;
   /** True when the checkout chain is on: always in the Phil build, and in the store product while a Pro subscription is active. Never saved here; the store is asked. */
   pro: boolean;
 }
@@ -54,6 +57,8 @@ interface Store extends Data {
   /** Replaces everything the seller keeps with the contents of a backup. Pro is not part of a backup, so it stays as it is. */
   restoreData(restored: BackupData): void;
   saveProfile(profile: Profile): void;
+  /** Changes the guide state. */
+  updateGuide(fn: (g: GuideState) => GuideState): void;
   savePlant(plant: Plant): void;
   deletePlant(id: string): void;
   createSale(plantIds: string[], settings: SaleSettings): Sale;
@@ -98,6 +103,7 @@ const KEYS = {
   buyerNotes: 'buyerNotes.v1',
   leftoversDone: 'leftoversDone.v1',
   templates: 'templates.v1',
+  guide: 'guide.v1',
 } as const;
 
 export function newId(): string {
@@ -126,6 +132,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     buyerNotes: loadJson<Record<string, string>>(KEYS.buyerNotes, {}),
     leftoversDone: loadJson<string[]>(KEYS.leftoversDone, []),
     templates: loadJson<SaleTemplate[]>(KEYS.templates, []),
+    guide: readGuide(loadJson<unknown>(KEYS.guide, null), {
+      hasProfile: !!loadJson<Profile | null>(KEYS.profile, null),
+      hasSales: loadJson<Sale[]>(KEYS.sales, []).length > 0,
+    }),
     // The Phil build has Pro unlocked, with no gate and no switch. The store product starts from the last
     // paid answer it saw, so Pro stays on with no signal, and the store corrects it in a moment.
     pro: isPhil() || cachedPro(),
@@ -160,7 +170,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       openSample: () => {
         if (sample) return;
         setOwnData(data);
-        setData({ ...sampleData(), templates: [], pro: data.pro });
+        setData({ ...sampleData(), templates: [], pro: data.pro, guide: data.guide });
       },
       leaveSample: () => {
         if (!ownData) return;
@@ -175,6 +185,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         update(() => ({ ...restored, profile: restored.profile ? { ...EMPTY_PROFILE, ...restored.profile } : null }));
       },
       saveProfile: (profile) => update(() => ({ profile })),
+      updateGuide: (fn) => update((d) => ({ guide: fn(d.guide) })),
       savePlant: (plant) =>
         update((d) => ({
           plants: d.plants.some((p) => p.id === plant.id)

@@ -25,3 +25,9 @@ export const CHECKOUT_FORM_TEMPLATE_URL = 'https://docs.google.com/forms/d/1EsRd
 
 /** Where the privacy policy is hosted. The paywall links to it, next to the subscription terms. */
 export const PRIVACY_URL = 'https://gatheringmoss.shop/pages/skrybix-privacy-policy';
+
+/**
+ * The hosted setup guide (a PDF). Empty until it is hosted. The Help entry in Profile shows only
+ * when this is not empty, so no build ships a dead link. Fill it in here and nothing else changes.
+ */
+export const SKRYBIX_GUIDE_URL = '';

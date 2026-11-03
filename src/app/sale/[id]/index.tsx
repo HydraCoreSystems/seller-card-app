@@ -15,6 +15,7 @@ import { CONTACT_HOURS, resolveProfile, venueOf } from '../../../core/venues';
 import { CardImageButton } from '../../../ui/CardImageButton';
 import { saveToGallery } from '../../../lib/stampPhoto';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
+import { FirstSaleChecklist } from '../../../ui/FirstSaleChecklist';
 import { Grid } from '../../../ui/layout';
 import { Button, CardText, Choice, Field, H, Note, Row, Screen, T, Thumb, colors } from '../../../ui/kit';
 import { PHIL_SHADOW } from '../../../ui/styleDefs';
@@ -57,6 +58,7 @@ export default function SaleScreen() {
           </Row>
         }
       >
+        <FirstSaleChecklist sale={sale} />
         {isPhil() ? <Note>Room: {room.name}</Note> : null}
         <Field
           label="A note from you"

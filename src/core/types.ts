@@ -143,6 +143,8 @@ export interface Sale {
   /** Other rooms or sites where the same plants are listed. */
   crossListing: string;
   lots: Lot[];
+  /** YYYY-MM-DD, stamped when the seller reaches the last card on the posting screen. Feeds the first sale checklist. */
+  postedAt?: string;
   /** The last comment thread pasted into the claim tracker for this sale. */
   claimText?: string;
   /** YYYY-MM-DD, set when the seller closes the sale from the rundown. */

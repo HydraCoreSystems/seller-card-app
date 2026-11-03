@@ -2,9 +2,11 @@ import { googleReady } from '../lib/googleAuth';
 import { Grid } from '../ui/layout';
 import { Link, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Fragment, useState, type ElementType } from 'react';
+import { Fragment, useEffect, useRef, useState, type ElementType } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../core/formats';
+import { opensByItself, settleGuide, showsResume } from '../core/guide';
+import { WALK_COPY } from '../core/guideCopy';
 import { isPhil } from '../core/variant';
 import { venueOf } from '../core/venues';
 import { formatDay, formatPrice, plantDisplayName } from '../core/text';
@@ -27,6 +29,20 @@ export default function Home() {
   const leftovers = useLeftovers();
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+
+  // First launch on a fresh install opens the setup walk once. A restored profile settles the walk as done.
+  const autoOpened = useRef(false);
+  const { guide, updateGuide, sample } = store;
+  const hasProfile = !!profile;
+  useEffect(() => {
+    if (sample) return;
+    if (guide.walk === 'new' && hasProfile) updateGuide((g) => settleGuide(g, true));
+    else if (!autoOpened.current && opensByItself(guide, { hasProfile, sample })) {
+      autoOpened.current = true;
+      router.push('/setup');
+    }
+  }, [guide, hasProfile, sample, updateGuide]);
+  const resume = showsResume(guide, profile, sample) ? (guide.done.length ? WALK_COPY.resumeContinue : WALK_COPY.resumeStart) : null;
 
   const toggle = (id: string) =>
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
@@ -100,8 +116,17 @@ export default function Home() {
               or payment terms again.
             </Note>
             <Button title="Set up my profile" onPress={() => router.push('/profile')} />
+            {resume ? <Button kind="secondary" title={resume} onPress={() => router.push('/setup')} /> : null}
             {googleReady() ? <Button kind="quiet" title="Restore from my Google Drive" onPress={() => router.push('/backup')} /> : null}
             <Button kind="quiet" title="Look around a sample showcase first" onPress={store.openSample} />
+          </Panel>
+        ) : null}
+
+        {profile && resume && !picking ? (
+          <Panel style={{ backgroundColor: colors.mossTint, borderColor: colors.mossTint }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.ink, marginBottom: 6 }}>{WALK_COPY.resumeTitle}</Text>
+            <Note>{WALK_COPY.resumeNote}</Note>
+            <Button title={resume} onPress={() => router.push('/setup')} />
           </Panel>
         ) : null}
 

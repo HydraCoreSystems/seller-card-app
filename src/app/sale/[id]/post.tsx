@@ -1,7 +1,8 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { announcementFor, listingFor } from '../../../core/announce';
 import { photosOf } from '../../../core/photos';
+import { toDay } from '../../../core/text';
 import { isPhil } from '../../../core/variant';
 import { resolveProfile } from '../../../core/venues';
 import { CardImageButton } from '../../../ui/CardImageButton';
@@ -19,6 +20,13 @@ export default function PostScreen() {
   const regular = useSizeClass() === 'regular';
   // Side by side, the announcement stays in view and the lots step through beside it, starting at lot 1.
   const [step, setStep] = useState(Math.max(regular ? 1 : 0, startIndex));
+
+  // Reaching the last card means the seller has posted. The first sale checklist reads this.
+  const reachedEnd = !!sale && sale.lots.length > 0 && step >= sale.lots.length;
+  const { saveSale } = store;
+  useEffect(() => {
+    if (sale && reachedEnd && !sale.postedAt) saveSale({ ...sale, postedAt: toDay(new Date()) });
+  }, [sale, reachedEnd, saveSale]);
 
   if (!sale || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
   const profile = resolveProfile(store.profile, sale);
