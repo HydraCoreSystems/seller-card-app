@@ -16,9 +16,9 @@ import { CardImageButton } from '../../../ui/CardImageButton';
 import { saveToGallery } from '../../../lib/stampPhoto';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
 import { FirstSaleChecklist } from '../../../ui/FirstSaleChecklist';
+import { LotCard } from '../../../ui/phil';
 import { Grid } from '../../../ui/layout';
 import { Button, CardText, Choice, Field, H, Note, Row, Screen, T, Thumb, colors } from '../../../ui/kit';
-import { PHIL_SHADOW } from '../../../ui/styleDefs';
 import { getStamped } from '../../../ui/StampedPhoto';
 import { WhenPicker, isComplete } from '../../../ui/WhenPicker';
 
@@ -109,10 +109,24 @@ export default function SaleScreen() {
             style={{ marginBottom: 12 }}
           />
         ) : null}
-        <Grid min={250}>
+        <Grid min={T.name === 'phil' ? 280 : 250}>
         {sale.lots.map((lot) => {
           const record = lotRecorded(store.records, sale.id, lot);
           const memory = record ? null : lastSold(store.records, lot.name, lot.noid, sale.id);
+          if (T.name === 'phil') {
+            return (
+              <LotCard
+                key={lot.number}
+                photo={lot.photoUri}
+                number={lot.number}
+                name={plantDisplayName(lot.name, lot.noid) || 'Unnamed'}
+                price={lot.price === null ? null : `${sale.kind === 'auction' ? 'Opening bid ' : ''}${formatPrice(lot.price)}`}
+                soldTo={record ? record.buyer : null}
+                note={memory ? priceMemoryLine(memory) : null}
+                onPress={() => router.push({ pathname: '/sale/[id]/post', params: { id: sale.id, lot: String(lot.number) } })}
+              />
+            );
+          }
           return (
             <Pressable
               key={lot.number}
@@ -130,8 +144,6 @@ export default function SaleScreen() {
                   borderColor: colors.line,
                   marginBottom: 8,
                 },
-                // The Phil build's lot rows are raised cards, with no outline.
-                T.name === 'phil' ? { borderRadius: 16, padding: 12, borderWidth: 0, marginBottom: 12, ...PHIL_SHADOW.raised } : null,
               ]}
             >
               <Thumb uri={lot.photoUri} size={48} />

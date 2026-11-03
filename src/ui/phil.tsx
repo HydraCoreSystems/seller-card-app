@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text, View, type ViewStyle } from 'react-native';
-import { appName, originLine } from '../core/brand';
+import { Image, Pressable, Text, View, type ViewStyle } from 'react-native';
+import { appName } from '../core/brand';
 import { formatPrice, plantDisplayName } from '../core/text';
 import type { Plant } from '../core/types';
+import { PriceTag } from './botanical';
 import { PHIL_SHADOW } from './styleDefs';
 import { ACCENT, DISPLAY_FONT, mixHex, PHIL_COLORS, STAGE_LOOK } from './theme';
 
@@ -26,8 +27,8 @@ export function BandGradient() {
 }
 
 /**
- * The home screen's brand moment: the app name in the display serif, the maker line small under it,
- * and a thin gold rule. The first card on the screen is pulled up over its bottom edge.
+ * The home screen's brand moment: the app name in the display serif and a thin gold rule. The maker line
+ * belongs on the cards the app makes, not inside the app. The first card on the screen is pulled up over its bottom edge.
  */
 export function BrandBand({ style }: { style?: ViewStyle }) {
   return (
@@ -39,7 +40,6 @@ export function BrandBand({ style }: { style?: ViewStyle }) {
       >
         {appName()}
       </Text>
-      <Text style={{ marginTop: 2, fontSize: 12, letterSpacing: 0.3, color: ACCENT.creamSoft }}>{originLine()}</Text>
       <View style={{ marginTop: 12, width: 56, height: 2, borderRadius: 1, backgroundColor: ACCENT.gold }} />
     </View>
   );
@@ -130,7 +130,7 @@ export function PlantRow({
           alignItems: 'center',
           gap: 14,
           padding: 12,
-          borderRadius: 16,
+          borderRadius: 18,
           backgroundColor: PHIL_COLORS.card,
           borderWidth: 2,
           borderColor: on ? PHIL_COLORS.moss : 'transparent',
@@ -143,10 +143,10 @@ export function PlantRow({
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: plant.sold ? 0.6 : 1 }}>
         {thumb}
         <View style={{ flex: 1, gap: 6 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: PHIL_COLORS.ink, paddingRight: plant.sold ? 50 : 0 }} numberOfLines={2}>
+          <Text style={{ fontSize: 18, fontFamily: DISPLAY_FONT, color: PHIL_COLORS.ink, paddingRight: plant.sold ? 50 : 0 }} numberOfLines={2}>
             {plantDisplayName(plant.name, plant.noid) || 'Unnamed plant'}
           </Text>
-          {plant.price === null ? <Text style={{ color: PHIL_COLORS.soft, fontSize: 14 }}>{priceText}</Text> : <PriceChip>{priceText}</PriceChip>}
+          {plant.price === null ? <Text style={{ color: PHIL_COLORS.soft, fontSize: 14 }}>{priceText}</Text> : <PriceTag>{priceText}</PriceTag>}
         </View>
       </View>
       {plant.sold ? <SoldChip style={{ position: 'absolute', top: 10, right: 12 }} /> : null}
@@ -155,6 +155,61 @@ export function PlantRow({
           <Text style={{ color: '#fff', fontWeight: '700' }}>{index + 1}</Text>
         </View>
       ) : null}
+    </Pressable>
+  );
+}
+
+/**
+ * One lot of a sale in the Phil build: the plant's photo leads, large, edge to edge on the card, and
+ * the name and price sit under it like a price tag in a good shop.
+ */
+export function LotCard({
+  photo,
+  number,
+  name,
+  price,
+  soldTo,
+  note,
+  onPress,
+}: {
+  photo: string | null;
+  number: number;
+  name: string;
+  /** Text for the price tag, or null when the lot has no price yet. */
+  price: string | null;
+  soldTo: string | null;
+  note: string | null;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        { borderRadius: 18, backgroundColor: PHIL_COLORS.card, marginBottom: 14, overflow: 'hidden', opacity: pressed ? 0.88 : 1 },
+        PHIL_SHADOW.raised,
+      ]}
+    >
+      <View style={{ width: '100%', aspectRatio: 4 / 3, backgroundColor: PHIL_COLORS.mossTint, alignItems: 'center', justifyContent: 'center' }}>
+        {photo ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} /> : <Text style={{ color: PHIL_COLORS.soft, fontSize: 12 }}>No photo</Text>}
+        <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(30,77,59,0.9)', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 3 }}>
+          <Text style={{ color: ACCENT.cream, fontSize: 12, fontWeight: '700', letterSpacing: 0.6 }}>LOT {number}</Text>
+        </View>
+        {soldTo ? <SoldChip style={{ position: 'absolute', top: 12, right: 12 }} /> : null}
+      </View>
+      <View style={{ padding: 14, gap: 8 }}>
+        <Text style={{ fontSize: 18, fontFamily: DISPLAY_FONT, color: PHIL_COLORS.ink }} numberOfLines={2}>
+          {name}
+        </Text>
+        {soldTo ? (
+          <Text style={{ color: PHIL_COLORS.moss, fontWeight: '600' }}>Sold to {soldTo}</Text>
+        ) : price ? (
+          <PriceTag big>{price}</PriceTag>
+        ) : (
+          <Text style={{ color: PHIL_COLORS.warn, fontWeight: '600' }}>No price yet</Text>
+        )}
+        {note ? <Text style={{ color: PHIL_COLORS.soft, fontSize: 12 }}>{note}</Text> : null}
+      </View>
     </Pressable>
   );
 }

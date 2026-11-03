@@ -43,14 +43,14 @@ export interface StampLayout {
  * text reads the same on tall and wide shots, and the band stays under about a tenth
  * of the frame, clear of the plant.
  */
-export function stampLayout(width: number, height: number): StampLayout {
+export function stampLayout(width: number, height: number, position: 'bottom' | 'top' = 'bottom'): StampLayout {
   const unit = Math.min(width, height);
   const mainSize = Math.round(unit * 0.04);
   const originSize = Math.round(unit * 0.024);
   const padY = Math.round(unit * 0.018);
   const gap = Math.round(unit * 0.01);
   const bandHeight = padY * 2 + mainSize + gap + originSize;
-  const bandTop = height - bandHeight;
+  const bandTop = position === 'top' ? 0 : height - bandHeight;
   return {
     bandTop,
     bandHeight,

@@ -1,5 +1,5 @@
 import type { TextStyle, ViewStyle } from 'react-native';
-import { ACCENT, type Theme } from './theme';
+import { ACCENT, RADIUS, type Theme } from './theme';
 
 type Def = ViewStyle & TextStyle;
 type Defs = Record<string, Def>;
@@ -89,7 +89,7 @@ export function styleDefs(t: Theme): Defs {
     };
   }
 
-  const card = { backgroundColor: c.card, borderRadius: 16, padding: 16, marginBottom: 14, ...PHIL_SHADOW.raised };
+  const card = { backgroundColor: c.card, borderRadius: RADIUS.card, padding: 16, marginBottom: 16, ...PHIL_SHADOW.raised };
   return {
     screen: { padding: 16, paddingBottom: 40, maxWidth: 720, width: '100%', alignSelf: 'center' },
     footer: {
@@ -114,21 +114,21 @@ export function styleDefs(t: Theme): Defs {
       borderColor: ACCENT.insetEdge,
       borderTopWidth: 2,
       borderTopColor: ACCENT.insetTop,
-      borderRadius: 10,
+      borderRadius: RADIUS.field,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: 16,
       color: c.ink,
     },
-    btn: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+    btn: { borderRadius: RADIUS.button, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
     btnText: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
-    chip: { backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, ...PHIL_SHADOW.chip },
+    chip: { backgroundColor: c.card, borderRadius: RADIUS.chip, paddingHorizontal: 14, paddingVertical: 8, ...PHIL_SHADOW.chip },
     chipOn: { backgroundColor: c.moss },
     chipText: { fontSize: 14, color: c.ink, fontWeight: '500' },
     panel: card,
     cardText: card,
     cardBody: { fontSize: 15, lineHeight: 22, color: c.ink },
-    thumb: { borderRadius: 12, backgroundColor: c.mossTint, alignItems: 'center', justifyContent: 'center' },
+    thumb: { borderRadius: RADIUS.photo, backgroundColor: c.mossTint, alignItems: 'center', justifyContent: 'center' },
     checkbox: {
       width: 22,
       height: 22,

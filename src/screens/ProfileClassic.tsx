@@ -170,6 +170,11 @@ export default function ProfileClassic() {
       )}
 
       <GuideEntries
+        onSettings={() => {
+          // Settings edits the saved profile, so what is typed here is saved first.
+          if (ready) store.saveProfile({ ...p, sellerName: p.sellerName.trim() });
+          router.replace('/settings');
+        }}
         onWalk={() => {
           // The walk writes to the saved profile, so what is typed here is saved first.
           if (ready) store.saveProfile({ ...p, sellerName: p.sellerName.trim() });

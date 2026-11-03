@@ -5,6 +5,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { EMPTY_BACKUP_DATA, digest, type BackupData } from '../core/backup';
 import { findBackup, restoreBackup, runBackup, type BackupResult, type Found, type PhotoPort } from '../core/backupRun';
+import { restoreText, type FileRestore } from '../core/dataTools';
 import { createDrive } from '../core/drive';
 import { getAccessToken } from './googleAuth';
 import { loadJson, saveJson } from './storage';
@@ -67,3 +68,9 @@ export async function restoreRemote(found: Found): Promise<{ data: BackupData; m
 
 /** Forgets what this phone knew about the backup, for a disconnect. */
 export const forgetBackupState = () => saveBackupState({ lastRevision: null, lastAt: null, stamp: null });
+
+/** Reads a backup file's text for this phone: which of its photos the phone already has decides what is left out. */
+export function restoreFromFileText(text: string): FileRestore {
+  const port = photoPort();
+  return restoreText(text, { dir: port.dir, has: port.has });
+}

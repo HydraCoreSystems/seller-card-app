@@ -97,6 +97,12 @@ export default function SetupWalk({ mode, venue }: { mode: 'first' | 'replay' | 
       <Text style={{ color: colors.soft, fontWeight: '600', marginBottom: 6 }}>
         {counted.includes(step) ? C.stepCount(counted.indexOf(step) + 1, counted.length) : ''}
       </Text>
+      {/* One gold segment for each step passed or under way, so the walk reads as a path. */}
+      <View style={{ flexDirection: 'row', gap: 4, marginBottom: 10 }}>
+        {counted.map((s, i) => (
+          <View key={s} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i <= counted.indexOf(step) ? '#C9A227' : colors.line }} />
+        ))}
+      </View>
       <H>{title}</H>
       <Note>{why}</Note>
       {children}
@@ -227,7 +233,9 @@ export default function SetupWalk({ mode, venue }: { mode: 'first' | 'replay' | 
   return (
     <>
       <Stack.Screen options={{ title: C.title }} />
-      <Screen footer={footer}>{body}</Screen>
+      <Screen footer={footer} lush>
+        {body}
+      </Screen>
     </>
   );
 }

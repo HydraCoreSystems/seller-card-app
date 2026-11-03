@@ -1,3 +1,4 @@
+import { startingKind } from '../core/settings';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { FORMAT_LIST } from '../core/formats';
@@ -25,12 +26,12 @@ export default function NewSale() {
   const mostlyAuction = plants.filter((p) => p.kind === 'auction').length > plants.length / 2;
 
   const [formatId, setFormatId] = useState<FormatId>(profile.defaultFormat);
-  const [kind, setKind] = useState<SaleKind>(mostlyAuction ? 'auction' : 'sale');
+  const [kind, setKind] = useState<SaleKind>(startingKind(store.settings.card, mostlyAuction));
   const [opens, setOpens] = useState<SaleTime | null>(null);
   const [closes, setCloses] = useState<SaleTime | null>(null);
   const [closeCall, setCloseCall] = useState('');
   const [claimRules, setClaimRules] = useState(profile.claimRules);
-  const [crossListing, setCrossListing] = useState('');
+  const [crossListing, setCrossListing] = useState(store.settings.card.crossListing);
 
   const noPrice = picked.filter((p) => p.price === null).length;
 

@@ -94,9 +94,9 @@ describe('the Phil theme’s layers', () => {
     expect(PHIL_COLORS.bg).not.toBe(CLOSED_COLORS.bg);
   });
 
-  it('raises cards and panels: white, 16 point radius, the layered shadow, no hairline border', () => {
+  it('raises cards and panels: white, 18 point radius, the layered shadow, no hairline border', () => {
     for (const key of ['panel', 'cardText']) {
-      expect(defs[key]).toMatchObject({ backgroundColor: '#FFFFFF', borderRadius: 16, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } });
+      expect(defs[key]).toMatchObject({ backgroundColor: '#FFFFFF', borderRadius: 18, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } });
       expect(defs[key]).not.toHaveProperty('borderWidth');
       expect(defs[key]).not.toHaveProperty('borderColor');
     }
@@ -142,11 +142,12 @@ describe('the Phil theme’s layers', () => {
 });
 
 describe('the Phil pieces render', () => {
-  it('prints the app name and the maker line in the header band', () => {
+  it('prints the app name in the header band and keeps the maker line for the cards the app makes', () => {
     setVariant('phil');
     const html = renderToStaticMarkup(<BrandBand />);
     expect(html).toContain('Skrybix');
-    expect(html).toContain(originLine());
+    expect(html).not.toContain(originLine());
+    expect(html).not.toContain('Made with');
     expect(appName()).toBe('Skrybix');
   });
 

@@ -211,7 +211,12 @@ export default function ProfilePhil() {
       )}
       {store.pro ? <Note>{PRO_TEST_NOTE}</Note> : null}
 
-      <GuideEntries onWalk={() => walk('replay')} onRoomWalk={() => walk('room')} />
+      <GuideEntries
+        onSettings={() => {
+          if (ready) save();
+          router.replace('/settings');
+        }}
+        onWalk={() => walk('replay')} onRoomWalk={() => walk('room')} />
 
       <H>Backup</H>
       <Note>Keep a copy of everything in your own Google Drive.</Note>

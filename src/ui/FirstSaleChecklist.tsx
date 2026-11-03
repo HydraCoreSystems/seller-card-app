@@ -17,11 +17,18 @@ export function FirstSaleChecklist({ sale }: { sale: Sale }) {
     <Panel>
       <Text style={{ fontSize: 18, fontWeight: '700', color: colors.ink, marginBottom: 4 }}>{C.title}</Text>
       <Note>{C.note}</Note>
+      <View style={{ flexDirection: 'row', gap: 4, marginBottom: 6 }}>
+        {stages.map((st) => (
+          <View key={st.id} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: st.done ? colors.moss : st.id === lit ? '#C9A227' : colors.line }} />
+        ))}
+      </View>
       {stages.map((st, i) => {
         const on = st.id === lit;
         return (
           <View key={st.id} style={{ flexDirection: 'row', gap: 10, paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderColor: colors.line, opacity: st.done || on ? 1 : 0.45 }}>
-            <Text style={{ width: 22, fontWeight: '700', color: st.done ? colors.moss : on ? colors.ink : colors.soft }}>{st.done ? '✓' : i + 1}</Text>
+            <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: st.done ? colors.moss : on ? '#C9A227' : colors.mossTint }}>
+              <Text style={{ fontWeight: '700', fontSize: 12, color: st.done ? '#fff' : colors.ink }}>{st.done ? '✓' : i + 1}</Text>
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.ink, fontWeight: on ? '700' : '400' }}>{st.line}</Text>
               {st.done ? <Text style={{ color: colors.moss, fontSize: 12 }}>{C.done}</Text> : null}

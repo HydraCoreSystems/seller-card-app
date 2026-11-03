@@ -15,6 +15,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { READABLE_WIDTH } from '../core/layout';
+import { Backdrop, Reveal } from './botanical';
 import { useSizeClass } from './layout';
 import { buttonLook, styleDefs } from './styleDefs';
 import { theme } from './theme';
@@ -32,7 +33,7 @@ const OnBar = createContext(false);
  * `panes`: two equal panes that scroll on their own, with the gutter at the middle, so an open
  * foldable's fold falls between them. On a compact width the same two things simply follow each other.
  */
-export function Screen({ children, footer, panes }: { children?: ReactNode; footer?: ReactNode; panes?: [ReactNode, ReactNode] }) {
+export function Screen({ children, footer, panes, lush }: { children?: ReactNode; footer?: ReactNode; panes?: [ReactNode, ReactNode]; lush?: boolean }) {
   // Android draws edge to edge, so keep buttons clear of the system navigation bar.
   const { bottom } = useSafeAreaInsets();
   const regular = useSizeClass() === 'regular';
@@ -45,6 +46,8 @@ export function Screen({ children, footer, panes }: { children?: ReactNode; foot
   const pad = [styles.screen, !footer && { paddingBottom: 40 + bottom }];
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* The Phil build's plant room: a soft botanical ground, whisper quiet on every screen. */}
+      {T.name === 'phil' ? <Backdrop lush={lush} /> : null}
       {panes && regular ? (
         <View style={{ flex: 1, flexDirection: 'row' }}>
           {panes.map((pane, i) => (
@@ -235,7 +238,7 @@ export function useCopy(): [string | null, (key: string, text: string) => Promis
 /** A finished card: the exact text that gets pasted, with its copy button. */
 export function CardText({ text, copyKey, label = 'Copy text' }: { text: string; copyKey: string; label?: string }) {
   const [copied, copy] = useCopy();
-  return (
+  const card = (
     <View style={styles.cardText}>
       <Text selectable style={styles.cardBody}>
         {text}
@@ -247,6 +250,8 @@ export function CardText({ text, copyKey, label = 'Copy text' }: { text: string;
       />
     </View>
   );
+  // A built card settles in. The closed test build shows it as it always did.
+  return T.name === 'phil' ? <Reveal>{card}</Reveal> : card;
 }
 
 export function Thumb({ uri, size = 56 }: { uri: string | null; size?: number }) {
@@ -264,7 +269,7 @@ export function Thumb({ uri, size = 56 }: { uri: string | null; size?: number })
         <Image source={{ uri }} style={{ width: size, height: size }} />
         <View
           pointerEvents="none"
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(31,42,31,0.16)' }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(31,42,31,0.16)' }}
         />
       </View>
     );

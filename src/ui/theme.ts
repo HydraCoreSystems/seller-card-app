@@ -75,6 +75,9 @@ export const STAGE_LOOK = {
   shipped: { backgroundColor: '#1E4D3B', color: '#FFFFFF' },
 } as const;
 
+/** The corner radii of the Phil build, so every card, field, button and chip rounds the same way. */
+export const RADIUS = { field: 12, button: 14, card: 18, chip: 20, photo: 14 } as const;
+
 export const DISPLAY_FONT = 'Fraunces_600SemiBold';
 
 const CLOSED_THEME: Theme = { name: 'closedTest', colors: CLOSED_COLORS, display: undefined };

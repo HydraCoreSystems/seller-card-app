@@ -14,6 +14,8 @@ import { useLeftovers, useStore } from '../lib/store';
 import { EmptyState } from '../ui/EmptyState';
 import { Button, Note, Panel, Row, Screen, T, Thumb, colors } from '../ui/kit';
 import { BrandBand, PlantRow } from '../ui/phil';
+import { GearIcon, GlanceCard } from '../ui/botanical';
+import { glanceFor, type NextRoute } from '../core/glance';
 import { SealHint } from '../ui/PreviewBanner';
 import { ACCENT } from '../ui/theme';
 import { PHIL_SHADOW } from '../ui/styleDefs';
@@ -42,6 +44,13 @@ export default function Home() {
       router.push('/setup');
     }
   }, [guide, hasProfile, sample, updateGuide]);
+  const glance = glanceFor({ profile, plants, sales, records: store.records, pro: store.pro });
+  const goNext = (r: NextRoute) => {
+    if (r.to === 'setup') router.push('/setup');
+    else if (r.to === 'plant') router.push('/plant/new');
+    else if (r.to === 'pick') setPicking(true);
+    else router.push(r.screen ? `/sale/${r.saleId}/${r.screen}` : `/sale/${r.saleId}`);
+  };
   const resume = showsResume(guide, profile, sample) ? (guide.done.length ? WALK_COPY.resumeContinue : WALK_COPY.resumeStart) : null;
 
   const toggle = (id: string) =>
@@ -95,6 +104,11 @@ export default function Home() {
                   <Text style={{ color: phil ? ACCENT.cream : colors.moss, fontWeight: '600', fontSize: 15 }}>Sales</Text>
                 </Pressable>
               </Link>
+              <Link href="/settings" asChild>
+                <Pressable accessibilityRole="button" accessibilityLabel="Settings" style={{ padding: 8, justifyContent: 'center' }}>
+                  <GearIcon color={phil ? ACCENT.cream : colors.moss} />
+                </Pressable>
+              </Link>
               <Link href="/profile" asChild>
                 <Pressable accessibilityRole="button" style={{ padding: 8 }}>
                   <Text style={{ color: phil ? ACCENT.cream : colors.moss, fontWeight: '600', fontSize: 15 }}>Profile</Text>
@@ -104,7 +118,7 @@ export default function Home() {
           ),
         }}
       />
-      <Screen footer={footer}>
+      <Screen footer={footer} lush>
         {phil ? <BrandBand style={{ marginHorizontal: -16, marginTop: -16 }} /> : null}
         {/* In the Phil build the first card is pulled up over the band's bottom edge. */}
         <Wrap {...(phil ? { style: { marginTop: -12 } } : {})}>
@@ -121,6 +135,8 @@ export default function Home() {
             <Button kind="quiet" title="Look around a sample showcase first" onPress={store.openSample} />
           </Panel>
         ) : null}
+
+        {phil && profile && !picking && !store.sample ? <GlanceCard glance={glance} onNext={() => goNext(glance.next!.route)} /> : null}
 
         {profile && resume && !picking ? (
           <Panel style={{ backgroundColor: colors.mossTint, borderColor: colors.mossTint }}>
@@ -209,7 +225,7 @@ export default function Home() {
                 picking={picking}
                 on={on}
                 index={index}
-                thumb={<Thumb uri={p.photoUri} size={72} />}
+                thumb={<Thumb uri={p.photoUri} size={104} />}
                 onPress={() => (picking ? toggle(p.id) : router.push(`/plant/${p.id}`))}
               />
             );

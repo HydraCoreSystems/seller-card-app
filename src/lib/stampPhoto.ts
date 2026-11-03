@@ -4,6 +4,7 @@ import * as MediaLibrary from 'expo-media-library/legacy';
 import { Platform } from 'react-native';
 import { markerShapes, type Marker } from '../core/marker';
 import { sealPlace } from '../core/seal';
+import { BAND_ALPHA, type StampStyle } from '../core/settings';
 import { fitSize, stampLayout, type StampText } from '../core/stamp';
 import { drawShapes } from './drawShapes';
 import { newId } from './store';
@@ -14,6 +15,8 @@ export interface StampInput {
   text: StampText;
   /** The circle, when the room issues the seller a number. Null draws none. */
   marker: Marker | null;
+  /** Position and strength of the band. Defaults to the band as it has always been. */
+  style?: Pick<StampStyle, 'position' | 'strength'>;
 }
 
 
@@ -31,11 +34,12 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   const canvas = surface.getCanvas();
   canvas.drawImage(image, 0, 0);
 
-  const layout = stampLayout(w, h);
+  const position = input.style?.position ?? 'bottom';
+  const layout = stampLayout(w, h, position);
   const text = input.text;
 
   const band = Skia.Paint();
-  band.setColor(Skia.Color('rgba(0,0,0,0.55)'));
+  band.setColor(Skia.Color(`rgba(0,0,0,${BAND_ALPHA[input.style?.strength ?? 'medium']})`));
   canvas.drawRect(Skia.XYWHRect(0, layout.bandTop, w, layout.bandHeight), band);
 
   const white = Skia.Paint();
@@ -58,7 +62,7 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   const originFont = matchFont({ fontFamily: family, fontSize: layout.originSize, fontWeight: 'normal' });
   canvas.drawText(text.origin, layout.padX, layout.originBaseline, soft, originFont);
   if (input.marker) {
-    const at = sealPlace(w, h);
+    const at = sealPlace(w, h, position);
     drawShapes(canvas, markerShapes(input.marker, at.cx, at.cy, at.diameter));
   }
 

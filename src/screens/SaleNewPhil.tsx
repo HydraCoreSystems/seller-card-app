@@ -1,3 +1,4 @@
+import { startingKind } from '../core/settings';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import type { SaleKind, SaleTime } from '../core/types';
@@ -28,14 +29,14 @@ export default function SaleNewPhil() {
   const first = defaultVenue(profile);
   const [venueId, setVenueId] = useState(first.id);
   const room = rooms.find((v) => v.id === venueId) ?? first;
-  const [kind, setKind] = useState<SaleKind>(mostlyAuction ? 'auction' : 'sale');
+  const [kind, setKind] = useState<SaleKind>(startingKind(store.settings.card, mostlyAuction));
   const [opens, setOpens] = useState<SaleTime | null>(null);
   const [closes, setCloses] = useState<SaleTime | null>(null);
   const [endsAt, setEndsAt] = useState<SaleTime | null>(null);
   const [closeCall, setCloseCall] = useState('');
   const [claimRules, setClaimRules] = useState(first.claimRules || profile.claimRules);
-  const [crossListing, setCrossListing] = useState('');
-  const [note, setNote] = useState('');
+  const [crossListing, setCrossListing] = useState(store.settings.card.crossListing);
+  const [note, setNote] = useState(store.settings.card.note);
   const [contactHours, setContactHours] = useState(first.contactHours);
   const [templateName, setTemplateName] = useState('');
   const [templateId, setTemplateId] = useState('none');

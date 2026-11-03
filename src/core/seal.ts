@@ -179,12 +179,14 @@ export interface SealPlace {
  * Where the seal sits on a listing photo: the lower right corner, about a fifth of the photo
  * wide so the number reads on a phone, resting just above the stamp band.
  */
-export function sealPlace(width: number, height: number): SealPlace {
+export function sealPlace(width: number, height: number, position: 'bottom' | 'top' = 'bottom'): SealPlace {
   const unit = Math.min(width, height);
   const diameter = Math.round(width * 0.2);
   const margin = Math.round(unit * 0.03);
-  const { bandTop } = stampLayout(width, height);
-  return { cx: width - margin - diameter / 2, cy: bandTop - margin - diameter / 2, diameter };
+  const { bandTop } = stampLayout(width, height, position);
+  // With the band along the top, the circle rests in the lower right corner instead.
+  const cy = position === 'top' ? height - margin - diameter / 2 : bandTop - margin - diameter / 2;
+  return { cx: width - margin - diameter / 2, cy, diameter };
 }
 
 export interface CardImage {

@@ -3,7 +3,10 @@ import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { markerFor, stampFor } from '../core/marker';
 import { toDay } from '../core/text';
 import type { Profile } from '../core/types';
+import { stampKey } from '../core/settings';
 import { saveToGallery, stampPhoto } from '../lib/stampPhoto';
+import { stampStyle } from '../lib/stampSettings';
+import { useStore } from '../lib/store';
 import { Button, colors } from './kit';
 import { ViewablePhoto } from './PhotoViewer';
 
@@ -14,12 +17,16 @@ const cache = new Map<string, Promise<string>>();
  * room the photo is for, so the band, the number and the circle all come from that room.
  */
 export function getStamped(photoUri: string, profile: Profile, day = toDay(new Date())): Promise<string> {
+  const style = stampStyle();
+  // With the watermark off, the photo goes out as it is: no band and no circle.
+  if (!style.on) return Promise.resolve(photoUri);
   const marker = markerFor(profile);
-  const text = stampFor(profile, day);
-  const key = [photoUri, text.main, marker ? `${marker.style}:${marker.number}:${marker.venueName}` : '', day].join('|');
+  const auto = stampFor(profile, day);
+  const text = { ...auto, main: style.text.trim() || auto.main };
+  const key = [photoUri, text.main, marker ? `${marker.style}:${marker.number}:${marker.venueName}` : '', day, stampKey(style)].join('|');
   let p = cache.get(key);
   if (!p) {
-    p = stampPhoto({ photoUri, text, marker });
+    p = stampPhoto({ photoUri, text, marker, style });
     p.catch(() => cache.delete(key));
     cache.set(key, p);
   }
@@ -29,7 +36,8 @@ export function getStamped(photoUri: string, profile: Profile, day = toDay(new D
 export function useStamped(photoUri: string | null, profile: Profile | null) {
   const [uri, setUri] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  const stampKey = profile ? `${stampFor(profile, 'x').main}|${markerFor(profile)?.number ?? ''}|${markerFor(profile)?.venueName ?? ''}` : '';
+  const style = useStore().settings.stamp;
+  const stampId = profile ? `${stampFor(profile, 'x').main}|${markerFor(profile)?.number ?? ''}|${markerFor(profile)?.venueName ?? ''}|${stampKey(style)}` : '';
   useEffect(() => {
     let live = true;
     setUri(null);
@@ -42,7 +50,7 @@ export function useStamped(photoUri: string | null, profile: Profile | null) {
     return () => {
       live = false;
     };
-  }, [photoUri, stampKey]);
+  }, [photoUri, stampId]);
   return { uri, error };
 }
 
