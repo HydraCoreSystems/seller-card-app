@@ -114,14 +114,14 @@ export default function Home() {
                   <Text style={{ color: phil ? ACCENT.cream : colors.moss, fontWeight: '600', fontSize: 15 }}>Sales</Text>
                 </Pressable>
               </Link>
-              <Link href="/settings" asChild>
-                <Pressable accessibilityRole="button" accessibilityLabel="Settings" style={{ padding: 8, justifyContent: 'center' }}>
-                  <GearIcon color={phil ? ACCENT.cream : colors.moss} />
-                </Pressable>
-              </Link>
               <Link href="/profile" asChild>
                 <Pressable accessibilityRole="button" style={{ padding: 8 }}>
                   <Text style={{ color: phil ? ACCENT.cream : colors.moss, fontWeight: '600', fontSize: 15 }}>Profile</Text>
+                </Pressable>
+              </Link>
+              <Link href="/settings" asChild>
+                <Pressable accessibilityRole="button" accessibilityLabel="Settings" style={{ padding: 8, justifyContent: 'center' }}>
+                  <GearIcon color={phil ? ACCENT.cream : colors.moss} />
                 </Pressable>
               </Link>
             </Row>
