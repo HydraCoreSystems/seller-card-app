@@ -18,3 +18,10 @@ export function onAppReady(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+// The sale is brought back at most once per launch, so going back to Home afterwards stays on Home.
+let resumed = false;
+export const resumedThisLaunch = (): boolean => resumed;
+export const markResumed = (): void => {
+  resumed = true;
+};

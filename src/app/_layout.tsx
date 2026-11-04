@@ -6,6 +6,7 @@ import { BackupProvider } from '../lib/backupContext';
 import { StoreProvider } from '../lib/store';
 import { T, colors } from '../ui/kit';
 import { PreviewBanner } from '../ui/PreviewBanner';
+import { ResumeTracker } from '../ui/ResumeTracker';
 import { TitleScreen } from '../ui/TitleScreen';
 import { DISPLAY_FONT } from '../ui/theme';
 
@@ -24,6 +25,7 @@ export default function Layout() {
         <BackupProvider>
         <StatusBar style="dark" />
         <PreviewBanner />
+        <ResumeTracker />
         <Stack
           screenOptions={{
             // The Phil build changes screens with a short fade. Nothing slides far or bounces.

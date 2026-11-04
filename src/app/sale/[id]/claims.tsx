@@ -60,7 +60,11 @@ export default function ClaimsScreen() {
       </Note>
       <TextInput
         value={text}
-        onChangeText={setText}
+        onChangeText={(t) => {
+          setText(t);
+          // Kept the moment it is pasted, so a thread is never lost to a crash before Read claims is tapped.
+          store.saveSale({ ...sale, claimText: t });
+        }}
         multiline
         placeholder="Paste the comment thread"
         placeholderTextColor="#9AA39A"

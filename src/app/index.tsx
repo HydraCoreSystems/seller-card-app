@@ -2,7 +2,7 @@ import { googleReady } from '../lib/googleAuth';
 import { Grid } from '../ui/layout';
 import { Link, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Fragment, useEffect, useRef, useState, type ElementType } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ElementType } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { getFormat } from '../core/formats';
 import { opensByItself, settleGuide, showsResume } from '../core/guide';
@@ -17,7 +17,9 @@ import { BrandBand, PlantRow } from '../ui/phil';
 import { GearIcon, GlanceCard } from '../ui/botanical';
 import { glanceFor, type NextRoute } from '../core/glance';
 import { SealHint } from '../ui/PreviewBanner';
-import { markAppReady } from '../lib/appReady';
+import { markAppReady, markResumed, resumedThisLaunch } from '../lib/appReady';
+import { RESUME_COPY, resumeName, resumeTarget, screenName } from '../core/resume';
+
 import { ACCENT } from '../ui/theme';
 import { PHIL_SHADOW } from '../ui/styleDefs';
 
@@ -33,6 +35,8 @@ export default function Home() {
   const leftovers = useLeftovers();
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  // The sale the seller has open right now, if any. It is the way back in, and it sits at the top of Home.
+  const liveSale = useMemo(() => (store.sample ? null : resumeTarget(store.resume, store.sales, store.records)), [store.sample, store.resume, store.sales, store.records]);
 
   // First launch on a fresh install opens the setup walk once. A restored profile settles the walk as done.
   const autoOpened = useRef(false);
@@ -44,8 +48,12 @@ export default function Home() {
     else if (!autoOpened.current && opensByItself(guide, { hasProfile, sample })) {
       autoOpened.current = true;
       router.push('/setup');
+    } else if (!resumedThisLaunch() && liveSale) {
+      // A cold start in the middle of a sale puts the seller back in it, once. Home stays under it for the back button.
+      markResumed();
+      router.push(liveSale.path as never);
     }
-  }, [guide, hasProfile, sample, updateGuide]);
+  }, [guide, hasProfile, sample, updateGuide, liveSale]);
   const glance = glanceFor({ profile, plants, sales, records: store.records, pro: store.pro });
   const goNext = (r: NextRoute) => {
     if (r.to === 'setup') router.push('/setup');
@@ -124,6 +132,15 @@ export default function Home() {
         {phil ? <BrandBand style={{ marginHorizontal: -16, marginTop: -16 }} /> : null}
         {/* In the Phil build the first card is pulled up over the band's bottom edge. */}
         <Wrap {...(phil ? { style: { marginTop: -12 } } : {})}>
+        {liveSale && !picking ? (
+          <Panel style={{ backgroundColor: colors.mossTint, borderColor: colors.mossTint }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.ink, marginBottom: 2, ...(T.display ? { fontFamily: T.display, fontWeight: 'normal' as const } : {}) }}>{RESUME_COPY.title}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{resumeName(liveSale.sale)}</Text>
+            <Note>{RESUME_COPY.where(screenName(liveSale.path))}</Note>
+            <Button title={RESUME_COPY.title} onPress={() => router.push(liveSale.path as never)} />
+          </Panel>
+        ) : null}
+
         {!profile ? (
           <Panel style={{ backgroundColor: colors.mossTint, borderColor: colors.mossTint }}>
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink, marginBottom: 6, ...(T.display ? { fontFamily: T.display, fontWeight: 'normal' as const } : {}) }}>Welcome</Text>

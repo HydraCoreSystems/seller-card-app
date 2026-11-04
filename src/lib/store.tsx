@@ -12,6 +12,7 @@ import { toDay } from '../core/text';
 import type { CheckoutResponse, Fulfillment, Lot, Plant, Profile, Sale, SaleRecord, SaleTemplate } from '../core/types';
 import { resolveProfile, venuesOf, withVenues } from '../core/venues';
 import { readGuide, type GuideState } from '../core/guide';
+import { moveTo, readResume, type LotDraft, type Resume } from '../core/resume';
 import { readSettings, type Settings } from '../core/settings';
 import { setStampStyle } from './stampSettings';
 import { isPhil } from '../core/variant';
@@ -45,6 +46,8 @@ interface Data {
   guide: GuideState;
   /** What the seller chose in Settings: the watermark and what a new card starts with. */
   settings: Settings;
+  /** The sale the seller has open and the screen they were on. Stays on the phone and is not part of a backup. */
+  resume: Resume | null;
   /** True when the checkout chain is on: always in the Phil build, and in the store product while a Pro subscription is active. Never saved here; the store is asked. */
   pro: boolean;
 }
@@ -65,6 +68,10 @@ interface Store extends Data {
   updateGuide(fn: (g: GuideState) => GuideState): void;
   /** Changes Settings. */
   updateSettings(fn: (s: Settings) => Settings): void;
+  /** Notes that the seller moved to a screen inside a sale. */
+  trackSale(tracked: { saleId: string; path: string }): void;
+  /** Keeps, or clears with null, the lot form the seller is filling in. */
+  setLotDraft(saleId: string, draft: LotDraft | null): void;
   savePlant(plant: Plant): void;
   deletePlant(id: string): void;
   createSale(plantIds: string[], settings: SaleSettings): Sale;
@@ -111,6 +118,7 @@ const KEYS = {
   templates: 'templates.v1',
   guide: 'guide.v1',
   settings: 'settings.v1',
+  resume: 'resume.v1',
 } as const;
 
 export function newId(): string {
@@ -144,6 +152,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       hasSales: loadJson<Sale[]>(KEYS.sales, []).length > 0,
     }),
     settings: readSettings(loadJson<unknown>(KEYS.settings, null)),
+    resume: readResume(loadJson<unknown>(KEYS.resume, null)),
     // The Phil build has Pro unlocked, with no gate and no switch. The store product starts from the last
     // paid answer it saw, so Pro stays on with no signal, and the store corrects it in a moment.
     pro: isPhil() || cachedPro(),
@@ -164,6 +173,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [data, sample]);
 
   const update = useCallback((fn: (d: Data) => Partial<Data>) => setData((d) => ({ ...d, ...fn(d) })), []);
+  // Both of these are stable, so a screen can clear its draft as it closes without the clearing firing on every render.
+  const trackSale = useCallback(
+    (tracked: { saleId: string; path: string }) =>
+      update((d) => (d.resume?.path === tracked.path && d.resume.saleId === tracked.saleId ? {} : { resume: moveTo(d.resume, tracked, Date.now()) })),
+    [update],
+  );
+  const setLotDraft = useCallback(
+    (saleId: string, draft: LotDraft | null) =>
+      update((d) => (d.resume && d.resume.saleId === saleId && (d.resume.lotDraft ?? null) !== draft ? { resume: { ...d.resume, lotDraft: draft } } : {})),
+    [update],
+  );
 
   // In the store product, Pro follows the Apple subscription. The Phil build never opens the store.
   useEffect(() => {
@@ -180,7 +200,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       openSample: () => {
         if (sample) return;
         setOwnData(data);
-        setData({ ...sampleData(), templates: [], pro: data.pro, guide: data.guide, settings: data.settings });
+        setData({ ...sampleData(), templates: [], pro: data.pro, guide: data.guide, settings: data.settings, resume: data.resume });
       },
       leaveSample: () => {
         if (!ownData) return;
@@ -197,6 +217,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveProfile: (profile) => update(() => ({ profile })),
       updateGuide: (fn) => update((d) => ({ guide: fn(d.guide) })),
       updateSettings: (fn) => update((d) => ({ settings: fn(d.settings) })),
+      trackSale,
+      setLotDraft,
       savePlant: (plant) =>
         update((d) => ({
           plants: d.plants.some((p) => p.id === plant.id)
@@ -324,7 +346,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })),
       setFulfillment: (saleId, key, patch) => update((d) => applyFulfillment(d, saleId, key, patch)),
     }),
-    [data, update, sample, ownData],
+    [data, update, sample, ownData, trackSale, setLotDraft],
   );
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;

@@ -1,7 +1,8 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { photoFields, photosOf } from '../../../core/photos';
 import { lastSold, priceMemoryLine } from '../../../core/records';
+import { draftFor } from '../../../core/resume';
 import { appendLot, nextLotNumber } from '../../../core/sale';
 import { toDay } from '../../../core/text';
 import { newId, useSale, useStore } from '../../../lib/store';
@@ -17,13 +18,26 @@ export default function LotScreen() {
   const store = useStore();
   const sale = useSale(id);
   const existing = sale?.lots.find((l) => String(l.number) === n);
-  const [draft, setDraft] = useState<PlantDraft>({
-    name: existing?.name ?? '',
-    noid: existing?.noid ?? false,
-    priceText: priceText(existing?.price ?? null),
-    description: existing?.description ?? '',
-    photoUris: photosOf(existing),
+  // A lot form that was open when the app was cut off comes back as it was typed.
+  const [draft, setDraft] = useState<PlantDraft>(() => {
+    const kept = draftFor(store.resume, id, n);
+    return kept
+      ? { name: kept.name, noid: kept.noid, priceText: kept.priceText, description: kept.description, photoUris: kept.photoUris }
+      : {
+          name: existing?.name ?? '',
+          noid: existing?.noid ?? false,
+          priceText: priceText(existing?.price ?? null),
+          description: existing?.description ?? '',
+          photoUris: photosOf(existing),
+        };
   });
+  const { setLotDraft } = store;
+  const change = (d: PlantDraft) => {
+    setDraft(d);
+    setLotDraft(id, { n: n ?? null, ...d });
+  };
+  // Leaving the form the normal way (saved or backed out) lets the draft go. A crash never gets here, so the draft survives it.
+  useEffect(() => () => setLotDraft(id, null), [id, setLotDraft]);
 
   if (!sale) return <Screen><Note>This showcase is gone.</Note></Screen>;
   const number = existing?.number ?? nextLotNumber(sale);
@@ -67,7 +81,7 @@ export default function LotScreen() {
       <Screen footer={<Button title={existing ? 'Save lot' : `Add lot ${number}`} disabled={!canSave} onPress={save} />}>
         <PlantFields
           draft={draft}
-          onChange={setDraft}
+          onChange={change}
           priceLabel={sale.kind === 'auction' ? 'Opening bid' : 'Price'}
           memory={memory ? priceMemoryLine(memory) : null}
         />
