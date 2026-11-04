@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { buyerHistory, buyerKey, historyLine } from '../../../core/buyers';
 import { cleanMentions, showTime, type Claim } from '../../../core/claims';
 import { priceIn } from '../../../core/rundown';
 import { formatPrice, plantDisplayName, toDay } from '../../../core/text';
 import type { Lot } from '../../../core/types';
-import { readClaims } from '../../../core/claimReport';
+import { claimOptions, readClaims } from '../../../core/claimReport';
+import { EMPTY_DRAFT, looksLikeThread, mergeIntoThread, readIntake, type IntakeDraft } from '../../../core/intake';
+import { INTAKE_COPY as IC } from '../../../core/intakeCopy';
+import { clipboardText } from '../../../lib/clipboardText';
+import { ocrAvailable, readScreenshots } from '../../../lib/screenOcr';
+import { IntakeReview } from '../../../ui/IntakeReview';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
 import { useSizeClass } from '../../../ui/layout';
 import { Button, H, Note, Panel, Row, Screen, colors, styles } from '../../../ui/kit';
@@ -18,6 +23,30 @@ export default function ClaimsScreen() {
   const regular = useSizeClass() === 'regular';
   const [text, setText] = useState(sale?.claimText ?? '');
   const [shown, setShown] = useState(sale?.claimText ?? '');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+
+  // A thread copied from Facebook, waiting on the clipboard. Checked when the screen opens and whenever the app comes back to the front.
+  const saved = sale?.claimText ?? '';
+  const savedRef = useRef(saved);
+  useEffect(() => {
+    savedRef.current = saved;
+  }, [saved]);
+  const sellerName = store.profile?.facebookName?.trim() || store.profile?.sellerName;
+  const [clip, setClip] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    const check = async () => {
+      const text = await clipboardText();
+      if (live) setClip(text && looksLikeThread(text, { sellerName }, savedRef.current) ? text : null);
+    };
+    check();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && check());
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, [sellerName]);
 
   const report = useMemo(() => (sale ? readClaims(shown, sale, store.profile) : null), [shown, sale, store.profile]);
   const past = useMemo(() => buyerHistory(store.records, id), [store.records, id]);
@@ -53,8 +82,72 @@ export default function ClaimsScreen() {
     store.saveSale({ ...sale, claimText: text });
   };
 
+  // All three ways in end at the same saved claimText and the same reader.
+  const options = claimOptions(sale, store.profile);
+  const draft = sale.intakeDraft;
+  const fromClipboard = () => {
+    if (!clip) return;
+    setText(clip);
+    setShown(clip);
+    store.saveSale({ ...sale, claimText: clip });
+    setClip(null);
+    setStatus(null);
+  };
+  const fromScreenshots = async () => {
+    setBusy(IC.reading);
+    setStatus(null);
+    try {
+      const got = await readScreenshots();
+      if (!got) return;
+      if (got.screens.every((s) => s.length === 0)) {
+        setStatus(IC.nothingRead);
+        return;
+      }
+      // More screenshots after an unfinished batch come after it, because they arrived after it.
+      const base = draft ?? EMPTY_DRAFT;
+      store.saveSale({ ...sale, intakeDraft: { ...base, screens: [...base.screens, ...got.screens] } });
+      if (got.failed) setStatus(IC.someFailed(got.failed));
+    } catch {
+      setStatus(IC.nothingRead);
+    } finally {
+      setBusy(null);
+    }
+  };
+  const changeDraft = (next: IntakeDraft) => store.saveSale({ ...sale, intakeDraft: next });
+  const saveDraft = () => {
+    if (!draft) return;
+    const merged = mergeIntoThread(sale.claimText, readIntake(draft, options), sellerName ?? '');
+    setText(merged);
+    setShown(merged);
+    store.saveSale({ ...sale, claimText: merged, intakeDraft: undefined });
+    setStatus(IC.saved);
+  };
+
   const thread = (
     <>
+      {clip && clip.trim() !== saved.trim() && !draft ? (
+        <>
+          <Button title={IC.clipboard} onPress={fromClipboard} />
+          <Note>{IC.clipboardNote}</Note>
+        </>
+      ) : null}
+      {ocrAvailable ? (
+        <>
+          <Button kind="secondary" title={busy ?? IC.screenshots} disabled={!!busy} onPress={fromScreenshots} />
+          <Note>{IC.screenshotsNote}</Note>
+        </>
+      ) : null}
+      {status ? <Note tone={status === IC.saved ? undefined : 'warn'}>{status}</Note> : null}
+      {draft ? (
+        <IntakeReview
+          draft={draft}
+          options={options}
+          lotNumbers={sale.lots.map((l) => l.number)}
+          onChange={changeDraft}
+          onSave={saveDraft}
+          onDiscard={() => store.saveSale({ ...sale, intakeDraft: undefined })}
+        />
+      ) : null}
       <Note>
         Open your Grower Showcase post, copy all the comments, and paste them here. Claims come back in thread order, lot by lot.
       </Note>

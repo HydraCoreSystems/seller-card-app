@@ -1,3 +1,4 @@
+import type { IntakeDraft } from './intake';
 import type { SecondChance } from './secondChance';
 
 export type SaleKind = 'sale' | 'auction';
@@ -147,6 +148,8 @@ export interface Sale {
   postedAt?: string;
   /** The last comment thread pasted into the claim tracker for this sale. */
   claimText?: string;
+  /** Claims read from screenshots and waiting for the seller to check them. Kept on the sale so a knock out loses nothing. */
+  intakeDraft?: IntakeDraft;
   /** YYYY-MM-DD, set when the seller closes the sale from the rundown. */
   closedAt?: string;
   /** Lots nobody claimed, as they stood when the sale closed. */

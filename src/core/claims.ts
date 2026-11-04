@@ -157,7 +157,7 @@ function stripBadge(line: string): { text: string; badge: string | null } {
   return { text: line, badge: null };
 }
 
-function isConnectorExport(lines: string[]): boolean {
+export function isConnectorExport(lines: string[]): boolean {
   return lines.some((l) => CONNECTOR_TOP.test(l.trim()));
 }
 
@@ -248,9 +248,13 @@ export function parseThread(text: string, sellerName = ''): ThreadComment[] {
 
 /* ---------- times ---------- */
 
+/** The time written on claims that came from screenshots, so a pasted export can still be read back. */
+export const SCREENSHOT_TIME = 'screenshot';
+
 /** "1:29:16 PM" for exact times; anything else as it came. */
 export function showTime(hint: string | null): string | null {
-  if (!hint) return null;
+  // Claims read from screenshots carry no time. Their place in the screenshots is their order.
+  if (!hint || hint === SCREENSHOT_TIME) return null;
   const iso = hint.match(/^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2}):(\d{2})/);
   if (!iso) return hint;
   const h = Number(iso[1]);
@@ -337,7 +341,11 @@ function intentOf(words: string): Intent {
 }
 
 export function trackClaims(text: string, options: ClaimOptions = {}): ClaimReport {
-  const comments = parseThread(text, options.sellerName ?? '');
+  return trackComments(parseThread(text, options.sellerName ?? ''), options);
+}
+
+/** The claim logic itself, for comments that are already split. Every way of bringing a thread in ends up here. */
+export function trackComments(comments: ThreadComment[], options: ClaimOptions = {}): ClaimReport {
   const sellerKnown = comments.some((c) => c.fromSeller);
   const nested = comments.some((c) => c.parent !== null);
   const names = [...new Set(comments.map((c) => c.author))].sort((a, b) => b.length - a.length);
