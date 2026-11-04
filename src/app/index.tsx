@@ -17,12 +17,14 @@ import { BrandBand, PlantRow } from '../ui/phil';
 import { GearIcon, GlanceCard } from '../ui/botanical';
 import { glanceFor, type NextRoute } from '../core/glance';
 import { SealHint } from '../ui/PreviewBanner';
+import { markAppReady } from '../lib/appReady';
 import { ACCENT } from '../ui/theme';
 import { PHIL_SHADOW } from '../ui/styleDefs';
 
 const NO_PLANTS_YET = 'No plants yet. Add your first plant and it will live here.';
 
 export default function Home() {
+  useEffect(markAppReady, []);
   const phil = T.name === 'phil';
   // The closed test build has no wrapper at all, so its screen is built exactly as it was.
   const Wrap: ElementType = phil ? View : Fragment;

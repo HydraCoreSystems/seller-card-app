@@ -123,3 +123,19 @@ describe('Settings copy', () => {
     expect(all.length).toBeGreaterThan(60);
   });
 });
+
+import { TITLE_CAP_MS, TITLE_HOLD_MS, titleLiftAt } from '../src/core/title';
+
+describe('title screen timing', () => {
+  it('holds about two seconds when the app is ready at once', () => {
+    expect(TITLE_HOLD_MS).toBe(2000);
+    expect(titleLiftAt(0)).toBe(2000);
+    expect(titleLiftAt(1500)).toBe(2000);
+  });
+  it('waits for a slow start, but never past three seconds', () => {
+    expect(titleLiftAt(2600)).toBe(2600);
+    expect(titleLiftAt(9000)).toBe(TITLE_CAP_MS);
+    expect(titleLiftAt(null)).toBe(TITLE_CAP_MS);
+    expect(TITLE_CAP_MS).toBeLessThanOrEqual(3000);
+  });
+});

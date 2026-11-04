@@ -6,6 +6,7 @@ import { BackupProvider } from '../lib/backupContext';
 import { StoreProvider } from '../lib/store';
 import { T, colors } from '../ui/kit';
 import { PreviewBanner } from '../ui/PreviewBanner';
+import { TitleScreen } from '../ui/TitleScreen';
 import { DISPLAY_FONT } from '../ui/theme';
 
 // Headings and the wordmark use Fraunces in the Phil build. The closed test build loads no fonts at all.
@@ -58,6 +59,7 @@ export default function Layout() {
           <Stack.Screen name="backup" options={{ title: 'Backup' }} />
           <Stack.Screen name="paywall" options={{ title: 'Skrybix Pro', presentation: 'modal' }} />
         </Stack>
+        <TitleScreen />
         </BackupProvider>
       </StoreProvider>
     </KeyboardProvider>
