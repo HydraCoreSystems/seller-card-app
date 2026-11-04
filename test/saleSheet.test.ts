@@ -79,7 +79,7 @@ describe('the Sale Sheet going out', () => {
     const state = sheetState(r.lots, true);
     const out = text(saleSheet(profile, { ...purge, lots }, state).rows);
     expect(out.find((row) => row[0] === '2')!.slice(5)).toEqual(['Ava Stone', 'Waiting']);
-    expect(out.find((row) => row[0] === '11')![5]).toMatch(/^Tie: /);
+    expect(out.find((row) => row[0] === '11')!.slice(5)).toEqual(['Ivy Cole', 'Waiting']);
     expect(out.find((row) => row[0] === '1')!.slice(5)).toEqual(['', '']);
   });
 });

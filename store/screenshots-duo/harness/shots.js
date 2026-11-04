@@ -34,8 +34,8 @@ const snap=async(pg,name,size)=>{const t=await pg.evaluate(()=>document.body.inn
   // 3 stamped photos
   pg=await sample('/?data=photos'); await snap(pg,'03a-plant-list',size); await clickText(pg,'Hoya carnosa Krimson Queen'); await pg.waitForTimeout(2000); await snap(pg,'03b-plant-card-top',size);
   await scrollTo(pg,'Photo 2',size.h-80-Math.round(Math.min(size.w-32,688)*4/3)-115); await snap(pg,'03-plant-stamped-photos',size); await pg.context().close();
-  // 4 tie
-  pg=await sample('/?data=tie'); await showcase(pg); await clickText(pg,'Claims',{exact:true}); await pg.waitForTimeout(800); await bottom(pg); await snap(pg,'04-claim-tracker-tie',size); await pg.context().close();
+  // 4 claims in arrival order: numbered, winner and alternates marked
+  pg=await sample('/?data=arrival'); await showcase(pg); await clickText(pg,'Claims',{exact:true}); await pg.waitForTimeout(800); await bottom(pg); await snap(pg,'04-claim-tracker-arrival-order',size); await pg.context().close();
   // 5, 6 pro
   pg=await sample('/?shot=pro&data=rundown'); await showcase(pg); await clickText(pg,'Claims',{exact:true}); await clickText(pg,'After the showcase',{exact:true}); await pg.waitForTimeout(800);
   await snap(pg,'05a-rundown-top',size);

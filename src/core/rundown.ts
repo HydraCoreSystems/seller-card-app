@@ -1,5 +1,5 @@
 /**
- * After sale rundown. Reads the claim report against the sale and the seller's own rulings,
+ * After sale rundown. Reads the claim report against the sale and the sales already recorded,
  * and gives back who won each lot, who's next in line, what each buyer owes, and anything
  * a buyer asked that the seller should answer. The Sales Record document is printed from it.
  */
@@ -16,13 +16,11 @@ export interface RundownLot {
   number: number;
   name: string;
   price: number | null;
-  /** The seller's ruling when there is one, otherwise the clear first claim. */
+  /** The first claim to arrive, or the buyer the sale was recorded to (the next in line after a never paid). */
   winner: string | null;
-  /** True when the seller has marked this lot sold. */
+  /** True when the sale on this lot has been recorded. */
   ruled: boolean;
-  /** Claims tied for first that the seller hasn't ruled on yet. */
-  tie: string[] | null;
-  /** Everyone still waiting behind the winner, in thread order. */
+  /** Everyone still waiting behind the winner, the alternates, in arrival order. */
   line: string[];
   /** How the winner stands on paying, once the seller has marked it. */
   payment: 'paid' | 'never' | null;
@@ -107,20 +105,15 @@ export function buildRundown({
           ...base,
           winner: record.buyer,
           ruled: true,
-          tie: null,
           line: queue.filter((a) => !had.has(key(a))),
           payment: record.payment ?? null,
           passedOver: recs.filter((r) => r !== record).map((r) => r.buyer),
         };
       }
-      if (claims?.tie) {
-        const tied = claims.tie.map((c) => c.author);
-        return { ...base, winner: null, ruled: false, tie: tied, line: queue.filter((a) => !tied.includes(a)) };
-      }
-      return { ...base, winner: queue[0] ?? null, ruled: false, tie: null, line: queue.slice(1) };
+      return { ...base, winner: queue[0] ?? null, ruled: false, line: queue.slice(1) };
     });
 
-  const claimed = lots.filter((l) => l.winner || l.tie);
+  const claimed = lots.filter((l) => l.winner);
   const past = buyerHistory(records, sale.id);
   const byBuyer = new Map<string, RundownBuyer>();
   const wins = new Map<string, RundownLot[]>();
@@ -153,11 +146,11 @@ export function buildRundown({
   };
 }
 
-/** Every lot's claim order as the record names it: the winner or tied buyers, then the line. */
+/** Every lot's claim order as the record names it: the winner, then the alternates in arrival order. */
 export function claimOrderOf(r: Rundown): Record<number, string[]> {
   const out: Record<number, string[]> = {};
   for (const l of r.lots) {
-    const order = [...(l.winner ? [l.winner] : []), ...(l.tie ?? []), ...l.line];
+    const order = [...(l.winner ? [l.winner] : []), ...l.line];
     if (order.length) out[l.number] = order;
   }
   return out;
@@ -166,7 +159,7 @@ export function claimOrderOf(r: Rundown): Record<number, string[]> {
 /** The lots nobody claimed, kept on the sale when it closes so they can go up again. */
 export function unclaimedLots(r: Rundown, sale: Sale): Lot[] {
   return r.lots
-    .filter((l) => !l.winner && !l.tie)
+    .filter((l) => !l.winner)
     .map(
       (l) =>
         sale.lots.find((x) => x.number === l.number) ?? {
@@ -188,7 +181,7 @@ function openQuestions(report: ClaimReport, lots: RundownLot[]): OpenQuestion[] 
     for (const o of l.others) {
       if (!lotOf.has(o.index)) lotOf.set(o.index, l.lot);
       const sold = lots.find((x) => x.number === l.lot);
-      if (!o.fromSeller && sold && !sold.winner && !sold.tie) unsoldTalk.add(o.index);
+      if (!o.fromSeller && sold && !sold.winner) unsoldTalk.add(o.index);
     }
   }
   const unplaced = new Set(report.unplaced.map((c) => c.index));
@@ -224,10 +217,8 @@ export function salesRecordHtml(r: Rundown): string {
         ? esc(l.winner) +
           (l.payment === 'never' ? ' <span class="warn">(never paid)</span>' : '') +
           (l.passedOver.length ? ` <span class="soft">(second chance after ${esc(l.passedOver.join(', '))} never paid)</span>` : '')
-        : l.tie
-          ? `<span class="warn">Tie: ${esc(l.tie.join(' or '))}. Your call.</span>`
-          : '<span class="soft">Unclaimed</span>';
-      const next = l.line.length ? esc(l.line.join(', ')) : '';
+        : '<span class="soft">Unclaimed</span>';
+      const next = l.line.length ? esc(l.line.map((n, i) => `${i + 2}. ${n}`).join(', ')) : '';
       return `<tr><td class="n">${l.number}</td><td>${esc(l.name)}</td><td class="m">${money(l.price)}</td><td>${who}</td><td class="soft">${next}</td></tr>`;
     })
     .join('');
@@ -258,7 +249,7 @@ ul{padding-left:18px;margin:0}li{margin-bottom:4px}footer{margin-top:28px;font-s
 ${r.shipping ? `<tr><td>Shipping</td><td>${esc(r.shipping)}</td></tr>` : ''}
 ${r.payment ? `<tr><td>Payment</td><td>${esc(r.payment)}</td></tr>` : ''}
 </table>
-<h2>Winners by lot</h2><table><tr><th>Lot</th><th>Plant</th><th class="m">Price</th><th>Winner</th><th>Next in line</th></tr>${lotRows}</table>
+<h2>Winners by lot</h2><table><tr><th>Lot</th><th>Plant</th><th class="m">Price</th><th>Winner</th><th>Alternates, in order</th></tr>${lotRows}</table>
 <h2>Buyer totals</h2>${r.buyers.length ? `<table><tr><th>Buyer</th><th>Lots</th><th class="m">Total</th></tr>${buyerRows}</table>` : '<p class="soft">No winners yet.</p>'}
 <h2>Open buyer questions</h2>${questions}
 <footer>${esc(originLine())}</footer>

@@ -157,7 +157,7 @@ export function sheetRowsFromBytes(bytes: Uint8Array): string[][] {
 export function sheetState(lots: RundownLot[], closed: boolean): Map<number, SheetLotState> {
   const state = new Map<number, SheetLotState>();
   for (const l of lots) {
-    const claimedBy = l.winner ?? (l.tie ? `Tie: ${l.tie.join(' or ')}` : null);
+    const claimedBy = l.winner;
     const payment = closed && l.winner ? (l.payment === 'paid' ? 'Paid' : l.payment === 'never' ? 'Never paid' : 'Waiting') : null;
     if (claimedBy) state.set(l.number, { claimedBy, payment });
   }

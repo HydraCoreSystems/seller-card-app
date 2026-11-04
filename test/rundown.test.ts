@@ -40,7 +40,7 @@ describe('the rundown of the October 23 purge', () => {
   const r = buildRundown({ sale, profile, report, records: [] });
   const lot = (n: number) => r.lots.find((l) => l.number === n)!;
 
-  it('totals the sale: 17 of 20 claimed, two ties counted as claimed', () => {
+  it('totals the sale: 17 of 20 claimed, every claimed lot with one winner', () => {
     expect(r.lotsOffered).toBe(20);
     expect(r.lotsClaimed).toBe(17);
     expect(r.claimedValue).toBe(265);
@@ -61,9 +61,10 @@ describe('the rundown of the October 23 purge', () => {
     expect(lot(13).line).toEqual([]);
   });
 
-  it('leaves the two same minute ties for the seller, with the line behind them', () => {
-    expect(lot(11)).toMatchObject({ winner: null, tie: ['Ivy Cole', 'Jo Banks'], line: ['Gus Reed', 'Pam Hale', 'Dee Park', 'Sol Pike'] });
-    expect(lot(20)).toMatchObject({ winner: null, tie: ['Tess Kerr', 'Wes Ortiz'], line: ['Dee Park', 'Xan Hu'] });
+  it('gives the two same minute lots to the first claim to arrive, with the rest as alternates in order', () => {
+    expect(lot(11)).toMatchObject({ winner: 'Ivy Cole', line: ['Jo Banks', 'Gus Reed', 'Pam Hale', 'Dee Park', 'Sol Pike'] });
+    expect(lot(20)).toMatchObject({ winner: 'Tess Kerr', line: ['Wes Ortiz', 'Dee Park', 'Xan Hu'] });
+    for (const l of r.lots) expect(l).not.toHaveProperty('tie');
   });
 
   it('totals each buyer with their lots listed', () => {
@@ -72,7 +73,7 @@ describe('the rundown of the October 23 purge', () => {
     expect(jo.total).toBe(105);
     expect(r.buyers.find((b) => b.name === 'Max Dale')!.total).toBe(30);
     expect(r.buyers.map((b) => b.name)).toEqual([
-      'Ava Stone', 'Dee Park', 'Fay Long', 'Ivy Cole', 'Jo Banks', 'Max Dale', 'Oli Ford', 'Uma Price',
+      'Ava Stone', 'Dee Park', 'Fay Long', 'Ivy Cole', 'Jo Banks', 'Max Dale', 'Oli Ford', 'Tess Kerr', 'Uma Price',
     ]);
   });
 
@@ -88,15 +89,14 @@ describe('the rundown of the October 23 purge', () => {
     ]);
   });
 
-  it('takes the seller’s ruling on a tie, keeping the other tied buyer first in line', () => {
+  it('keeps the first claim as winner on a lot even when the sale is recorded to someone else, alternates unchanged', () => {
     const records: SaleRecord[] = [
       { id: 'x', saleId: 'purge', lotNumber: 11, plantName: 'Hoya latifolia Snow Queen', buyer: 'Jo Banks', price: 15, date: '2026-10-23' },
     ];
-    const ruled = buildRundown({ sale, profile, report, records });
-    const l11 = ruled.lots.find((l) => l.number === 11)!;
-    expect(l11).toMatchObject({ winner: 'Jo Banks', ruled: true, tie: null });
+    const recorded = buildRundown({ sale, profile, report, records });
+    const l11 = recorded.lots.find((l) => l.number === 11)!;
+    expect(l11).toMatchObject({ winner: 'Jo Banks', ruled: true });
     expect(l11.line).toEqual(['Ivy Cole', 'Gus Reed', 'Pam Hale', 'Dee Park', 'Sol Pike']);
-    expect(ruled.buyers.find((b) => b.name === 'Jo Banks')!.total).toBe(120);
   });
 });
 
@@ -122,10 +122,11 @@ describe('the Sales Record document', () => {
   const words = html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ');
 
   it('carries every section and the origin line', () => {
-    for (const part of ['Sales Record, Phil Achleman', 'October 23, 2026', '17 of 20', '$265', 'Winners by lot', 'Next in line', 'Buyer totals', 'Open buyer questions', 'Can you hold till the 28th?']) {
+    for (const part of ['Sales Record, Phil Achleman', 'October 23, 2026', '17 of 20', '$265', 'Winners by lot', 'Alternates, in order', 'Buyer totals', 'Open buyer questions', 'Can you hold till the 28th?']) {
       expect(words).toContain(part);
     }
-    expect(words).toContain('Tie: Ivy Cole or Jo Banks. Your call.');
+    expect(words).not.toMatch(/tie|your call/i);
+    expect(words).toContain('2. Jo Banks');
     expect(words).toContain(originLine());
   });
 

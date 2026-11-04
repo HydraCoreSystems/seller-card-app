@@ -1,14 +1,13 @@
 /**
  * Claim tracker. The seller pastes a sale thread and gets the claims back lot by lot.
  *
- * Thread order as pasted governs who is first. Times are kept as hints and printed for
- * the seller, never used to rank. Two kinds of tie are marked for the seller to rule on:
+ * Claims are always a timestamp call. The order claims arrived is the only order: the first claim wins
+ * the lot, and every later claim is an alternate, in the same order. There is no tie, no disputed
+ * state, and nothing here lets a seller choose a winner, because a judgment call is playing favorites.
  *
- *  - minute: the first claims on a lot land inside the same minute. Thread order still
- *    shows who is first, and the seller sees both times, as the Commons tie ladder asks.
- *  - thread: claims on the same lot sit in parts of the thread whose order can't be
- *    compared, like replies under the lot's own comment against a top level comment
- *    naming the lot number.
+ * Arrival order is read from the times in the paste, down to the second when the paste has them. Two
+ * claims that show the same minute still fall in the order they arrived: by their seconds when the
+ * paste has seconds, and otherwise by their place in the paste, which is the order the thread was read.
  *
  * Two kinds of paste are read: a thread copied from Facebook, and a connector export
  * with "[n] Name | time" headers and indented "Reply:" lines.
@@ -43,14 +42,11 @@ export interface LotClaims {
   lot: number;
   /** The seller's own comment that opened the lot, when the thread has one. */
   label: string | null;
-  /** Live claims in thread order, then backups ("next") in thread order. */
+  /** Live claims in arrival order, then backups ("next") in arrival order. The first claim wins. */
   queue: Claim[];
-  /** Claims tied for first, in thread order. Null when first place is clear. */
-  tie: Claim[] | null;
-  tieKind: 'minute' | 'thread' | null;
   /** Claims the buyer took back later in the thread. */
   released: Claim[];
-  /** Everything else said under this lot, so the seller rules with full sight. */
+  /** Everything else said under this lot, for the seller to read. It never changes the order. */
   others: ThreadComment[];
 }
 
@@ -252,17 +248,6 @@ export function parseThread(text: string, sellerName = ''): ThreadComment[] {
 
 /* ---------- times ---------- */
 
-/** A key that is equal for two times inside the same minute, or null if the hint is too coarse. */
-export function minuteKey(hint: string | null): string | null {
-  if (!hint) return null;
-  const iso = hint.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-  if (iso) return iso[1];
-  const h = hint.trim().toLowerCase();
-  if (/\d{1,2}:\d{2}/.test(h)) return h.replace(/(\d{1,2}:\d{2}):\d{2}/, '$1');
-  if (/^(?:just now|\d+\s?(?:s|m|min|mins))$/.test(h)) return h.replace(/\s/g, '');
-  return null;
-}
-
 /** "1:29:16 PM" for exact times; anything else as it came. */
 export function showTime(hint: string | null): string | null {
   if (!hint) return null;
@@ -270,6 +255,39 @@ export function showTime(hint: string | null): string | null {
   if (!iso) return hint;
   const h = Number(iso[1]);
   return `${h % 12 === 0 ? 12 : h % 12}:${iso[2]}:${iso[3]} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+/** When a claim arrived, as milliseconds, when its time is exact. */
+function exactMs(hint: string | null): number | null {
+  if (!hint || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(hint)) return null;
+  const ms = Date.parse(hint);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/** How long ago a claim was made, in minutes, from a hint like "5m", "2h" or "just now". */
+function ageMinutes(hint: string | null): number | null {
+  if (!hint) return null;
+  const h = hint.trim().toLowerCase();
+  if (h === 'just now') return 0;
+  const m = h.match(/^(\d+)\s?(s|m|min|mins|h|hr|hrs|d|w)$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return m[2] === 's' ? n / 60 : m[2].startsWith('m') ? n : m[2].startsWith('h') ? n * 60 : m[2] === 'd' ? n * 1440 : n * 10080;
+}
+
+/**
+ * The one ordering rule for claims: earliest arrival first. Exact times decide by the second. Ages like
+ * "5m" decide when they differ, the older claim first. Anything still equal, or with no usable time, falls
+ * to the place in the paste. It never returns zero for two different comments, so no two claims tie.
+ */
+export function arrivedBefore(a: Claim, b: Claim): number {
+  const ta = exactMs(a.timeHint);
+  const tb = exactMs(b.timeHint);
+  if (ta !== null && tb !== null && ta !== tb) return ta - tb;
+  const aa = ageMinutes(a.timeHint);
+  const ab = ageMinutes(b.timeHint);
+  if (ta === null && tb === null && aa !== null && ab !== null && aa !== ab) return ab - aa;
+  return a.commentIndex - b.commentIndex;
 }
 
 /* ---------- reading claims ---------- */
@@ -400,7 +418,7 @@ export function trackClaims(text: string, options: ClaimOptions = {}): ClaimRepo
   const entry = (lot: number) => {
     let e = byLot.get(lot);
     if (!e) {
-      e = { lot, label: labels.get(lot) ?? null, queue: [], tie: null, tieKind: null, released: [], others: others.get(lot) ?? [] };
+      e = { lot, label: labels.get(lot) ?? null, queue: [], released: [], others: others.get(lot) ?? [] };
       byLot.set(lot, e);
     }
     return e;
@@ -424,22 +442,9 @@ export function trackClaims(text: string, options: ClaimOptions = {}): ClaimRepo
   unplaced.sort((a, b) => a.index - b.index);
 
   for (const e of byLot.values()) {
-    // A claim beats any "next" behind it, whatever the order they were typed in.
-    const primary = e.queue.filter((q) => q.kind === 'claim');
-    e.queue = [...primary, ...e.queue.filter((q) => q.kind === 'backup')];
-    const firstBySection = new Map<number, Claim>();
-    for (const q of primary) if (!firstBySection.has(q.section)) firstBySection.set(q.section, q);
-    if (firstBySection.size > 1) {
-      e.tie = [...firstBySection.values()].sort((a, b) => a.commentIndex - b.commentIndex);
-      e.tieKind = 'thread';
-    } else if (primary.length > 1) {
-      const key = minuteKey(primary[0].timeHint);
-      const same = key ? primary.filter((q) => minuteKey(q.timeHint) === key) : [];
-      if (same.length > 1) {
-        e.tie = same;
-        e.tieKind = 'minute';
-      }
-    }
+    // A claim beats any "next" behind it. Each group runs in the order its claims arrived.
+    const primary = e.queue.filter((q) => q.kind === 'claim').sort(arrivedBefore);
+    e.queue = [...primary, ...e.queue.filter((q) => q.kind === 'backup').sort(arrivedBefore)];
   }
 
   const lots = [...byLot.values()].sort((a, b) => a.lot - b.lot);

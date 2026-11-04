@@ -16,8 +16,9 @@ This is **test build one**: everything runs on the phone, with no sign in and no
   through them with Copy and Next.
 * **Photo stamp**: seller name, seller number and date along the bottom edge of a copy of the photo,
   plus the origin line. The original is never changed.
-* **Claim tracker**: paste the comment thread, get claims per lot in thread order. Times are hints
-  only. Claims that thread order can't separate are marked as ties for the seller to rule on.
+* **Claim tracker**: paste the comment thread, get claims per lot in the order they arrived. The first
+  claim wins and later claims are alternates in the same order. There is no tie state and no seller
+  pick: two claims in the same minute still fall in the order they arrived.
 * **After the showcase**: the rundown of winners by lot with the next in line, buyer totals and open
   buyer questions. Closing marks every clear winner sold and saves the Sales Record as a PDF. Each
   buyer is marked waiting, paid or never paid.

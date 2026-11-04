@@ -54,7 +54,6 @@ export default function RundownScreen() {
   const deadlineMs = deadline.state === 'none' ? null : deadline.ms;
   const noContact = pro && sale.closedAt ? noContactList(rows, deadline) : [];
   const noForm = pro && sale.closedAt ? paidNoForm(rows) : [];
-  const ties = rundown.lots.filter((l) => l.tie);
   const baseChances = secondChances(sale, store.records, window, now);
   const chances = pro && sale.closedAt ? mergeChances(baseChances, noContactChances(sale, rows, store.records, deadline)) : baseChances;
   const payBy = sale.closedMs ? sale.closedMs + window : null;
@@ -79,7 +78,7 @@ export default function RundownScreen() {
     }
   };
 
-  // Closing marks every clear winner sold in one go. Ties stay open for the seller's call.
+  // Closing marks every winner sold in one go. The winner is always the first claim to arrive.
   const close = () => {
     const winners = rundown.lots
       .filter((l) => l.winner && !l.ruled)
@@ -162,16 +161,6 @@ export default function RundownScreen() {
         ) : (
           <ProExplainer compact />
         )
-      ) : null}
-
-      {ties.length ? (
-        <View style={{ backgroundColor: colors.warnTint, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-          <Text style={{ color: colors.warn, fontWeight: '700' }}>
-            {ties.length === 1 ? `Lot ${ties[0].number} is a tie.` : `Lots ${ties.map((t) => t.number).join(', ')} are ties.`} Your call.
-          </Text>
-          <Text style={{ color: colors.warn, marginBottom: 8 }}>Tap Sold on the buyer you pick. Ties stay open until you do.</Text>
-          <Button kind="secondary" title="Rule in Claims" onPress={() => router.back()} />
-        </View>
       ) : null}
 
     </>
@@ -518,10 +507,10 @@ function LotLine({ lot }: { lot: RundownLot }) {
         Lot {lot.number}: {lot.name}
         {lot.price !== null ? <Text style={{ color: colors.soft, fontWeight: '400' }}>  {formatPrice(lot.price)}</Text> : null}
       </Text>
-      <Text style={{ color: lot.winner ? colors.moss : lot.tie ? colors.warn : colors.soft }}>
-        {lot.winner ?? (lot.tie ? `Tie: ${lot.tie.join(' or ')}` : 'Unclaimed')}
+      <Text style={{ color: lot.winner ? colors.moss : colors.soft }}>
+        {lot.winner ? `Winner: ${lot.winner}` : 'Unclaimed'}
       </Text>
-      {lot.line.length ? <Text style={{ color: colors.soft, fontSize: 13 }}>Next in line: {lot.line.join(', ')}</Text> : null}
+      {lot.line.length ? <Text style={{ color: colors.soft, fontSize: 13 }}>Alternates, in order: {lot.line.map((n, i) => `${i + 2}. ${n}`).join(', ')}</Text> : null}
     </View>
   );
 }
@@ -706,8 +695,8 @@ function LotsTable({ lots }: { lots: RundownLot[] }) {
           <Text style={[cell, { width: 36, color: colors.soft }]}>{l.number}</Text>
           <Text style={[cell, { flex: 3, color: colors.ink }]} numberOfLines={2}>{l.name}</Text>
           <Text style={[cell, { flex: 1, textAlign: 'right', color: colors.soft }]}>{l.price !== null ? formatPrice(l.price) : ''}</Text>
-          <Text style={[cell, { flex: 2, textAlign: 'right', color: l.winner ? colors.moss : l.tie ? colors.warn : colors.soft }]} numberOfLines={2}>
-            {l.winner ?? (l.tie ? 'Tie' : 'Unclaimed')}
+          <Text style={[cell, { flex: 2, textAlign: 'right', color: l.winner ? colors.moss : colors.soft }]} numberOfLines={2}>
+            {l.winner ?? 'Unclaimed'}
           </Text>
         </View>
       ))}

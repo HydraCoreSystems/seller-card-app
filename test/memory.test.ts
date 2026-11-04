@@ -97,7 +97,7 @@ describe('leftover relist', () => {
     ]);
   });
 
-  it('keeps ties out, since someone still gets them', () => {
+  it('keeps a claimed lot out, since someone still gets it', () => {
     const left = gatherLeftovers([purge.sale], purge.records, []);
     expect(left.map((l) => l.lotNumber)).not.toContain(11);
   });

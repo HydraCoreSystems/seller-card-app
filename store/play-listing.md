@@ -21,7 +21,7 @@ Final copy as of October 28, 2026. The app is named SprigList. Plain words, cont
 > SprigList is a light helper for plant sellers who run sales in Facebook groups. Save your seller details once, keep a simple plant list, and get every card ready to paste. When the comments roll in, it sorts out who claimed first. When the sale is over, it helps you collect.
 >
 > WHO CLAIMED FIRST, SETTLED
-> Paste the comment thread and SprigList lists the claims on every lot in thread order. Ties are marked plainly so you make the call, not the app. The rundown shows each winner, who's next in line, every buyer's total, and the questions still waiting on an answer.
+> Paste the comment thread and SprigList lists the claims on every lot in the order they arrived. The first claim wins and the rest wait as alternates, in order. The rundown shows each winner, who's next in line, every buyer's total, and the questions still waiting on an answer.
 >
 > SECOND CHANCE
 > When a winner doesn't pay inside the window you set, offer the lot to the next in line at the same price with one tap. The message is written for you. Dead claims turn back into sales.

@@ -84,9 +84,8 @@ export default function ClaimsScreen() {
       {report?.lots.map((entry) => {
         const lot = lotFor(entry.lot);
         const done = lot ? lotRecorded(store.records, sale.id, lot) : undefined;
-        const tied = new Set(entry.tie?.map((c) => c.commentIndex) ?? []);
         return (
-          <Panel key={entry.lot} style={entry.tie && !done ? { borderColor: colors.warn, borderWidth: 1.5 } : undefined}>
+          <Panel key={entry.lot}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink, marginBottom: 4 }}>
               Lot {entry.lot}
               {lot ? `: ${plantDisplayName(lot.name, lot.noid)}` : entry.label ? `: ${entry.label}` : ''}
@@ -94,15 +93,6 @@ export default function ClaimsScreen() {
             </Text>
             {done ? (
               <Text style={{ color: colors.moss, fontWeight: '600', marginBottom: 6 }}>Sold to {done.buyer}</Text>
-            ) : entry.tie ? (
-              <View style={{ backgroundColor: colors.warnTint, borderRadius: 8, padding: 10, marginBottom: 8 }}>
-                <Text style={{ color: colors.warn, fontWeight: '700' }}>Tie. Your call.</Text>
-                <Text style={{ color: colors.warn }}>
-                  {entry.tieKind === 'minute'
-                    ? `These claims landed inside the same minute. Thread order puts ${entry.tie[0].author} first.`
-                    : 'These claims sit in different parts of the thread, so their order can\u2019t be read from it.'}
-                </Text>
-              </View>
             ) : !entry.queue.length ? (
               <Text style={{ color: colors.soft, marginBottom: 4 }}>No claims. Still available.</Text>
             ) : null}
@@ -112,8 +102,7 @@ export default function ClaimsScreen() {
                 claim={c}
                 memory={memory(c.author)}
                 place={i + 1}
-                tied={tied.has(c.commentIndex)}
-                canPick={!done && (entry.tie ? tied.has(c.commentIndex) : i === 0)}
+                canPick={!done && i === 0}
                 onPick={() => record(lot, entry.lot, c.author, entry.label)}
               />
             ))}
@@ -162,24 +151,25 @@ export default function ClaimsScreen() {
 function ClaimRow({
   claim,
   place,
-  tied,
   canPick,
   onPick,
   memory,
 }: {
   claim: Claim;
   place: number;
-  tied: boolean;
   canPick: boolean;
   onPick: () => void;
   memory: { text: string; warn: boolean } | null;
 }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderTopWidth: place > 1 ? 1 : 0, borderColor: colors.line }}>
-      <Text style={{ width: 22, fontWeight: '700', color: tied ? colors.warn : colors.soft }}>{tied ? '=' : place}</Text>
+      <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: place === 1 ? colors.moss : colors.mossTint }}>
+        <Text style={{ fontWeight: '700', fontSize: 13, color: place === 1 ? '#fff' : colors.mossDark }}>{place}</Text>
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: colors.ink }}>
           {claim.author}
+          <Text style={{ color: place === 1 ? colors.moss : colors.soft, fontWeight: '700', fontSize: 12 }}>{place === 1 ? '  WINNER' : '  ALTERNATE'}</Text>
           {claim.kind === 'backup' ? <Text style={{ color: colors.soft, fontWeight: '400' }}>  next in line</Text> : null}
           {claim.timeHint ? <Text style={{ color: colors.soft, fontWeight: '400' }}>  {showTime(claim.timeHint)}</Text> : null}
         </Text>

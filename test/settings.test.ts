@@ -139,3 +139,38 @@ describe('title screen timing', () => {
     expect(TITLE_CAP_MS).toBeLessThanOrEqual(3000);
   });
 });
+
+import { readFileSync as readFixture } from 'node:fs';
+import { join as joinPath } from 'node:path';
+import { trackClaims } from '../src/core/claims';
+import { buildRundown, claimOrderOf } from '../src/core/rundown';
+
+describe('no seller discretion in claim order', () => {
+  const purge = trackClaims(readFixture(joinPath(__dirname, 'fixtures/purge-2026-10-23.txt'), 'utf8'));
+  it('every claimed lot has exactly one winner and the order the record keeps matches arrival order', () => {
+    const sale = { id: 's', formatId: 'generic', kind: 'sale', opens: null, closes: null, closeCall: '', claimRules: '', crossListing: '', createdAt: '2026-10-23', lots: [] } as unknown as Sale;
+    const r = buildRundown({ sale, profile, report: purge, records: [] });
+    const order = claimOrderOf(r);
+    for (const l of purge.lots.filter((x) => x.queue.length)) {
+      expect(r.lots.find((x) => x.number === l.lot)!.winner).toBe(l.queue[0].author);
+      expect(order[l.lot]).toEqual(l.queue.map((c) => c.author));
+    }
+  });
+});
+
+import { readdirSync, readFileSync as readSrc, statSync } from 'node:fs';
+
+describe('the words on screen never hand the seller a claim order call', () => {
+  const files = (dir: string): string[] =>
+    readdirSync(dir).flatMap((n) => {
+      const p = joinPath(dir, n);
+      return statSync(p).isDirectory() ? files(p) : /\.(ts|tsx)$/.test(n) && n !== 'zipData.ts' ? [p] : [];
+    });
+  it('has no tie, judgment or your call wording in the app', () => {
+    const bad = /\btie[sd]?\b|judg(?:e)?ment|your call|rule in claims|the buyer you pick/i;
+    for (const f of files(joinPath(__dirname, '../src'))) {
+      const code = readSrc(f, 'utf8').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+      expect(bad.test(code), f).toBe(false);
+    }
+  });
+});
