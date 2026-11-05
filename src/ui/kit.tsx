@@ -1,5 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import {
   Animated,
   Image,
@@ -8,46 +8,81 @@ import {
   Text,
   TextInput,
   View,
+  type ImageStyle,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { READABLE_WIDTH } from '../core/layout';
+import { Backdrop, Reveal } from './botanical';
+import { useSizeClass } from './layout';
+import { buttonLook, styleDefs } from './styleDefs';
+import { theme } from './theme';
 
-export const colors = {
-  bg: '#F6F4EE',
-  card: '#FFFFFF',
-  ink: '#1F2A1F',
-  soft: '#5E6B5E',
-  line: '#DCD8CC',
-  moss: '#3E6B3A',
-  mossDark: '#2C4F29',
-  mossTint: '#E4EEDF',
-  warn: '#9A5B00',
-  warnTint: '#FFF1D6',
-  danger: '#A33A2B',
-};
+/** The theme this build wears: the closed test build keeps the original look, the Phil build gets the layered one. */
+export const T = theme();
+export const colors = T.colors;
 
-export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+/** True inside the deep green action bars, where buttons switch to cream. */
+const OnBar = createContext(false);
+
+/**
+ * One screen. On a compact width it is a single scrolling column. On a regular width, plain content
+ * is kept to a readable column, and a screen that has two things to show side by side passes them as
+ * `panes`: two equal panes that scroll on their own, with the gutter at the middle, so an open
+ * foldable's fold falls between them. On a compact width the same two things simply follow each other.
+ */
+export function Screen({ children, footer, panes, lush }: { children?: ReactNode; footer?: ReactNode; panes?: [ReactNode, ReactNode]; lush?: boolean }) {
   // Android draws edge to edge, so keep buttons clear of the system navigation bar.
   const { bottom } = useSafeAreaInsets();
+  const regular = useSizeClass() === 'regular';
+  const scrollProps = {
+    keyboardShouldPersistTaps: 'handled' as const,
+    // Clears the fixed footer bar (which sits outside the scroll content, on top of
+    // the keyboard) so a focused field isn't hidden behind it either.
+    bottomOffset: footer ? 70 : 20,
+  };
+  const pad = [styles.screen, !footer && { paddingBottom: 40 + bottom }];
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <KeyboardAwareScrollView
-        contentContainerStyle={[styles.screen, !footer && { paddingBottom: 40 + bottom }]}
-        keyboardShouldPersistTaps="handled"
-        // Clears the fixed footer bar (which sits outside the scroll content, on top of
-        // the keyboard) so a focused field isn't hidden behind it either.
-        bottomOffset={footer ? 70 : 20}
-      >
-        {children}
-      </KeyboardAwareScrollView>
-      {footer ? <View style={[styles.footer, { paddingBottom: 12 + bottom }]}>{footer}</View> : null}
+      {/* The Phil build's plant room: a soft botanical ground, whisper quiet on every screen. */}
+      {T.name === 'phil' ? <Backdrop lush={lush} /> : null}
+      {panes && regular ? (
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          {panes.map((pane, i) => (
+            <View key={i} style={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
+              <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={pad} {...scrollProps}>
+                {pane}
+              </KeyboardAwareScrollView>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <KeyboardAwareScrollView contentContainerStyle={pad} {...scrollProps}>
+          <View style={regular ? { width: '100%', maxWidth: READABLE_WIDTH, alignSelf: 'center' } : undefined}>
+            {panes ?? children}
+          </View>
+        </KeyboardAwareScrollView>
+      )}
+      {footer ? (
+        <View style={[styles.footer, { paddingBottom: 12 + bottom }]}>
+          <OnBar.Provider value={T.name === 'phil'}>{footer}</OnBar.Provider>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 export function H({ children }: { children: ReactNode }) {
+  if (T.name === 'phil') {
+    return (
+      <View style={styles.headRow}>
+        <View style={styles.headTick} />
+        <Text style={styles.headText}>{children}</Text>
+      </View>
+    );
+  }
   return <Text style={styles.h}>{children}</Text>;
 }
 
@@ -80,13 +115,17 @@ export function Button({
   kind = 'primary',
   disabled,
   style,
+  big,
 }: {
   title: string;
   onPress: () => void;
   kind?: 'primary' | 'secondary' | 'quiet' | 'danger';
   disabled?: boolean;
   style?: ViewStyle;
+  /** Larger, for a screen read from arm's length, like packing with the phone propped open. */
+  big?: boolean;
 }) {
+  const onBar = useContext(OnBar);
   const [scale] = useState(() => new Animated.Value(1));
   const animateTo = (v: number) =>
     Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
@@ -98,25 +137,9 @@ export function Button({
         onPressIn={() => animateTo(0.96)}
         onPressOut={() => animateTo(1)}
         disabled={disabled}
-        style={({ pressed }) => [
-          styles.btn,
-          kind === 'primary' && { backgroundColor: pressed ? colors.mossDark : colors.moss },
-          kind === 'secondary' && { backgroundColor: pressed ? colors.mossTint : colors.card, borderColor: colors.moss, borderWidth: 1.5 },
-          kind === 'quiet' && { backgroundColor: 'transparent', paddingHorizontal: 8 },
-          kind === 'danger' && { backgroundColor: 'transparent', borderColor: colors.danger, borderWidth: 1 },
-          disabled && { opacity: 0.4 },
-        ]}
+        style={({ pressed }) => [styles.btn, buttonLook(T, kind, pressed, onBar).box, big && { paddingVertical: 20 }, disabled && { opacity: 0.4 }]}
       >
-        <Text
-          style={[
-            styles.btnText,
-            kind === 'primary' && { color: '#fff' },
-            (kind === 'secondary' || kind === 'quiet') && { color: colors.moss },
-            kind === 'danger' && { color: colors.danger },
-          ]}
-        >
-          {title}
-        </Text>
+        <Text style={[styles.btnText, buttonLook(T, kind, false, onBar).text, big && { fontSize: 20 }]}>{title}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -215,7 +238,7 @@ export function useCopy(): [string | null, (key: string, text: string) => Promis
 /** A finished card: the exact text that gets pasted, with its copy button. */
 export function CardText({ text, copyKey, label = 'Copy text' }: { text: string; copyKey: string; label?: string }) {
   const [copied, copy] = useCopy();
-  return (
+  const card = (
     <View style={styles.cardText}>
       <Text selectable style={styles.cardBody}>
         {text}
@@ -227,6 +250,8 @@ export function CardText({ text, copyKey, label = 'Copy text' }: { text: string;
       />
     </View>
   );
+  // A built card settles in. The closed test build shows it as it always did.
+  return T.name === 'phil' ? <Reveal>{card}</Reveal> : card;
 }
 
 export function Thumb({ uri, size = 56 }: { uri: string | null; size?: number }) {
@@ -237,82 +262,19 @@ export function Thumb({ uri, size = 56 }: { uri: string | null; size?: number })
       </View>
     );
   }
-  return <Image source={{ uri }} style={[styles.thumb, { width: size, height: size }]} />;
+  if (T.name === 'phil') {
+    // A thin inner edge, so the photo reads as set into its card.
+    return (
+      <View style={[styles.thumb, { width: size, height: size, overflow: 'hidden' }]}>
+        <Image source={{ uri }} style={{ width: size, height: size }} />
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(31,42,31,0.16)' }}
+        />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={[styles.thumb as ImageStyle, { width: size, height: size }]} />;
 }
 
-// A soft lift so cards read as raised, not just outlined boxes.
-const cardShadow = {
-  shadowColor: '#1F2A1F',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 6,
-  elevation: 2,
-};
-
-export const styles = StyleSheet.create({
-  screen: { padding: 16, paddingBottom: 40, maxWidth: 720, width: '100%', alignSelf: 'center' },
-  footer: { padding: 12, borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
-  h: { fontSize: 18, fontWeight: '700', color: colors.ink, marginTop: 8, marginBottom: 10 },
-  note: { fontSize: 14, color: colors.soft, marginBottom: 12, lineHeight: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.ink, marginBottom: 6 },
-  hint: { fontSize: 12, color: colors.soft, marginTop: 4 },
-  input: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: colors.ink,
-  },
-  btn: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  btnText: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  chipOn: { backgroundColor: colors.moss, borderColor: colors.moss },
-  chipText: { fontSize: 14, color: colors.ink, fontWeight: '500' },
-  panel: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 14,
-    marginBottom: 12,
-    ...cardShadow,
-  },
-  cardText: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 14,
-    marginBottom: 12,
-    ...cardShadow,
-  },
-  cardBody: { fontSize: 15, lineHeight: 22, color: colors.ink },
-  thumb: {
-    borderRadius: 8,
-    backgroundColor: colors.mossTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: colors.line,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxOn: { backgroundColor: colors.moss, borderColor: colors.moss },
-  checkboxMark: { color: '#fff', fontSize: 13, fontWeight: '700' },
-});
+export const styles = StyleSheet.create(styleDefs(T));

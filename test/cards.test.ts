@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ORIGIN_LINE } from '../src/core/brand';
+import { originLine } from '../src/core/brand';
 import { COMMONS_NAME } from '../src/core/formats/commons';
 import { FORMAT_LIST, getFormat } from '../src/core/formats';
 import { numberLots, appendLot } from '../src/core/sale';
@@ -62,7 +62,7 @@ describe('every format', () => {
         };
         for (const [layer, text] of Object.entries(outputs)) {
           it(`${kind} ${layer} ends with the origin line and has no dashes`, () => {
-            expect(text.split('\n').at(-1)).toBe(ORIGIN_LINE);
+            expect(text.split('\n').at(-1)).toBe(originLine());
             expect(text).not.toMatch(DASH_PATTERN);
           });
         }
@@ -123,7 +123,7 @@ describe('every format', () => {
         '',
         'Claims in this thread only. First confirmed claim takes it.',
         '',
-        ORIGIN_LINE,
+        originLine(),
       ].join('\n'),
     );
     const a = sale('auction');
@@ -157,7 +157,7 @@ describe('purge mode', () => {
     const listings = s.lots.map((lot) => getFormat('commons').listing({ profile, sale: s, lot }));
     expect(listings).toHaveLength(20);
     expect(listings[19]).toContain('Lot 20');
-    expect(listings.every((l) => l.endsWith(ORIGIN_LINE))).toBe(true);
+    expect(listings.every((l) => l.endsWith(originLine()))).toBe(true);
   });
 
   it('keeps numbers fixed when a lot is added during the sale', () => {
@@ -205,7 +205,7 @@ describe('photo stamp', () => {
   it('writes seller, number and date over the origin line', () => {
     expect(stampText('Gathering Moss', '12', '2026-10-24')).toEqual({
       main: 'Gathering Moss  ·  Seller #12  ·  October 24, 2026',
-      origin: ORIGIN_LINE,
+      origin: originLine(),
     });
     expect(stampText('Gathering Moss', '', '2026-10-24').main).not.toContain('Seller #');
   });

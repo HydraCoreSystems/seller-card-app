@@ -1,5 +1,7 @@
-import { sealPlace, sealShapes } from '../core/seal';
-import { fitSize, stampLayout, stampText } from '../core/stamp';
+import { markerShapes } from '../core/marker';
+import { sealPlace } from '../core/seal';
+import { BAND_ALPHA } from '../core/settings';
+import { fitSize, stampLayout } from '../core/stamp';
 import { drawShapes } from './drawShapes.web';
 import type { StampInput } from './stampPhoto';
 
@@ -19,9 +21,10 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(img, 0, 0);
 
-  const layout = stampLayout(w, h);
-  const text = stampText(input.sellerName, input.sellerNumber, input.day, input.seal);
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  const position = input.style?.position ?? 'bottom';
+  const layout = stampLayout(w, h, position);
+  const text = input.text;
+  ctx.fillStyle = `rgba(0,0,0,${BAND_ALPHA[input.style?.strength ?? 'medium']})`;
   ctx.fillRect(0, layout.bandTop, w, layout.bandHeight);
 
   const maxWidth = w - layout.padX * 2;
@@ -36,9 +39,9 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   ctx.font = `${layout.originSize}px ${FONT}`;
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.fillText(text.origin, layout.padX, layout.originBaseline);
-  if (input.seal) {
-    const at = sealPlace(w, h);
-    drawShapes(ctx, sealShapes(input.seal, at.cx, at.cy, at.diameter));
+  if (input.marker) {
+    const at = sealPlace(w, h, position);
+    drawShapes(ctx, markerShapes(input.marker, at.cx, at.cy, at.diameter));
   }
   return canvas.toDataURL('image/jpeg', 0.92);
 }

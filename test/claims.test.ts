@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { lotHeading, lotsNamed, minuteKey, parseThread, showTime, trackClaims } from '../src/core/claims';
+import { arrivedBefore, lotHeading, lotsNamed, parseThread, showTime, trackClaims, withoutReplyName, type Claim } from '../src/core/claims';
 
 const synthetic = readFileSync(join(__dirname, 'fixtures/synthetic-purge.txt'), 'utf8');
 
@@ -59,20 +59,16 @@ describe('trackClaims', () => {
     expect(lot(1).queue.map((c) => c.author)).toEqual(['Jane Rivera', 'Marcus Bell']);
     expect(lot(2).queue.map((c) => c.author)).toEqual(['Dana Price']);
     expect(lot(4).queue.map((c) => c.author)).toEqual(['Sam Ortiz', 'Dana Price']);
-    expect(lot(1).tie).toBeNull();
   });
 
-  it('keeps time hints but never ranks by them', () => {
-    // Sam and Dana both show 45m: thread order puts Sam first, and the pair is marked
-    // as a same minute tie for the seller to rule on.
+  it('puts claims that show the same minute in the order they arrived, with no tie', () => {
+    // Sam and Dana both show 45m. Paste order is their arrival order, so Sam wins and Dana is the alternate.
     expect(lot(4).queue.map((c) => c.timeHint)).toEqual(['45m', '45m']);
-    expect(lot(4).tieKind).toBe('minute');
-    expect(lot(4).tie?.map((c) => c.author)).toEqual(['Sam Ortiz', 'Dana Price']);
+    expect(lot(4).queue.map((c) => c.author)).toEqual(['Sam Ortiz', 'Dana Price']);
   });
 
-  it('marks a tie when claims sit in parts of the thread that order cannot separate', () => {
-    expect(lot(3).tie?.map((c) => c.author)).toEqual(['Tom Okafor', 'Kim Nguyen']);
-    expect(lot(3).tieKind).toBe('thread');
+  it('puts claims from different parts of the thread in one order, with no tie', () => {
+    expect(lot(3).queue.map((c) => c.author)).toEqual(['Tom Okafor', 'Kim Nguyen']);
   });
 
   it('shows a take back it cannot match instead of guessing', () => {
@@ -121,13 +117,11 @@ describe('the October 23 purge thread', () => {
     expect(lot(2).others.map((c) => c.author)).toEqual(['Eve Hart']);
   });
 
-  it('marks exactly the two real ties, inside the same minute, in thread order', () => {
-    const ties = report.lots.filter((l) => l.tie);
-    expect(ties.map((l) => [l.lot, l.tieKind, l.tie!.map((c) => c.author)])).toEqual([
-      [11, 'minute', ['Ivy Cole', 'Jo Banks']],
-      [20, 'minute', ['Tess Kerr', 'Wes Ortiz']],
-    ]);
-    expect(report.lots.find((l) => l.lot === 2)!.tie).toBeNull();
+  it('resolves the two same minute lots by the second each claim arrived', () => {
+    const order = (n: number) => lot(n).queue.map((c) => c.author);
+    expect(order(11).slice(0, 2)).toEqual(['Ivy Cole', 'Jo Banks']);
+    expect(order(20).slice(0, 2)).toEqual(['Tess Kerr', 'Wes Ortiz']);
+    for (const l of report.lots) expect(l).not.toHaveProperty('tie');
   });
 
   it('applies the take back on the burmanica and shows what came after it', () => {
@@ -155,9 +149,116 @@ describe('the October 23 purge thread', () => {
   });
 
   it('prints exact times for the seller', () => {
-    expect(showTime(lot(11).tie![0].timeHint)).toBe('1:29:16 PM');
-    expect(minuteKey('5m')).toBe('5m');
-    expect(minuteKey('1h')).toBeNull();
-    expect(minuteKey('Yesterday at 1:29 PM')).toBe(minuteKey('yesterday at 1:29 pm'));
+    expect(showTime(lot(11).queue[0].timeHint)).toBe('1:29:16 PM');
+  });
+});
+
+const claim = (commentIndex: number, timeHint: string | null): Claim => ({ commentIndex, author: `Buyer ${commentIndex}`, lot: 1, kind: 'claim', timeHint, section: 0, text: 'claim' });
+
+describe('claim order is arrival order, and only arrival order', () => {
+  const order = (...c: Claim[]) => [...c].sort(arrivedBefore).map((x) => x.commentIndex);
+
+  it('goes by the exact second when the paste has seconds, even inside one minute', () => {
+    const late = claim(1, '2026-10-23T13:29:40.000-04:00');
+    const early = claim(2, '2026-10-23T13:29:16.000-04:00');
+    expect(order(late, early)).toEqual([2, 1]);
+  });
+
+  it('goes by age when the paste has ages like 5m and 2h, oldest first', () => {
+    expect(order(claim(1, '5m'), claim(2, '2h'), claim(3, '58m'))).toEqual([2, 3, 1]);
+  });
+
+  it('falls to paste order when the times are equal or missing, so two claims never tie', () => {
+    expect(order(claim(5, '3m'), claim(4, '3m'))).toEqual([4, 5]);
+    expect(order(claim(7, null), claim(6, null))).toEqual([6, 7]);
+    expect(order(claim(9, '2026-10-23T13:29:16.000-04:00'), claim(8, '2026-10-23T13:29:16.000-04:00'))).toEqual([8, 9]);
+    expect(arrivedBefore(claim(1, '3m'), claim(2, '3m'))).not.toBe(0);
+  });
+
+  const post = ['Rowan', 'Author', 'Lot 1: Hoya kerrii $12', '2d', 'Like', 'Reply'];
+  const buyer = (name: string, word: string, when: string) => [name, word, when, 'Like', 'Reply'];
+
+  it('gives the lot to the first claim to arrive, and lists the rest as alternates in order', () => {
+    const text = [...post, ...buyer('Ana', 'claim', '3m'), ...buyer('Bo', 'claim', '3m'), ...buyer('Cy', 'claim', '3m')].join('\n');
+    const lot1 = trackClaims(text, { sellerName: 'Rowan' }).lots.find((l) => l.lot === 1)!;
+    expect(lot1.queue.map((c) => c.author)).toEqual(['Ana', 'Bo', 'Cy']);
+  });
+
+  it('keeps a claim ahead of any next behind it, each group in arrival order', () => {
+    const text = [...post, ...buyer('Ana', 'next', '4m'), ...buyer('Bo', 'claim', '3m'), ...buyer('Cy', 'claim', '3m'), ...buyer('Di', 'next', '2m')].join('\n');
+    const lot1 = trackClaims(text, { sellerName: 'Rowan' }).lots.find((l) => l.lot === 1)!;
+    expect(lot1.queue.map((c) => [c.author, c.kind])).toEqual([
+      ['Bo', 'claim'], ['Cy', 'claim'], ['Ana', 'backup'], ['Di', 'backup'],
+    ]);
+  });
+
+  it('has no tie state anywhere in the claim report', () => {
+    const r = trackClaims(readFileSync(join(__dirname, 'fixtures/purge-2026-10-23.txt'), 'utf8'));
+    for (const l of r.lots) {
+      expect(Object.keys(l)).not.toContain('tie');
+      expect(Object.keys(l)).not.toContain('tieKind');
+    }
+  });
+});
+
+describe('Facebook copy of a lot card with a claim under it', () => {
+  const block = [
+    'Lot 11',
+    'Plant: Hoya sp. Vietnam',
+    'Price: $25',
+    'Rooted with new growth.',
+    'Made with Skrybix by Gathering Moss',
+    'Dee Bradshaw',
+    'Phil Achleman sold please',
+  ].join('\n');
+
+  it('places Dee Bradshaw as the winner of Lot 11', () => {
+    for (const sellerName of ['', 'Phil Achleman']) {
+      const r = trackClaims(block, { sellerName });
+      expect(r.unplaced).toHaveLength(0);
+      const lot = r.lots.find((l) => l.lot === 11);
+      expect(lot?.queue[0]?.author).toBe('Dee Bradshaw');
+    }
+  });
+
+  it('keeps the origin line out of claim text and authors', () => {
+    const r = trackClaims(block);
+    const lot = r.lots.find((l) => l.lot === 11);
+    expect(lot?.queue[0]?.text).toBe('sold please');
+    expect(JSON.stringify(r)).not.toMatch(/Author":"Made with/);
+  });
+
+  it('reads the generic card shape and several lots in order', () => {
+    const text = [
+      'Lot 1',
+      'Hoya kerrii',
+      '$15',
+      'Made with Skrybix by Gathering Moss',
+      'Ann Lee',
+      'Phil Achleman mine',
+      'Lot 2',
+      'Hoya carnosa',
+      '$10',
+      'Made with Skrybix by Gathering Moss',
+      'Bo Chen',
+      'Ann Lee sold',
+    ].join('\n');
+    const r = trackClaims(text);
+    expect(r.lots.find((l) => l.lot === 1)?.queue[0]?.author).toBe('Ann Lee');
+    expect(r.lots.find((l) => l.lot === 2)?.queue[0]?.author).toBe('Bo Chen');
+  });
+
+  it('does not mangle a plain claim or one that comes with meta lines', () => {
+    expect(withoutReplyName('Sold please', [])).toBe('Sold please');
+    expect(withoutReplyName('Mine Lot 4', [])).toBe('Mine Lot 4');
+    const r = trackClaims('Lot 11\nPlant: Hoya\nPrice: $25\nMade with Skrybix by Gathering Moss\nDee Bradshaw\nPhil Achleman sold please\n5m\nLike Reply');
+    expect(r.lots.find((l) => l.lot === 11)?.queue[0]?.author).toBe('Dee Bradshaw');
+  });
+});
+
+describe('a bare lot number is still a buyer claim', () => {
+  it('keeps "Lot 5 mine" under a buyer name as a claim', () => {
+    const r = trackClaims('Lot 5: Hoya kerrii $12\n2h\nLike Reply\nAnn Lee\nLot 5 mine\n1h\nLike Reply', { sellerName: 'Phil Achleman' });
+    expect(r.lots.find((l) => l.lot === 5)?.queue[0]?.author).toBe('Ann Lee');
   });
 });

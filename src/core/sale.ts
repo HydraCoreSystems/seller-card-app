@@ -1,3 +1,4 @@
+import { photosOf } from './photos';
 import type { Lot, Plant, Sale } from './types';
 
 export function lotFromPlant(plant: Plant, number: number): Lot {
@@ -9,6 +10,7 @@ export function lotFromPlant(plant: Plant, number: number): Lot {
     price: plant.price,
     description: plant.notes,
     photoUri: plant.photoUri,
+    photoUris: photosOf(plant),
   };
 }
 

@@ -34,7 +34,7 @@ const records: SaleRecord[] = r0.lots
   }));
 
 describe('the claim order the record keeps', () => {
-  it('names the whole line on every lot, ties first where there is one', () => {
+  it('names the whole line on every lot, in the order the claims arrived', () => {
     expect(sale.claimOrder![2]).toEqual(['Ava Stone', 'Bea Lowry', 'Cal Moss', 'Dee Park']);
     expect(sale.claimOrder![11]).toEqual(['Ivy Cole', 'Jo Banks', 'Gus Reed', 'Pam Hale', 'Dee Park', 'Sol Pike']);
     expect(sale.claimOrder![1]).toBeUndefined();

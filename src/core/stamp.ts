@@ -1,4 +1,4 @@
-import { ORIGIN_LINE } from './brand';
+import { originLine } from './brand';
 import { VERIFIED_GROWER } from './formats/commons';
 import { formatLongDate } from './text';
 
@@ -9,14 +9,23 @@ export interface StampText {
 
 /**
  * "Gathering Moss · Seller #12 · October 24, 2026" over the origin line. A Commons photo carries
- * one number only: the grower number, the one the desk checks against the register.
+ * one number only: the grower number, the one the desk checks against the register. With no number
+ * at all, the room's name stands in its place.
  */
-export function stampText(sellerName: string, sellerNumber: string, day: string, growerNumber: string | null = null): StampText {
+export function stampText(
+  sellerName: string,
+  sellerNumber: string,
+  day: string,
+  growerNumber: string | null = null,
+  venueName = '',
+): StampText {
   const parts = [sellerName.trim()];
   if (growerNumber?.trim()) parts.push(`${VERIFIED_GROWER} No. ${growerNumber.trim()}`);
   else if (sellerNumber.trim()) parts.push(`Seller #${sellerNumber.trim()}`);
+  // A room that issues the seller no number: the stamp names the room instead, and no circle is drawn.
+  else if (venueName.trim()) parts.push(venueName.trim());
   parts.push(formatLongDate(day));
-  return { main: parts.join('  ·  '), origin: ORIGIN_LINE };
+  return { main: parts.join('  ·  '), origin: originLine() };
 }
 
 export interface StampLayout {
@@ -34,14 +43,14 @@ export interface StampLayout {
  * text reads the same on tall and wide shots, and the band stays under about a tenth
  * of the frame, clear of the plant.
  */
-export function stampLayout(width: number, height: number): StampLayout {
+export function stampLayout(width: number, height: number, position: 'bottom' | 'top' = 'bottom'): StampLayout {
   const unit = Math.min(width, height);
   const mainSize = Math.round(unit * 0.04);
   const originSize = Math.round(unit * 0.024);
   const padY = Math.round(unit * 0.018);
   const gap = Math.round(unit * 0.01);
   const bandHeight = padY * 2 + mainSize + gap + originSize;
-  const bandTop = height - bandHeight;
+  const bandTop = position === 'top' ? 0 : height - bandHeight;
   return {
     bandTop,
     bandHeight,

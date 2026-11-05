@@ -2,19 +2,23 @@ import { ImageFormat, Skia, matchFont } from '@shopify/react-native-skia';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { Platform } from 'react-native';
-import { sealPlace, sealShapes } from '../core/seal';
-import { fitSize, stampLayout, stampText } from '../core/stamp';
+import { markerShapes, type Marker } from '../core/marker';
+import { sealPlace } from '../core/seal';
+import { BAND_ALPHA, type StampStyle } from '../core/settings';
+import { fitSize, stampLayout, type StampText } from '../core/stamp';
 import { drawShapes } from './drawShapes';
 import { newId } from './store';
 
 export interface StampInput {
   photoUri: string;
-  sellerName: string;
-  sellerNumber: string;
-  day: string;
-  /** Commons format only: the grower number, for the seal and the band. Null for neither. */
-  seal?: string | null;
+  /** The band's two lines, from core/marker.ts stampFor. */
+  text: StampText;
+  /** The circle, when the room issues the seller a number. Null draws none. */
+  marker: Marker | null;
+  /** Position and strength of the band. Defaults to the band as it has always been. */
+  style?: Pick<StampStyle, 'position' | 'strength'>;
 }
+
 
 const family = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
 
@@ -30,11 +34,12 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   const canvas = surface.getCanvas();
   canvas.drawImage(image, 0, 0);
 
-  const layout = stampLayout(w, h);
-  const text = stampText(input.sellerName, input.sellerNumber, input.day, input.seal);
+  const position = input.style?.position ?? 'bottom';
+  const layout = stampLayout(w, h, position);
+  const text = input.text;
 
   const band = Skia.Paint();
-  band.setColor(Skia.Color('rgba(0,0,0,0.55)'));
+  band.setColor(Skia.Color(`rgba(0,0,0,${BAND_ALPHA[input.style?.strength ?? 'medium']})`));
   canvas.drawRect(Skia.XYWHRect(0, layout.bandTop, w, layout.bandHeight), band);
 
   const white = Skia.Paint();
@@ -56,9 +61,9 @@ export async function stampPhoto(input: StampInput): Promise<string> {
   soft.setAntiAlias(true);
   const originFont = matchFont({ fontFamily: family, fontSize: layout.originSize, fontWeight: 'normal' });
   canvas.drawText(text.origin, layout.padX, layout.originBaseline, soft, originFont);
-  if (input.seal) {
-    const at = sealPlace(w, h);
-    drawShapes(canvas, sealShapes(input.seal, at.cx, at.cy, at.diameter));
+  if (input.marker) {
+    const at = sealPlace(w, h, position);
+    drawShapes(canvas, markerShapes(input.marker, at.cx, at.cy, at.diameter));
   }
 
   surface.flush();

@@ -1,3 +1,4 @@
+import { isPhil } from '../core/variant';
 import { router, usePathname, useRootNavigationState } from 'expo-router';
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
@@ -18,6 +19,8 @@ export function PreviewBanner() {
     if (ready && !sample && /^\/(sale|plant)\/sample-/.test(path)) router.replace('/');
   }, [ready, sample, path]);
 
+  // The computer version is its own page, not a taste of the phone app.
+  if (path.startsWith('/desk')) return null;
   return (
     <View style={{ backgroundColor: colors.mossDark, paddingVertical: 8, paddingHorizontal: 16 }}>
       <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, textAlign: 'center' }}>Preview in your browser</Text>
@@ -32,8 +35,9 @@ export function PreviewBanner() {
 export function SealHint() {
   return (
     <Note>
-      To see the grower seal, open Profile, pick Hoya and Orchid Commons as the card format, type any grower number,
-      and give a plant a photo.
+      {isPhil()
+        ? 'To see the circle marker, open Profile, type a number for your room, and give a plant a photo.'
+        : 'To see the grower seal, open Profile, pick The Commons | Hoyas, Orchids and Other Rare Plants as the card format, type any grower number, and give a plant a photo.'}
     </Note>
   );
 }

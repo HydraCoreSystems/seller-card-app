@@ -5,7 +5,10 @@ import { searchRecords, recordsToCsv } from '../core/records';
 import { formatDay, formatPrice, parsePrice, toDay } from '../core/text';
 import { shareTextFile } from '../lib/exportFile';
 import { useStore } from '../lib/store';
-import { Button, Field, H, Note, Panel, Row, Screen, colors, styles } from '../ui/kit';
+import { EmptyState } from '../ui/EmptyState';
+import { Button, Field, H, Note, Panel, Row, Screen, T, colors, styles } from '../ui/kit';
+
+const NO_SALES_YET = 'No sales yet. Your finished showcases will live here.';
 
 export default function SalesScreen() {
   const store = useStore();
@@ -62,6 +65,10 @@ export default function SalesScreen() {
         <Note>
           {shown.length} sold, {formatPrice(total) || '$0'} in all
         </Note>
+      ) : T.name === 'phil' && !store.records.length && !store.sales.length ? (
+        <Panel>
+          <EmptyState line={NO_SALES_YET} />
+        </Panel>
       ) : (
         <Note>{store.records.length ? 'Nothing matches that search.' : 'Nothing sold yet. Sales you mark from the claim tracker show up here.'}</Note>
       )}

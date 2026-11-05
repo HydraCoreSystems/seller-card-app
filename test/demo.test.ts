@@ -7,7 +7,7 @@ import { SAMPLE_SALE_ID, sampleData } from '../src/core/demo';
 import { secondChances, windowMs } from '../src/core/secondChance';
 import { seasonTotals } from '../src/core/season';
 import { DASH_PATTERN } from '../src/core/text';
-import { readClaims } from '../src/lib/claimReport';
+import { readClaims } from '../src/core/claimReport';
 
 const now = new Date(2026, 9, 26, 14, 0);
 const d = sampleData(now);

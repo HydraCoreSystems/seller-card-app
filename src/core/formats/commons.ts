@@ -1,11 +1,12 @@
-import { MARKET_LISTING, ORIGIN_LINE, SHOWCASE } from '../brand';
+import { MARKET_LISTING, originLine, SHOWCASE } from '../brand';
 import { formatPrice, formatSaleTime, joinLines } from '../text';
 import type { FormatId, Lot, Profile, Sale, SaleKind } from '../types';
-import { lotName, shippingLine } from './parts';
+import { locationLine, lotName, noteLines, shippingLine } from './parts';
+import { isPhil } from '../variant';
 import type { CardFormat } from './types';
 
 // The room's name appears only inside this format, never on generic output.
-export const COMMONS_NAME = 'The Hoya and Orchid Commons';
+export const COMMONS_NAME = 'The Commons | Hoyas, Orchids and Other Rare Plants';
 // The room's own words for its selling space and its approved sellers. Commons format only.
 export const COMMONS_MARKET = 'Commons Market';
 export const VERIFIED_GROWER = 'Commons Verified Grower';
@@ -62,15 +63,20 @@ function plantLines(kind: SaleKind, lot: Lot, closes: string | null) {
 
 export const commons: CardFormat = {
   id: 'commons',
-  name: 'Hoya and Orchid Commons',
+  // The Phil build carries the corrected label. The production build names the room in full, as it was renamed on November 1, 2026.
+  get name() {
+    return isPhil() ? 'Commons sales card' : COMMONS_NAME;
+  },
   blurb: 'The Commons sales card, filled in.',
 
   // Layer one: everything on the card that's the same for every lot, posted once.
-  announcement({ profile, sale }) {
+  announcement({ profile, sale, note, contactLine }) {
     const auction = sale.kind === 'auction';
     const closes = closesText(sale, profile);
     return joinLines([
       sellerLine(profile),
+      locationLine(profile),
+      ...noteLines(note),
       sale.lots.length
         ? `${auction ? `${SHOWCASE} auction` : SHOWCASE}: ${sale.lots.length} plants, each on its own ${MARKET_LISTING} in the comments below`
         : null,
@@ -81,27 +87,29 @@ export const commons: CardFormat = {
       '',
       auction ? BIDS_LINE : CLAIMS_LINE,
       extraRules(sale.claimRules),
+      contactLine ?? null,
       '',
-      ORIGIN_LINE,
+      originLine(),
     ]);
   },
 
   // Layer two: the lot's own lines of the card.
   listing({ sale, lot }) {
-    return joinLines([`Lot ${lot.number}`, ...plantLines(sale.kind, lot, null), '', ORIGIN_LINE]);
+    return joinLines([`Lot ${lot.number}`, ...plantLines(sale.kind, lot, null), '', originLine()]);
   },
 
   // One plant posted on its own: the whole card.
   single({ profile, sale, lot, claimRules }) {
     return joinLines([
       sellerLine(profile),
+      locationLine(profile),
       ...plantLines(sale.kind, lot, null),
       ...termsLines(profile, ''),
       '',
       sale.kind === 'auction' ? BIDS_LINE : CLAIMS_LINE,
       extraRules(claimRules),
       '',
-      ORIGIN_LINE,
+      originLine(),
     ]);
   },
 };

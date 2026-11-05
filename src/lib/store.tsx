@@ -1,14 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { buyerKey } from '../core/buyers';
+import type { BackupData } from '../core/backup';
 import { sampleData } from '../core/demo';
 import { flatShipping } from '../core/chase';
 import { gatherLeftovers } from '../core/leftovers';
 import { numberLots } from '../core/sale';
 import { plantsOnList, type SheetLot } from '../core/saleSheet';
-import { markPayment } from '../core/records';
+import { applyFulfillment, applyPayment, plantIdsFor } from '../core/mutations';
 import { DEFAULT_PAY_WINDOW, applyOffer, applySettle, windowMs } from '../core/secondChance';
 import { toDay } from '../core/text';
-import type { Lot, Plant, Profile, Sale, SaleRecord } from '../core/types';
+import type { CheckoutResponse, Fulfillment, Lot, Plant, Profile, Sale, SaleRecord, SaleTemplate } from '../core/types';
+import { resolveProfile, venuesOf, withVenues } from '../core/venues';
+import { readGuide, type GuideState } from '../core/guide';
+import { moveTo, readResume, type LotDraft, type Resume } from '../core/resume';
+import { readSettings, type Settings } from '../core/settings';
+import { setStampStyle } from './stampSettings';
+import { isPhil } from '../core/variant';
+import { cachedPro, startIap } from './iap';
 import { loadJson, saveJson } from './storage';
 
 export const EMPTY_PROFILE: Profile = {
@@ -32,6 +40,16 @@ interface Data {
   buyerNotes: Record<string, string>;
   /** Leftovers the seller removed or relisted. */
   leftoversDone: string[];
+  /** Saved sale settings, for sellers with a standing way of opening a sale. */
+  templates: SaleTemplate[];
+  /** The setup walk and first sale checklist state. Stays on the phone and is not part of a backup. */
+  guide: GuideState;
+  /** What the seller chose in Settings: the watermark and what a new card starts with. */
+  settings: Settings;
+  /** The sale the seller has open and the screen they were on. Stays on the phone and is not part of a backup. */
+  resume: Resume | null;
+  /** True when the checkout chain is on: always in the Phil build, and in the store product while a Pro subscription is active. Never saved here; the store is asked. */
+  pro: boolean;
 }
 
 type SaleSettings = Omit<Sale, 'id' | 'lots' | 'createdAt'>;
@@ -43,7 +61,17 @@ interface Store extends Data {
   openSample(): void;
   /** Drops the sample and brings the seller's own data back. */
   leaveSample(): void;
+  /** Replaces everything the seller keeps with the contents of a backup. Pro is not part of a backup, so it stays as it is. */
+  restoreData(restored: BackupData): void;
   saveProfile(profile: Profile): void;
+  /** Changes the guide state. */
+  updateGuide(fn: (g: GuideState) => GuideState): void;
+  /** Changes Settings. */
+  updateSettings(fn: (s: Settings) => Settings): void;
+  /** Notes that the seller moved to a screen inside a sale. */
+  trackSale(tracked: { saleId: string; path: string }): void;
+  /** Keeps, or clears with null, the lot form the seller is filling in. */
+  setLotDraft(saleId: string, draft: LotDraft | null): void;
   savePlant(plant: Plant): void;
   deletePlant(id: string): void;
   createSale(plantIds: string[], settings: SaleSettings): Sale;
@@ -70,6 +98,14 @@ interface Store extends Data {
   setPayment(saleId: string, buyer: string, payment: SaleRecord['payment']): void;
   saveBuyerNote(buyer: string, note: string): void;
   deleteRecord(id: string): void;
+  saveTemplate(template: SaleTemplate): void;
+  deleteTemplate(id: string): void;
+  /** Keeps the responses read from the seller's checkout sheet on the sale. Earlier hand pairings stay. */
+  importCheckout(saleId: string, responses: CheckoutResponse[]): void;
+  /** Pairs a response with a winner the seller picked, or clears the pairing. */
+  linkResponse(saleId: string, row: number, buyerKey: string | null): void;
+  /** Packing and shipping marks for one buyer in one sale. */
+  setFulfillment(saleId: string, buyerKey: string, patch: Partial<Fulfillment>): void;
 }
 
 const KEYS = {
@@ -79,12 +115,11 @@ const KEYS = {
   records: 'records.v1',
   buyerNotes: 'buyerNotes.v1',
   leftoversDone: 'leftoversDone.v1',
+  templates: 'templates.v1',
+  guide: 'guide.v1',
+  settings: 'settings.v1',
+  resume: 'resume.v1',
 } as const;
-
-/** The plants behind some of a sale's lots, so a record can find its plant. */
-function plantIdsFor(sale: Sale | undefined, lotNumbers: (number | null)[]): string[] {
-  return lotNumbers.map((n) => sale?.lots.find((l) => l.number === n)?.plantId).filter((p): p is string => !!p);
-}
 
 export function newId(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -100,13 +135,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!saved) return null;
       // Before the grower number had its own field, a Commons seller's seller number stood in for it.
       const growerNumber = saved.growerNumber ?? (saved.defaultFormat === 'commons' ? saved.sellerNumber : '');
-      return { ...EMPTY_PROFILE, ...saved, growerNumber };
+      const merged = { ...EMPTY_PROFILE, ...saved, growerNumber };
+      // Before rooms existed, the profile's own lines stood for the one room. Make that room.
+      // The closed test build has no rooms, so its saved profile is left exactly as it was.
+      if (!isPhil()) return merged;
+      return merged.venues?.length ? merged : withVenues(merged, venuesOf(merged), merged.defaultVenueId ?? 'venue-1');
     })(),
     plants: loadJson<Plant[]>(KEYS.plants, []),
     sales: loadJson<Sale[]>(KEYS.sales, []),
     records: loadJson<SaleRecord[]>(KEYS.records, []),
     buyerNotes: loadJson<Record<string, string>>(KEYS.buyerNotes, {}),
     leftoversDone: loadJson<string[]>(KEYS.leftoversDone, []),
+    templates: loadJson<SaleTemplate[]>(KEYS.templates, []),
+    guide: readGuide(loadJson<unknown>(KEYS.guide, null), {
+      hasProfile: !!loadJson<Profile | null>(KEYS.profile, null),
+      hasSales: loadJson<Sale[]>(KEYS.sales, []).length > 0,
+    }),
+    settings: readSettings(loadJson<unknown>(KEYS.settings, null)),
+    resume: readResume(loadJson<unknown>(KEYS.resume, null)),
+    // The Phil build has Pro unlocked, with no gate and no switch. The store product starts from the last
+    // paid answer it saw, so Pro stays on with no signal, and the store corrects it in a moment.
+    pro: isPhil() || cachedPro(),
   }));
   const last = useRef(data);
   // The seller's own data, set aside while the sample is open.
@@ -116,7 +165,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // The sample lives in memory only, so the phone always holds the seller's own data.
     if (!sample) {
-      for (const key of Object.keys(KEYS) as (keyof Data)[]) {
+      for (const key of Object.keys(KEYS) as (keyof typeof KEYS)[]) {
         if (data[key] !== last.current[key]) saveJson(KEYS[key], data[key]);
       }
     }
@@ -124,7 +173,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [data, sample]);
 
   const update = useCallback((fn: (d: Data) => Partial<Data>) => setData((d) => ({ ...d, ...fn(d) })), []);
+  // Both of these are stable, so a screen can clear its draft as it closes without the clearing firing on every render.
+  const trackSale = useCallback(
+    (tracked: { saleId: string; path: string }) =>
+      update((d) => (d.resume?.path === tracked.path && d.resume.saleId === tracked.saleId ? {} : { resume: moveTo(d.resume, tracked, Date.now()) })),
+    [update],
+  );
+  const setLotDraft = useCallback(
+    (saleId: string, draft: LotDraft | null) =>
+      update((d) => (d.resume && d.resume.saleId === saleId && (d.resume.lotDraft ?? null) !== draft ? { resume: { ...d.resume, lotDraft: draft } } : {})),
+    [update],
+  );
 
+  // In the store product, Pro follows the Apple subscription. The Phil build never opens the store.
+  useEffect(() => {
+    if (isPhil()) return;
+    return startIap((on) => setData((d) => (d.pro === on ? d : { ...d, pro: on })));
+  }, []);
+
+  // Stamped photos are made anywhere in the app, so the watermark style is kept where they can read it.
+  setStampStyle(data.settings.stamp);
   const store = useMemo<Store>(
     () => ({
       ...data,
@@ -132,16 +200,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       openSample: () => {
         if (sample) return;
         setOwnData(data);
-        setData(sampleData());
+        setData({ ...sampleData(), templates: [], pro: data.pro, guide: data.guide, settings: data.settings, resume: data.resume });
       },
       leaveSample: () => {
         if (!ownData) return;
         // Marked as already saved, so leaving writes nothing.
         last.current = ownData;
-        setData(ownData);
+        setData({ ...ownData, pro: data.pro });
         setOwnData(null);
       },
+      restoreData: (restored) => {
+        // The sample is in memory only, and restoring over it would lose the seller's own data set aside.
+        if (sample) return;
+        update(() => ({ ...restored, profile: restored.profile ? { ...EMPTY_PROFILE, ...restored.profile } : null }));
+      },
       saveProfile: (profile) => update(() => ({ profile })),
+      updateGuide: (fn) => update((d) => ({ guide: fn(d.guide) })),
+      updateSettings: (fn) => update((d) => ({ settings: fn(d.settings) })),
+      trackSale,
+      setLotDraft,
       savePlant: (plant) =>
         update((d) => ({
           plants: d.plants.some((p) => p.id === plant.id)
@@ -196,7 +273,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             closedMs: Date.now(),
             leftovers: unclaimed,
             claimOrder,
-            shippingCharge: flatShipping(d.profile?.shipping ?? ''),
+            shippingCharge: flatShipping(d.profile ? resolveProfile(d.profile, sale).shipping : ''),
           };
           return {
             records: [...winners.map((w) => ({ ...w, saleId: sale.id, date, id: newId() })), ...d.records],
@@ -235,20 +312,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           records: [{ ...entry, id: newId() }, ...d.records],
           plants: plantId ? d.plants.map((p) => (p.id === plantId ? { ...p, sold: true } : p)) : d.plants,
         })),
-      setPayment: (saleId, buyer, payment) =>
-        update((d) => {
-          const k = buyerKey(buyer);
-          const sale = d.sales.find((s) => s.id === saleId);
-          // Lots already passed on to the next in line stay never paid whatever the buyer does now.
-          const passedOn = (r: SaleRecord) => sale?.offers?.some((o) => o.lot === r.lotNumber && buyerKey(o.from) === k);
-          const mine = (r: SaleRecord) => r.saleId === saleId && buyerKey(r.buyer) === k && !passedOn(r);
-          // A buyer who never paid hands the plant back, so it shows as for sale again.
-          const plantIds = new Set(plantIdsFor(d.sales.find((s) => s.id === saleId), d.records.filter(mine).map((r) => r.lotNumber)));
-          return {
-            records: d.records.map((r) => (mine(r) ? markPayment(r, payment, toDay(new Date())) : r)),
-            plants: d.plants.map((p) => (plantIds.has(p.id) ? { ...p, sold: payment !== 'never' } : p)),
-          };
-        }),
+      setPayment: (saleId, buyer, payment) => update((d) => applyPayment(d, saleId, buyer, payment, toDay(new Date()))),
       saveBuyerNote: (buyer, note) =>
         update((d) => {
           const notes = { ...d.buyerNotes };
@@ -257,8 +321,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return { buyerNotes: notes };
         }),
       deleteRecord: (id) => update((d) => ({ records: d.records.filter((r) => r.id !== id) })),
+      saveTemplate: (template) =>
+        update((d) => ({
+          templates: d.templates.some((t) => t.id === template.id)
+            ? d.templates.map((t) => (t.id === template.id ? template : t))
+            : [...d.templates, template],
+        })),
+      deleteTemplate: (id) => update((d) => ({ templates: d.templates.filter((t) => t.id !== id) })),
+      importCheckout: (saleId, responses) =>
+        update((d) => ({
+          sales: d.sales.map((s) =>
+            s.id === saleId ? { ...s, checkout: { links: s.checkout?.links, responses, importedMs: Date.now() } } : s,
+          ),
+        })),
+      linkResponse: (saleId, row, buyerKey) =>
+        update((d) => ({
+          sales: d.sales.map((s) => {
+            if (s.id !== saleId || !s.checkout) return s;
+            const links = { ...(s.checkout.links ?? {}) };
+            if (buyerKey) links[row] = buyerKey;
+            else delete links[row];
+            return { ...s, checkout: { ...s.checkout, links } };
+          }),
+        })),
+      setFulfillment: (saleId, key, patch) => update((d) => applyFulfillment(d, saleId, key, patch)),
     }),
-    [data, update, sample, ownData],
+    [data, update, sample, ownData, trackSale, setLotDraft],
   );
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;

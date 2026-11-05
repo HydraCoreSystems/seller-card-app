@@ -1,14 +1,13 @@
 /**
  * Claim tracker. The seller pastes a sale thread and gets the claims back lot by lot.
  *
- * Thread order as pasted governs who is first. Times are kept as hints and printed for
- * the seller, never used to rank. Two kinds of tie are marked for the seller to rule on:
+ * Claims are always a timestamp call. The order claims arrived is the only order: the first claim wins
+ * the lot, and every later claim is an alternate, in the same order. There is no tie, no disputed
+ * state, and nothing here lets a seller choose a winner, because a judgment call is playing favorites.
  *
- *  - minute: the first claims on a lot land inside the same minute. Thread order still
- *    shows who is first, and the seller sees both times, as the Commons tie ladder asks.
- *  - thread: claims on the same lot sit in parts of the thread whose order can't be
- *    compared, like replies under the lot's own comment against a top level comment
- *    naming the lot number.
+ * Arrival order is read from the times in the paste, down to the second when the paste has them. Two
+ * claims that show the same minute still fall in the order they arrived: by their seconds when the
+ * paste has seconds, and otherwise by their place in the paste, which is the order the thread was read.
  *
  * Two kinds of paste are read: a thread copied from Facebook, and a connector export
  * with "[n] Name | time" headers and indented "Reply:" lines.
@@ -43,14 +42,11 @@ export interface LotClaims {
   lot: number;
   /** The seller's own comment that opened the lot, when the thread has one. */
   label: string | null;
-  /** Live claims in thread order, then backups ("next") in thread order. */
+  /** Live claims in arrival order, then backups ("next") in arrival order. The first claim wins. */
   queue: Claim[];
-  /** Claims tied for first, in thread order. Null when first place is clear. */
-  tie: Claim[] | null;
-  tieKind: 'minute' | 'thread' | null;
   /** Claims the buyer took back later in the thread. */
   released: Claim[];
-  /** Everything else said under this lot, so the seller rules with full sight. */
+  /** Everything else said under this lot, for the seller to read. It never changes the order. */
   others: ThreadComment[];
 }
 
@@ -161,7 +157,7 @@ function stripBadge(line: string): { text: string; badge: string | null } {
   return { text: line, badge: null };
 }
 
-function isConnectorExport(lines: string[]): boolean {
+export function isConnectorExport(lines: string[]): boolean {
   return lines.some((l) => CONNECTOR_TOP.test(l.trim()));
 }
 
@@ -197,6 +193,27 @@ function parseConnector(lines: string[], sellerName: string): ThreadComment[] {
   return out;
 }
 
+/** The line Skrybix puts at the foot of every lot card. It is never a comment and never claim text. */
+const ORIGIN_LINE = /^made with skrybix\b/i;
+const LOT_ONLY = /^lot\s*#?\s*\d+\s*$/i;
+
+/** A lot card as the app writes it, folded into one seller comment: "Lot 11: Hoya sp. Vietnam $25" and the rest. */
+function cardBody(lines: string[]): string {
+  const head = lines[0].trim();
+  if (!LOT_ONLY.test(head)) return lines.join('\n');
+  const rest = lines.slice(1);
+  const takeLine = (re: RegExp) => {
+    const i = rest.findIndex((l) => re.test(l));
+    return i < 0 ? null : rest.splice(i, 1)[0];
+  };
+  const plant = takeLine(/^plant:/i);
+  const price = takeLine(/^(?:price:|auction\b)/i);
+  const name = plant ? plant.replace(/^plant:\s*/i, '') : rest.length && !PRICED.test(rest[0]) ? rest.shift() : '';
+  const money = price ? price.replace(/^price:\s*/i, '') : '';
+  const first = `${head}${name ? `: ${name}` : ''}${money ? ` ${money}` : ''}`;
+  return [first, ...rest].join('\n');
+}
+
 function parseCopied(lines: string[], sellerName: string): ThreadComment[] {
   const seller = norm(sellerName);
   const out: ThreadComment[] = [];
@@ -208,6 +225,20 @@ function parseCopied(lines: string[], sellerName: string): ThreadComment[] {
     // A reaction count left over from the comment before.
     while (b.length > 1 && /^\d+$/.test(b[0])) b = b.slice(1);
     if (b.length === 1 && /^\d+$/.test(b[0])) b = [];
+    // A lot card pasted on its own has no author line. The card is the seller's lot, not a person named "Lot 11".
+    if (b.length && lotHeading(b[0]) !== null) {
+      out.push({
+        index: out.length,
+        author: sellerName.trim() || 'Seller',
+        body: cardBody(b),
+        timeHint: time,
+        fromSeller: true,
+        parent: null,
+      });
+      block = [];
+      sellerBadge = false;
+      return;
+    }
     if (b.length) {
       const author = b[0];
       out.push({
@@ -223,10 +254,22 @@ function parseCopied(lines: string[], sellerName: string): ThreadComment[] {
     sellerBadge = false;
   };
 
-  for (const raw of lines) {
+  // "Lot 12" on its own line opens a card only when card lines follow it. A buyer's bare "Lot 12" does not.
+  const opensCard = (at: number) => {
+    const next = lines.slice(at + 1).map((l) => l.trim()).filter(Boolean).slice(0, 6);
+    return next.some((l) => ORIGIN_LINE.test(l) || /^(?:plant|price):/i.test(l));
+  };
+
+  for (const [at, raw] of lines.entries()) {
     const trimmed = raw.trim();
     if (!trimmed) continue;
     if (NOISE.some((r) => r.test(trimmed))) continue;
+    if (ORIGIN_LINE.test(trimmed)) {
+      // The foot of a lot card. It closes the card, so whatever follows is a new comment.
+      const cardAt = block.findIndex((l) => lotHeading(l) !== null);
+      if (cardAt === 0 || (cardAt === 1 && block.length > 1)) flush(null);
+      continue;
+    }
     const meta = isMetaLine(trimmed);
     if (meta.meta) {
       if (block.length) flush(meta.time);
@@ -235,6 +278,8 @@ function parseCopied(lines: string[], sellerName: string): ThreadComment[] {
       }
       continue;
     }
+    // A line that is only "Lot 12" opens a lot card, so whatever came before it is finished.
+    if (LOT_ONLY.test(trimmed) && block.length && opensCard(at)) flush(null);
     const { text: line, badge } = stripBadge(trimmed);
     if (badge && SELLER_BADGES.has(badge)) sellerBadge = true;
     if (!line) continue;
@@ -252,24 +297,50 @@ export function parseThread(text: string, sellerName = ''): ThreadComment[] {
 
 /* ---------- times ---------- */
 
-/** A key that is equal for two times inside the same minute, or null if the hint is too coarse. */
-export function minuteKey(hint: string | null): string | null {
-  if (!hint) return null;
-  const iso = hint.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-  if (iso) return iso[1];
-  const h = hint.trim().toLowerCase();
-  if (/\d{1,2}:\d{2}/.test(h)) return h.replace(/(\d{1,2}:\d{2}):\d{2}/, '$1');
-  if (/^(?:just now|\d+\s?(?:s|m|min|mins))$/.test(h)) return h.replace(/\s/g, '');
-  return null;
-}
+/** The time written on claims that came from screenshots, so a pasted export can still be read back. */
+export const SCREENSHOT_TIME = 'screenshot';
 
 /** "1:29:16 PM" for exact times; anything else as it came. */
 export function showTime(hint: string | null): string | null {
-  if (!hint) return null;
+  // Claims read from screenshots carry no time. Their place in the screenshots is their order.
+  if (!hint || hint === SCREENSHOT_TIME) return null;
   const iso = hint.match(/^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2}):(\d{2})/);
   if (!iso) return hint;
   const h = Number(iso[1]);
   return `${h % 12 === 0 ? 12 : h % 12}:${iso[2]}:${iso[3]} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+/** When a claim arrived, as milliseconds, when its time is exact. */
+function exactMs(hint: string | null): number | null {
+  if (!hint || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(hint)) return null;
+  const ms = Date.parse(hint);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/** How long ago a claim was made, in minutes, from a hint like "5m", "2h" or "just now". */
+function ageMinutes(hint: string | null): number | null {
+  if (!hint) return null;
+  const h = hint.trim().toLowerCase();
+  if (h === 'just now') return 0;
+  const m = h.match(/^(\d+)\s?(s|m|min|mins|h|hr|hrs|d|w)$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return m[2] === 's' ? n / 60 : m[2].startsWith('m') ? n : m[2].startsWith('h') ? n * 60 : m[2] === 'd' ? n * 1440 : n * 10080;
+}
+
+/**
+ * The one ordering rule for claims: earliest arrival first. Exact times decide by the second. Ages like
+ * "5m" decide when they differ, the older claim first. Anything still equal, or with no usable time, falls
+ * to the place in the paste. It never returns zero for two different comments, so no two claims tie.
+ */
+export function arrivedBefore(a: Claim, b: Claim): number {
+  const ta = exactMs(a.timeHint);
+  const tb = exactMs(b.timeHint);
+  if (ta !== null && tb !== null && ta !== tb) return ta - tb;
+  const aa = ageMinutes(a.timeHint);
+  const ab = ageMinutes(b.timeHint);
+  if (ta === null && tb === null && aa !== null && ab !== null && aa !== ab) return ab - aa;
+  return a.commentIndex - b.commentIndex;
 }
 
 /* ---------- reading claims ---------- */
@@ -318,11 +389,35 @@ function intentOf(words: string): Intent {
   return null;
 }
 
+/**
+ * Facebook's copy puts the name of the person being replied to in front of the reply, so "Dee Bradshaw" over
+ * "Phil Achleman sold please" is Dee saying "sold please". A name that is known comes off first. Failing
+ * that, two or three capitalized words with no claim words in them, ahead of words that do claim, are a name.
+ */
+export function withoutReplyName(words: string, known: string[]): string {
+  const lower = words.toLowerCase();
+  for (const n of known) {
+    const k = n.trim().toLowerCase();
+    if (k && lower.startsWith(`${k} `) && words.slice(k.length).trim()) return words.slice(k.length).trim();
+  }
+  const m = words.match(/^((?:[A-Z][A-Za-z'’.-]*\s+){1,2}[A-Z][A-Za-z'’.-]*)\s+(\S[\s\S]*)$/);
+  if (!m) return words;
+  const [, name, rest] = m;
+  if (/\blot\b/i.test(name) || intentOf(name) !== null || intentOf(rest) === null) return words;
+  return rest.trim();
+}
+
 export function trackClaims(text: string, options: ClaimOptions = {}): ClaimReport {
-  const comments = parseThread(text, options.sellerName ?? '');
+  return trackComments(parseThread(text, options.sellerName ?? ''), options);
+}
+
+/** The claim logic itself, for comments that are already split. Every way of bringing a thread in ends up here. */
+export function trackComments(comments: ThreadComment[], options: ClaimOptions = {}): ClaimReport {
   const sellerKnown = comments.some((c) => c.fromSeller);
   const nested = comments.some((c) => c.parent !== null);
   const names = [...new Set(comments.map((c) => c.author))].sort((a, b) => b.length - a.length);
+
+  const replyNames = options.sellerName ? [...names, options.sellerName] : names;
 
   const lotOfComment = new Map<number, number>();
   const labels = new Map<number, string>();
@@ -368,7 +463,7 @@ export function trackClaims(text: string, options: ClaimOptions = {}): ClaimRepo
     // after a lot's comment is read as sitting under that lot.
     const here = c.parent !== null ? lotOfComment.get(c.parent) ?? 0 : nested ? 0 : section;
 
-    const words = spoken(c.body, names);
+    const words = withoutReplyName(spoken(c.body, names), replyNames);
     const intent = c.fromSeller ? null : intentOf(words);
     if (!intent) {
       if (here > 0) others.set(here, [...(others.get(here) ?? []), c]);
@@ -400,7 +495,7 @@ export function trackClaims(text: string, options: ClaimOptions = {}): ClaimRepo
   const entry = (lot: number) => {
     let e = byLot.get(lot);
     if (!e) {
-      e = { lot, label: labels.get(lot) ?? null, queue: [], tie: null, tieKind: null, released: [], others: others.get(lot) ?? [] };
+      e = { lot, label: labels.get(lot) ?? null, queue: [], released: [], others: others.get(lot) ?? [] };
       byLot.set(lot, e);
     }
     return e;
@@ -424,22 +519,9 @@ export function trackClaims(text: string, options: ClaimOptions = {}): ClaimRepo
   unplaced.sort((a, b) => a.index - b.index);
 
   for (const e of byLot.values()) {
-    // A claim beats any "next" behind it, whatever the order they were typed in.
-    const primary = e.queue.filter((q) => q.kind === 'claim');
-    e.queue = [...primary, ...e.queue.filter((q) => q.kind === 'backup')];
-    const firstBySection = new Map<number, Claim>();
-    for (const q of primary) if (!firstBySection.has(q.section)) firstBySection.set(q.section, q);
-    if (firstBySection.size > 1) {
-      e.tie = [...firstBySection.values()].sort((a, b) => a.commentIndex - b.commentIndex);
-      e.tieKind = 'thread';
-    } else if (primary.length > 1) {
-      const key = minuteKey(primary[0].timeHint);
-      const same = key ? primary.filter((q) => minuteKey(q.timeHint) === key) : [];
-      if (same.length > 1) {
-        e.tie = same;
-        e.tieKind = 'minute';
-      }
-    }
+    // A claim beats any "next" behind it. Each group runs in the order its claims arrived.
+    const primary = e.queue.filter((q) => q.kind === 'claim').sort(arrivedBefore);
+    e.queue = [...primary, ...e.queue.filter((q) => q.kind === 'backup').sort(arrivedBefore)];
   }
 
   const lots = [...byLot.values()].sort((a, b) => a.lot - b.lot);

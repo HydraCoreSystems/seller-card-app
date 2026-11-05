@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { Image, Text, View } from 'react-native';
+import { suggestName } from '../core/nomenclature';
+import { isPhil } from '../core/variant';
+import { MAX_PHOTOS } from '../core/photos';
 import { formatPrice, parsePrice } from '../core/text';
 import { pickPhoto } from '../lib/photos';
-import { Button, Choice, Field, Row, colors } from './kit';
+import { Button, Choice, Field, Panel, Row, colors } from './kit';
 import { ViewablePhoto } from './PhotoViewer';
 
 export interface PlantDraft {
@@ -9,7 +13,8 @@ export interface PlantDraft {
   noid: boolean;
   priceText: string;
   description: string;
-  photoUri: string | null;
+  /** Every photo, first one first. The first is the one posted on the listing. */
+  photoUris: string[];
 }
 
 export function priceText(price: number | null): string {
@@ -38,26 +43,37 @@ export function PlantFields({
   const set = <K extends keyof PlantDraft>(k: K, v: PlantDraft[K]) => onChange({ ...draft, [k]: v });
   const badPrice = draft.priceText.trim() !== '' && parsePrice(draft.priceText) === null;
 
+  const [kept, setKept] = useState<string | null>(null);
+  const phil = isPhil();
+  const full = phil && draft.photoUris.length >= MAX_PHOTOS;
   const takePhoto = async (source: 'camera' | 'library') => {
     const uri = await pickPhoto(source);
-    if (uri) set('photoUri', uri);
+    // The closed test build holds one photo, and a new one replaces it.
+    if (uri) set('photoUris', phil ? [...draft.photoUris, uri] : [uri]);
   };
+  // The name corrector only offers. Nothing changes until the seller taps Use this.
+  const help = !phil || draft.noid || !draft.name.trim() ? null : suggestName(draft.name);
+  const showHelp = help && kept !== draft.name && (help.changed || help.spelling);
 
   return (
     <View>
-      {draft.photoUri ? (
-        <ViewablePhoto uri={draft.photoUri}>
-          <Image
-            source={{ uri: draft.photoUri }}
-            style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, marginBottom: 10, backgroundColor: colors.mossTint }}
-            resizeMode="cover"
-            accessibilityLabel="Plant photo. Tap to view full size."
-          />
-        </ViewablePhoto>
-      ) : null}
+      {draft.photoUris.map((uri, i) => (
+        <View key={uri} style={{ marginBottom: 10 }}>
+          {draft.photoUris.length > 1 ? <Text style={{ color: colors.soft, marginBottom: 4 }}>{i === 0 ? 'Photo 1, for the listing' : `Photo ${i + 1}, for a reply`}</Text> : null}
+          <ViewablePhoto uri={uri}>
+            <Image
+              source={{ uri }}
+              style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: colors.mossTint }}
+              resizeMode="cover"
+              accessibilityLabel="Plant photo. Tap to view full size."
+            />
+          </ViewablePhoto>
+          {phil ? <Button kind="quiet" title="Remove this photo" onPress={() => set('photoUris', draft.photoUris.filter((u) => u !== uri))} /> : null}
+        </View>
+      ))}
       <Row style={{ marginBottom: 14 }}>
-        <Button title={draft.photoUri ? 'New photo' : 'Take photo'} onPress={() => takePhoto('camera')} style={{ flex: 1 }} />
-        <Button kind="secondary" title="Choose photo" onPress={() => takePhoto('library')} style={{ flex: 1 }} />
+        <Button title={draft.photoUris.length ? (phil ? 'Add another photo' : 'New photo') : 'Take photo'} onPress={() => takePhoto('camera')} disabled={full} style={{ flex: 1 }} />
+        <Button kind="secondary" title="Choose photo" onPress={() => takePhoto('library')} disabled={full} style={{ flex: 1 }} />
       </Row>
       <Field
         label="Plant name"
@@ -66,6 +82,27 @@ export function PlantFields({
         placeholder={draft.noid ? 'Hoya, or leave blank' : 'Hoya carnosa Krimson Queen'}
         autoCapitalize="words"
       />
+      {showHelp ? (
+        <Panel style={{ marginTop: -6 }}>
+          <Text style={{ color: colors.soft, fontSize: 13 }}>You typed</Text>
+          <Text style={{ color: colors.ink, marginBottom: 8 }}>{help.typed}</Text>
+          {help.changed ? (
+            <>
+              <Text style={{ color: colors.soft, fontSize: 13 }}>Written the usual way</Text>
+              <Text style={{ color: colors.ink, fontWeight: '600' }}>{help.formatted}</Text>
+              <Button kind="secondary" title="Use this" onPress={() => set('name', help.formatted)} style={{ marginVertical: 6 }} />
+            </>
+          ) : null}
+          {help.spelling ? (
+            <>
+              <Text style={{ color: colors.soft, fontSize: 13 }}>Close to a name I know. Did you mean</Text>
+              <Text style={{ color: colors.ink, fontWeight: '600' }}>{help.spelling}</Text>
+              <Button kind="secondary" title="Use this spelling" onPress={() => set('name', help.spelling!)} style={{ marginVertical: 6 }} />
+            </>
+          ) : null}
+          <Button kind="quiet" title="Keep what I typed" onPress={() => setKept(draft.name)} />
+        </Panel>
+      ) : null}
       <Choice
         label="Is the name confirmed?"
         value={draft.noid ? 'noid' : 'named'}

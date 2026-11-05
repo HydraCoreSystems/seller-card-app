@@ -33,14 +33,15 @@ export type Shape =
       maxWidth?: number;
     };
 
-const RING_TOP = 'THE HOYA AND ORCHID COMMONS';
+// The room is called The Commons. Its full display name is too long for a ring, so the banner carries that.
+const RING_TOP = 'THE COMMONS';
 const RING_BOTTOM = 'VERIFIED GROWER';
 const MOTTO = 'SELL WITH YOUR WORD ON FILE';
 export const BANNER_TITLE = 'COMMONS VERIFIED GROWER';
-const BANNER_ROOM = 'The Hoya and Orchid Commons';
+const BANNER_ROOM = 'The Commons | Hoyas, Orchids and Other Rare Plants';
 
 /** Letters spaced evenly along an arc. Angles in degrees, 0 at the top, clockwise. */
-function ringText(text: string, cx: number, cy: number, r: number, from: number, to: number, size: number, flip: boolean): Shape[] {
+function ringText(text: string, cx: number, cy: number, r: number, from: number, to: number, size: number, flip: boolean, color: string = SEAL_COLORS.cream): Shape[] {
   const n = text.length;
   return [...text].map((ch, i) => {
     const ang = n === 1 ? (from + to) / 2 : from + ((to - from) * i) / (n - 1);
@@ -53,7 +54,7 @@ function ringText(text: string, cx: number, cy: number, r: number, from: number,
       size,
       font: 'sans',
       bold: true,
-      color: SEAL_COLORS.cream,
+      color,
       align: 'center',
       rotate: flip ? ang - 180 : ang,
     } satisfies Shape;
@@ -97,13 +98,42 @@ export function sealShapes(number: string, cx: number, cy: number, diameter: num
     { kind: 'circle', cx, cy, r: u(801), stroke: SEAL_COLORS.gold, width: u(10) },
     { kind: 'circle', cx, cy, r: u(780), fill: SEAL_COLORS.cream },
     { kind: 'circle', cx, cy, r: u(777), stroke: SEAL_COLORS.greenDark, width: u(6) },
-    ...ringText(RING_TOP, cx, cy, u(884), -104, 104, u(118), false),
-    ...ringText(RING_BOTTOM, cx, cy, u(884), 232, 128, u(118), true),
+    // Both arcs of the Commons seal are lettered in the seal gold. Letters sit 8 degrees apart, centered over the top.
+    ...ringText(RING_TOP, cx, cy, u(884), -4 * (RING_TOP.length - 1), 4 * (RING_TOP.length - 1), u(118), false, SEAL_COLORS.gold),
+    ...ringText(RING_BOTTOM, cx, cy, u(884), 232, 128, u(118), true, SEAL_COLORS.gold),
     { kind: 'circle', cx: cx - u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
     { kind: 'circle', cx: cx + u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
     ...leaf(cx, cy - u(210), u(760), u(210), 38, k),
     { kind: 'text', text: `No. ${number.trim()}`, x: cx, y: cy + u(190), size: u(300), font: 'serif', bold: true, color: SEAL_COLORS.greenDark, align: 'center', maxWidth: u(1300) },
     { kind: 'text', text: MOTTO, x: cx, y: cy + u(392), size: u(66), font: 'sans', bold: true, color: SEAL_COLORS.green, align: 'center' },
+  ];
+}
+
+/** Most letters of a room's name the ring carries. A longer name is cut here. */
+const RING_MAX = 36;
+
+/**
+ * The circular marker for any room that isn't the Commons: the same circle, leaf and number, with
+ * the room's own name around the top. No grower words, no motto, no verification wording: the
+ * marker prints the number the seller typed and says nothing more about it.
+ */
+export function venueSealShapes(number: string, venueName: string, cx: number, cy: number, diameter: number): Shape[] {
+  const k = diameter / 2000;
+  const u = (n: number) => n * k;
+  const ring = venueName.trim().toUpperCase().slice(0, RING_MAX);
+  // Letters sit 8 degrees apart on the Commons ring; a short name is centered, a long one shrinks to fit.
+  const span = Math.min(208, 8 * Math.max(ring.length - 1, 0));
+  const size = ring.length > 27 ? (118 * 27) / ring.length : 118;
+  return [
+    { kind: 'circle', cx, cy, r: u(960), fill: SEAL_COLORS.green },
+    { kind: 'circle', cx, cy, r: u(801), stroke: SEAL_COLORS.gold, width: u(10) },
+    { kind: 'circle', cx, cy, r: u(780), fill: SEAL_COLORS.cream },
+    { kind: 'circle', cx, cy, r: u(777), stroke: SEAL_COLORS.greenDark, width: u(6) },
+    ...(ring ? ringText(ring, cx, cy, u(884), -span / 2, span / 2, u(size), false) : []),
+    { kind: 'circle', cx: cx - u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
+    { kind: 'circle', cx: cx + u(700), cy, r: u(26), fill: SEAL_COLORS.gold },
+    ...leaf(cx, cy - u(210), u(760), u(210), 38, k),
+    { kind: 'text', text: `No. ${number.trim()}`, x: cx, y: cy + u(250), size: u(300), font: 'serif', bold: true, color: SEAL_COLORS.greenDark, align: 'center', maxWidth: u(1300) },
   ];
 }
 
@@ -149,12 +179,14 @@ export interface SealPlace {
  * Where the seal sits on a listing photo: the lower right corner, about a fifth of the photo
  * wide so the number reads on a phone, resting just above the stamp band.
  */
-export function sealPlace(width: number, height: number): SealPlace {
+export function sealPlace(width: number, height: number, position: 'bottom' | 'top' = 'bottom'): SealPlace {
   const unit = Math.min(width, height);
   const diameter = Math.round(width * 0.2);
   const margin = Math.round(unit * 0.03);
-  const { bandTop } = stampLayout(width, height);
-  return { cx: width - margin - diameter / 2, cy: bandTop - margin - diameter / 2, diameter };
+  const { bandTop } = stampLayout(width, height, position);
+  // With the band along the top, the circle rests in the lower right corner instead.
+  const cy = position === 'top' ? height - margin - diameter / 2 : bandTop - margin - diameter / 2;
+  return { cx: width - margin - diameter / 2, cy, diameter };
 }
 
 export interface CardImage {

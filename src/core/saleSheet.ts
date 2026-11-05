@@ -4,7 +4,7 @@
  * comes back in; the columns never change. Pictures don't travel in it, and it says so.
  */
 import { strFromU8 } from 'fflate';
-import { ORIGIN_LINE, SHOWCASE } from './brand';
+import { originLine, SHOWCASE } from './brand';
 import { COMMONS_MARKET, VERIFIED_GROWER, growerNumber } from './formats/commons';
 import { shippingLine } from './formats/parts';
 import { formatDay, parsePrice } from './text';
@@ -51,7 +51,7 @@ export function saleSheet(profile: Profile, sale: Sale | null, state: Map<number
   ];
   const top: CellValue[][] = [
     [sheetTitle(formatId)],
-    [ORIGIN_LINE],
+    [originLine()],
     [NO_PICTURES],
     [HOW_TO_FILL],
     [],
@@ -157,7 +157,7 @@ export function sheetRowsFromBytes(bytes: Uint8Array): string[][] {
 export function sheetState(lots: RundownLot[], closed: boolean): Map<number, SheetLotState> {
   const state = new Map<number, SheetLotState>();
   for (const l of lots) {
-    const claimedBy = l.winner ?? (l.tie ? `Tie: ${l.tie.join(' or ')}` : null);
+    const claimedBy = l.winner;
     const payment = closed && l.winner ? (l.payment === 'paid' ? 'Paid' : l.payment === 'never' ? 'Never paid' : 'Waiting') : null;
     if (claimedBy) state.set(l.number, { claimedBy, payment });
   }
@@ -168,7 +168,7 @@ export function sheetState(lots: RundownLot[], closed: boolean): Map<number, She
 export function parseCsv(text: string): string[][] {
   const src = text.replace(/^﻿/, '');
   // Excel in some countries saves with semicolons; go by whichever the heading line uses.
-  const headingLine = src.split(/\r?\n/).find((l) => /plant name/i.test(l)) ?? src;
+  const headingLine = src.split(/\r?\n/).find((l) => /plant name/i.test(l)) ?? src.split(/\r?\n/)[0];
   const sep = (headingLine.match(/;/g)?.length ?? 0) > (headingLine.match(/,/g)?.length ?? 0) ? ';' : ',';
   const rows: string[][] = [];
   let row: string[] = [];
