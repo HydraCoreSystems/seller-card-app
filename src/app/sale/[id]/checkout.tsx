@@ -9,7 +9,6 @@ import { pickSheetBytes } from '../../../lib/saleSheetFile';
 import { useSale, useStore } from '../../../lib/store';
 import { useCheckout } from '../../../lib/useCheckout';
 import { Button, CardText, H, Note, Panel, Row, Screen, colors, useCopy } from '../../../ui/kit';
-import { ProExplainer } from '../../../ui/ProExplainer';
 
 /** The checkout form for one sale: the messages that carry the link, and the responses coming back. */
 export default function CheckoutScreen() {
@@ -22,7 +21,6 @@ export default function CheckoutScreen() {
   const [copied, copy] = useCopy();
 
   if (!sale || !c || !store.profile) return <Screen><Note>This showcase is gone.</Note></Screen>;
-  if (!store.pro) return <Screen><ProExplainer /></Screen>;
 
   const { room, rundown, deadline, name, match, rows, link } = c;
   const deadlineMs = deadline.state === 'none' ? null : deadline.ms;
@@ -48,7 +46,7 @@ export default function CheckoutScreen() {
 
   return (
     <Screen>
-      <Note>{PRO_PRIVACY}</Note>
+      {store.pro ? <Note>{PRO_PRIVACY}</Note> : null}
 
       <H>Buyer contact deadline</H>
       <Note>
@@ -113,6 +111,8 @@ export default function CheckoutScreen() {
         </>
       ) : null}
 
+      {store.pro ? (
+        <>
       <H>Responses</H>
       <Note>
         Your form’s answers land in a Google Sheet in your own Google Drive on their own. In Sheets, choose File, Download, then .xlsx or .csv,
@@ -175,6 +175,8 @@ export default function CheckoutScreen() {
               {r.buyer}{r.contactState === 'late' ? ', past the deadline' : ''}
             </Text>
           ))}
+        </>
+      ) : null}
         </>
       ) : null}
 

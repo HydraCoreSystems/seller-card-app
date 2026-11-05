@@ -158,8 +158,17 @@ describe('closing a sale', () => {
     expect(body).not.toMatch(/\bsave\(|sharePdf|Sharing|printAsync|shareAsync/);
     // Closing lands the seller on the winner messages, the Checkout screen with a Send button per winner.
     expect(body).toMatch(/router\.push\(\{ pathname: '\/sale\/\[id\]\/checkout'/);
+    expect(body).not.toMatch(/if \(pro\)|store\.pro/);
     const checkout = readFileSync('src/app/sale/[id]/checkout.tsx', 'utf8');
     expect(checkout).toContain('winnerMessage(');
+    // No Pro wall in front of the winner messages: no early return, and the section is not inside a Pro branch.
+    expect(checkout).not.toMatch(/if \(!store\.pro\) return/);
+    expect(checkout).not.toContain('ProExplainer');
+    const at = checkout.indexOf('A message to each winner');
+    const proAt = checkout.indexOf('{store.pro ? (');
+    expect(at).toBeGreaterThan(0);
+    expect(proAt === -1 || proAt > at).toBe(true);
+    expect(checkout.slice(at, proAt === -1 ? undefined : proAt)).toMatch(/Copy message[\s\S]*title="Send"/);
     // The closed sale still offers the record on its own button.
     expect(src).toContain("onPress={sale.closedAt ? save : close}");
   });
