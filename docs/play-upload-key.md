@@ -2,41 +2,22 @@
 
 The upload key proves a bundle sent to Google Play came from us. Google Play App Signing holds the
 key that actually signs the app on buyers' phones, so if the upload key is ever lost, Play support
-can reset it. It's still worth keeping safe.
+can reset it. It is still worth keeping safe.
 
-Phil holds it: one key file on his computer with a backup copy, and its password in his password
-vault. It never goes into GitHub, the repo, or a chat.
+Signing is automatic. Under Phil's ruling of November 5, 2026, the key lives in this repo's GitHub
+Actions secrets as PLAY_UPLOAD_KEYSTORE (the key file, base64 encoded) and
+PLAY_UPLOAD_KEYSTORE_PASSWORD (its password). The play-bundle workflow builds the bundle, signs it
+with that key in the build, verifies the signature, and puts the signed bundle on the play-bundle
+release. Nobody signs a bundle by hand. The earlier design, where the workflow shipped an unsigned
+bundle and Phil signed it on his own computer, was retired by that ruling.
 
-Java's key tools sit in `C:\Users\pwach\Tools\jdk17\bin`. Run the commands below in a PowerShell
-window of your own (the Start menu, then PowerShell), since each one asks for the password.
+The original key file also stays on Phil's computer as the offline backup: `seller-card-app-upload.jks`
+in the Seller Card App keys folder in his user folder, alias `upload`, with its password in his
+password vault under the entry Seller Card App upload key. If the secrets ever have to be set again,
+Phil sets them from that file and that vault entry; the password is never typed into a chat.
 
-## Make the key (once)
+## What Phil does for each release
 
-1. In your password vault, make a new entry called **Seller Card App upload key** and have the vault
-   generate a strong password for it. Copy that password.
-2. Run:
-
-   ```powershell
-   New-Item -ItemType Directory -Force "$env:USERPROFILE\Seller Card App keys" | Out-Null
-   & "$env:USERPROFILE\Tools\jdk17\bin\keytool.exe" -genkeypair -v -storetype PKCS12 -alias upload -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Phil Achleman, O=Gathering Moss" -keystore "$env:USERPROFILE\Seller Card App keys\seller-card-app-upload.jks"
-   ```
-
-3. When it asks for the keystore password, paste the vault password (right click pastes) and press
-   Enter. It won't show as you paste. Paste it again when it asks you to confirm.
-4. In the vault entry, note the file name `seller-card-app-upload.jks` and the alias `upload`.
-5. Copy `seller-card-app-upload.jks` to a second place off this computer: a USB stick kept at home,
-   or attached to the vault entry if your vault holds files.
-
-## Sign a bundle (every upload)
-
-The Play bundle workflow puts an unsigned bundle on the
-[play-bundle release](https://github.com/HydraCoreSystems/seller-card-app/releases/tag/play-bundle).
-Download it into `Seller Card App keys`, then run this, with the number of the bundle you downloaded:
-
-```powershell
-$n = 1
-& "$env:USERPROFILE\Tools\jdk17\bin\jarsigner.exe" -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$env:USERPROFILE\Seller Card App keys\seller-card-app-upload.jks" -signedjar "$env:USERPROFILE\Seller Card App keys\seller-card-app-$n.aab" "$env:USERPROFILE\Seller Card App keys\seller-card-app-$n-unsigned.aab" upload
-```
-
-Paste the vault password when it asks. `seller-card-app-<n>.aab` is the file to upload to the closed
-test track in the Play Console. The first upload also tells Play this is the upload key.
+Download the signed bundle, seller-card-app-<run number>.aab, from the
+[play-bundle release](https://github.com/HydraCoreSystems/seller-card-app/releases/tag/play-bundle)
+and upload it to the closed test track in the Play Console. That is the whole of his part.
