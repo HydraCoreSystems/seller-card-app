@@ -1,9 +1,11 @@
 name: Play bundle
 
 # The .aab for the Google Play closed test track. Push to the play-bundle branch, or run it by hand
-# from the Actions tab. It comes out unsigned: the upload key never leaves Phil's computer, and Phil
-# signs the bundle there with jarsigner before uploading it. Steps are in docs/play-upload-key.md.
-# Google Play App Signing holds the app signing key; the upload key only proves an upload is ours.
+# from the Actions tab. The bundle is signed in the build with the Play upload key, which lives in
+# this repo's Actions secrets (PLAY_UPLOAD_KEYSTORE and PLAY_UPLOAD_KEYSTORE_PASSWORD) under Phil's
+# ruling of November 5, 2026, so signing is automatic and nobody signs a bundle by hand. The signed
+# bundle lands on the play-bundle release ready for upload to the Play Console. Google Play App
+# Signing holds the app signing key; the upload key only proves an upload is ours.
 
 on:
   push:
@@ -38,9 +40,9 @@ jobs:
         run: node -e "const f='app.json',a=require('./'+f);a.expo.android.versionCode=Number(process.env.GITHUB_RUN_NUMBER);require('fs').writeFileSync(f,JSON.stringify(a,null,2))"
       - name: Generate the Android project
         run: npx expo prebuild --platform android --no-install
-      - name: Leave the bundle unsigned
+      - name: Leave the bundle unsigned for the signing step
         # The generated project signs release builds with the debug key. Play wants the upload key's
-        # signature only, so the bundle is left bare for Phil to sign.
+        # signature only, so the bundle is built bare and signed in the next step but one.
         run: |
           cat >> android/app/build.gradle <<'GRADLE'
 
@@ -61,10 +63,20 @@ jobs:
           cp android/app/build/outputs/bundle/release/app-release.aab "out/seller-card-app-${GITHUB_RUN_NUMBER}-unsigned.aab"
           if unzip -l out/*.aab | grep -qE 'META-INF/.*\.(RSA|EC|DSA)$'; then echo "::error::The bundle came out signed."; exit 1; fi
           ls -la out
+      - name: Sign the bundle with the upload key
+        env:
+          PLAY_UPLOAD_KEYSTORE: ${{ secrets.PLAY_UPLOAD_KEYSTORE }}
+          PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$PLAY_UPLOAD_KEYSTORE" ] || [ -z "$PLAY_UPLOAD_KEYSTORE_PASSWORD" ]; then echo "::error::The Play upload secrets are not set on this repo."; exit 1; fi
+          echo "$PLAY_UPLOAD_KEYSTORE" | base64 -d > upload.jks
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore upload.jks -storepass "$PLAY_UPLOAD_KEYSTORE_PASSWORD" -signedjar "out/seller-card-app-${GITHUB_RUN_NUMBER}.aab" "out/seller-card-app-${GITHUB_RUN_NUMBER}-unsigned.aab" upload
+          jarsigner -verify "out/seller-card-app-${GITHUB_RUN_NUMBER}.aab"
+          rm -f upload.jks "out/seller-card-app-${GITHUB_RUN_NUMBER}-unsigned.aab"
+          ls -la out
       - name: Put the bundle on the play-bundle release
-        # Release files download without a login. It's the same app as the public test APK.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view play-bundle >/dev/null 2>&1 || gh release create play-bundle --prerelease --title "Play bundle (unsigned)" --notes "Unsigned .aab for the closed test track. Phil signs it with the upload key before uploading."
+          gh release view play-bundle >/dev/null 2>&1 || gh release create play-bundle --prerelease --title "Play bundle (signed)" --notes "Signed .aab for the closed test track, ready to upload to the Play Console."
           gh release upload play-bundle out/*.aab --clobber
