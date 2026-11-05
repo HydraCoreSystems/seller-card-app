@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { arrivedBefore, lotHeading, lotsNamed, parseThread, showTime, trackClaims, type Claim } from '../src/core/claims';
+import { arrivedBefore, lotHeading, lotsNamed, parseThread, showTime, trackClaims, withoutReplyName, type Claim } from '../src/core/claims';
 
 const synthetic = readFileSync(join(__dirname, 'fixtures/synthetic-purge.txt'), 'utf8');
 
@@ -198,5 +198,67 @@ describe('claim order is arrival order, and only arrival order', () => {
       expect(Object.keys(l)).not.toContain('tie');
       expect(Object.keys(l)).not.toContain('tieKind');
     }
+  });
+});
+
+describe('Facebook copy of a lot card with a claim under it', () => {
+  const block = [
+    'Lot 11',
+    'Plant: Hoya sp. Vietnam',
+    'Price: $25',
+    'Rooted with new growth.',
+    'Made with Skrybix by Gathering Moss',
+    'Dee Bradshaw',
+    'Phil Achleman sold please',
+  ].join('\n');
+
+  it('places Dee Bradshaw as the winner of Lot 11', () => {
+    for (const sellerName of ['', 'Phil Achleman']) {
+      const r = trackClaims(block, { sellerName });
+      expect(r.unplaced).toHaveLength(0);
+      const lot = r.lots.find((l) => l.lot === 11);
+      expect(lot?.queue[0]?.author).toBe('Dee Bradshaw');
+    }
+  });
+
+  it('keeps the origin line out of claim text and authors', () => {
+    const r = trackClaims(block);
+    const lot = r.lots.find((l) => l.lot === 11);
+    expect(lot?.queue[0]?.text).toBe('sold please');
+    expect(JSON.stringify(r)).not.toMatch(/Author":"Made with/);
+  });
+
+  it('reads the generic card shape and several lots in order', () => {
+    const text = [
+      'Lot 1',
+      'Hoya kerrii',
+      '$15',
+      'Made with Skrybix by Gathering Moss',
+      'Ann Lee',
+      'Phil Achleman mine',
+      'Lot 2',
+      'Hoya carnosa',
+      '$10',
+      'Made with Skrybix by Gathering Moss',
+      'Bo Chen',
+      'Ann Lee sold',
+    ].join('\n');
+    const r = trackClaims(text);
+    expect(r.lots.find((l) => l.lot === 1)?.queue[0]?.author).toBe('Ann Lee');
+    expect(r.lots.find((l) => l.lot === 2)?.queue[0]?.author).toBe('Bo Chen');
+  });
+
+  it('does not mangle a plain claim or one that comes with meta lines', () => {
+    expect(withoutReplyName('Sold please', [])).toBe('Sold please');
+    expect(withoutReplyName('Mine Lot 4', [])).toBe('Mine Lot 4');
+    const r = trackClaims('Lot 11\nPlant: Hoya\nPrice: $25\nMade with Skrybix by Gathering Moss\nDee Bradshaw\nPhil Achleman sold please\n5m\nLike Reply');
+    expect(r.lots.find((l) => l.lot === 11)?.queue[0]?.author).toBe('Dee Bradshaw');
+  });
+});
+
+describe('a bare lot number is still a buyer claim', () => {
+  it('keeps "Lot 5 mine" under a buyer name as a claim', () => {
+    const r = trackClaims('Lot 5: Hoya kerrii $12\n2h\nLike Reply\nAnn Lee\nLot 5 mine\n1h\nLike Reply', { sellerName: 'Phil Achleman' });
+    expect(r.lots.find((l) => l.lot === 5)?.queue[0]?.author).toBe('Ann Lee');
   });
 });

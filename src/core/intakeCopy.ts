@@ -5,7 +5,7 @@ export const INTAKE_COPY = {
   clipboard: 'Read claims from clipboard',
   clipboardNote: 'You copied a comment thread. One tap reads it.',
   reading: 'Reading the screenshots',
-  nothingRead: 'Nothing could be read from those screenshots. Try again, or use the paste box below.',
+  nothingRead: 'Nothing could be read from those screenshots. Copy the comments and paste them into the box below instead, or tap Read claims from clipboard. Nothing was lost.',
   someFailed: (n: number) => (n === 1 ? 'One screenshot could not be read.' : `${n} screenshots could not be read.`),
   reviewTitle: 'Check the claims',
   reviewNote: 'The order is the order the claims appear in your screenshots, top to bottom, and nothing here changes it. Take off anything that is not a claim, then save.',
