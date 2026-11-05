@@ -87,6 +87,8 @@ export default function RundownScreen() {
       .map((l) => ({ lotNumber: l.number, plantName: l.name, buyer: l.winner!, price: l.price }));
     store.closeSale(sale, winners, unclaimedLots(rundown, sale), claimOrderOf(rundown));
     setClosedNote('The showcase is closed. Your record is kept in the app.');
+    // The end of a sale is the winners' messages, each carrying the checkout form link. Go straight there.
+    if (pro) router.push({ pathname: '/sale/[id]/checkout', params: { id: sale.id } });
   };
 
   const waitingNames = new Set(waiting.map((b) => b.name));

@@ -156,6 +156,10 @@ describe('closing a sale', () => {
     expect(start).toBeGreaterThan(0);
     expect(body).toContain('store.closeSale(');
     expect(body).not.toMatch(/\bsave\(|sharePdf|Sharing|printAsync|shareAsync/);
+    // Closing lands the seller on the winner messages, the Checkout screen with a Send button per winner.
+    expect(body).toMatch(/router\.push\(\{ pathname: '\/sale\/\[id\]\/checkout'/);
+    const checkout = readFileSync('src/app/sale/[id]/checkout.tsx', 'utf8');
+    expect(checkout).toContain('winnerMessage(');
     // The closed sale still offers the record on its own button.
     expect(src).toContain("onPress={sale.closedAt ? save : close}");
   });
