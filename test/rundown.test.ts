@@ -146,3 +146,17 @@ describe('the Sales Record document', () => {
     expect(salesRecordHtml(r)).toContain('&lt;b&gt;Phil&lt;/b&gt;');
   });
 });
+
+describe('closing a sale', () => {
+  it('opens no share sheet or print, and the record stays a separate tap', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/app/sale/[id]/rundown.tsx', 'utf8');
+    const start = src.indexOf('const close = () => {');
+    const body = src.slice(start, src.indexOf('\n  };', start));
+    expect(start).toBeGreaterThan(0);
+    expect(body).toContain('store.closeSale(');
+    expect(body).not.toMatch(/\bsave\(|sharePdf|Sharing|printAsync|shareAsync/);
+    // The closed sale still offers the record on its own button.
+    expect(src).toContain("onPress={sale.closedAt ? save : close}");
+  });
+});

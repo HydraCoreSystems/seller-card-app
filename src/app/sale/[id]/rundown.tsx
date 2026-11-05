@@ -37,6 +37,7 @@ export default function RundownScreen() {
   const store = useStore();
   const sale = useSale(id);
   const [status, setStatus] = useState<string | null>(null);
+  const [closedNote, setClosedNote] = useState<string | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const regular = useSizeClass() === 'regular';
   const leftovers = useLeftovers().filter((l) => l.saleId === id);
@@ -79,12 +80,13 @@ export default function RundownScreen() {
   };
 
   // Closing marks every winner sold in one go. The winner is always the first claim to arrive.
+  // It never opens a share sheet. The Sales Record is the seller's own, and leaves the app only on its own tap.
   const close = () => {
     const winners = rundown.lots
       .filter((l) => l.winner && !l.ruled)
       .map((l) => ({ lotNumber: l.number, plantName: l.name, buyer: l.winner!, price: l.price }));
     store.closeSale(sale, winners, unclaimedLots(rundown, sale), claimOrderOf(rundown));
-    save();
+    setClosedNote('The showcase is closed. Your record is kept in the app.');
   };
 
   const waitingNames = new Set(waiting.map((b) => b.name));
@@ -109,6 +111,7 @@ export default function RundownScreen() {
 
   const notices = (
     <>
+      {closedNote ? <Note>{closedNote}</Note> : null}
       {!sale.claimText?.trim() ? (
         <Note tone="warn">Paste the comment thread in Claims first, so the rundown knows who won.</Note>
       ) : null}
