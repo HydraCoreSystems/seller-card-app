@@ -24,10 +24,114 @@ export const GRAPH_VERSION: string = config.graphVersion;
 export const GRAPH_HOST = 'https://graph.facebook.com';
 export const LOGIN_DIALOG = `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`;
 
-/** Facebook's own return address for an app, which the app's platform settings register. */
-export const META_REDIRECT_URI = `fb${META_APP_ID}://authorize`;
-/** The URL scheme a build must register to receive that return. */
+/**
+ * Where Facebook sends the seller after sign in: a page on the shop, a web address that the Facebook
+ * Login web settings accept with no native platform entry. That page hands the result on to the app.
+ */
+export const META_RETURN_URL: string = config.returnUrl;
+
+/**
+ * The link the shop page opens to hand the result into the app. The app listens for it, and the
+ * browser view watching for it closes when it arrives. Facebook itself never sees this address.
+ */
+export const META_APP_LINK = `fb${META_APP_ID}://authorize`;
+/** The URL scheme a build must register to receive that link. */
 export const META_URL_SCHEME = `fb${META_APP_ID}`;
+
+/**
+ * The implicit return: Facebook puts a user access token in the web address and the app needs no
+ * secret to use it. The other kind, a code, can only be traded for a token with the app secret, and
+ * the app carries none.
+ */
+export const META_RESPONSE_TYPE = 'token';
+
+/** How long a started sign in stays good, in milliseconds. */
+export const SIGN_IN_WINDOW_MS = 15 * 60 * 1000;
+
+/** The Facebook sign in address for this app, with the state the return must bring back. No scope is sent: the configuration carries the permissions. */
+export function buildLoginUrl(state: string): string {
+  const query = [
+    ['client_id', META_APP_ID],
+    ['redirect_uri', META_RETURN_URL],
+    ['response_type', META_RESPONSE_TYPE],
+    ['config_id', META_CONFIG_ID],
+    ['state', state],
+  ]
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  return `${LOGIN_DIALOG}?${query}`;
+}
+
+/** True for the link the shop page uses to hand a sign in back to the app. */
+export const isAppLink = (url: string | null | undefined): url is string =>
+  !!url && url.toLowerCase().startsWith(META_APP_LINK.toLowerCase());
+
+export interface SignInReturn {
+  state: string | null;
+  accessToken: string | null;
+  code: string | null;
+  error: string | null;
+}
+
+const decode = (v: string): string => {
+  try {
+    return decodeURIComponent(v.replace(/\+/g, ' '));
+  } catch {
+    return v;
+  }
+};
+
+const pairs = (text: string): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (const part of text.split('&')) {
+    if (!part) continue;
+    const at = part.indexOf('=');
+    const key = decode(at < 0 ? part : part.slice(0, at));
+    if (key && !(key in out)) out[key] = at < 0 ? '' : decode(part.slice(at + 1));
+  }
+  return out;
+};
+
+/**
+ * Reads what came back, from the query string, from the fragment, or both. The shop page may hand
+ * on either, so the app takes the value from wherever it is.
+ */
+export function parseReturn(url: string): SignInReturn {
+  const hash = url.indexOf('#');
+  const beforeHash = hash < 0 ? url : url.slice(0, hash);
+  const q = beforeHash.indexOf('?');
+  const fromQuery = q < 0 ? {} : pairs(beforeHash.slice(q + 1));
+  const fromHash = hash < 0 ? {} : pairs(url.slice(hash + 1));
+  const pick = (k: string): string | null => fromQuery[k] || fromHash[k] || null;
+  return { state: pick('state'), accessToken: pick('access_token'), code: pick('code'), error: pick('error') };
+}
+
+export interface PendingSignIn {
+  state: string;
+  at: number;
+}
+
+export type ReturnCheck =
+  | { kind: 'token'; token: string }
+  | { kind: 'code'; code: string }
+  | { kind: 'denied' }
+  | { kind: 'stale' }
+  | { kind: 'mismatch' }
+  | { kind: 'empty' };
+
+/**
+ * Decides what a return means, before anything is trusted. It must carry the state this app started
+ * the sign in with, and arrive while that sign in is still good. A link with no sign in waiting for
+ * it is stale, and is ignored without a word. A link with the wrong state is refused.
+ */
+export function checkReturn(ret: SignInReturn, pending: PendingSignIn | null, now: number): ReturnCheck {
+  if (!pending || now - pending.at > SIGN_IN_WINDOW_MS) return { kind: 'stale' };
+  if (!ret.state || ret.state !== pending.state) return { kind: 'mismatch' };
+  if (ret.error) return { kind: 'denied' };
+  if (ret.accessToken) return { kind: 'token', token: ret.accessToken };
+  if (ret.code) return { kind: 'code', code: ret.code };
+  return { kind: 'empty' };
+}
 
 /** The demonstration lives in Phil's build only. The store build and the closed test build never reach it. */
 export const metaDemoEnabled = (): boolean => isPhil();

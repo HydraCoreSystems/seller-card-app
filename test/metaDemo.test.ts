@@ -8,16 +8,21 @@ import {
   GRAPH_VERSION,
   META_APP_ID,
   META_CONFIG_ID,
-  META_REDIRECT_URI,
+  META_APP_LINK,
+  META_RETURN_URL,
   META_URL_SCHEME,
   arrange,
+  buildLoginUrl,
+  checkReturn,
   demoDone,
   graphUrl,
+  isAppLink,
   isExpired,
   lotComment,
   metaDemoEnabled,
   nextPage,
   parseGraphTime,
+  parseReturn,
   readComments,
   readPages,
   readPosts,
@@ -25,7 +30,7 @@ import {
 } from '../src/core/metaDemo';
 import { META_COPY } from '../src/core/metaDemoCopy';
 import { DASH_PATTERN } from '../src/core/text';
-import { MetaError, createComment, createPost, fetchComments, fetchPages, fetchPosts, subscribePage, unsubscribePage } from '../src/lib/metaGraph';
+import { MetaError, createComment, createPost, exchangeCode, fetchComments, fetchPages, fetchPosts, subscribePage, unsubscribePage } from '../src/lib/metaGraph';
 import { runDemoSale } from '../src/lib/metaDemoSale';
 
 const keep = process.env.EXPO_PUBLIC_APP_VARIANT;
@@ -44,11 +49,12 @@ const c = (id: string, iso: string, from: string | null = 'Pat', message = 'mine
 });
 
 describe('the demonstration identifiers', () => {
-  it('uses the production Meta app, the Page connection configuration and a current Graph version', () => {
+  it('uses the production Meta app, the Page connection configuration, a current Graph version, and the shop page as the return', () => {
     expect(META_APP_ID).toBe('1166563362604892');
     expect(META_CONFIG_ID).toBe('29138336945817387');
     expect(GRAPH_VERSION).toBe('v26.0');
-    expect(META_REDIRECT_URI).toBe('fb1166563362604892://authorize');
+    expect(META_RETURN_URL).toBe('https://gatheringmoss.shop/pages/skrybix-connect');
+    expect(META_APP_LINK).toBe('fb1166563362604892://authorize');
     expect(META_URL_SCHEME).toBe('fb1166563362604892');
   });
 });
@@ -154,6 +160,82 @@ describe('addresses and errors', () => {
     expect(isExpired({ type: 'OAuthException' })).toBe(true);
     expect(isExpired({ code: 4 })).toBe(false);
     expect(isExpired(null)).toBe(false);
+  });
+});
+
+describe('the sign in return road', () => {
+  const now = 1_000_000;
+  const pending = { state: 'S1', at: now - 1000 };
+
+  it('sends Facebook to the shop page, with the configuration, the state and no scope or secret', () => {
+    const url = buildLoginUrl('S1');
+    expect(url.startsWith('https://www.facebook.com/v26.0/dialog/oauth?')).toBe(true);
+    expect(url).toContain('client_id=1166563362604892');
+    expect(url).toContain(`redirect_uri=${encodeURIComponent('https://gatheringmoss.shop/pages/skrybix-connect')}`);
+    expect(url).toContain('response_type=token');
+    expect(url).toContain('config_id=29138336945817387');
+    expect(url).toContain('state=S1');
+    expect(url).not.toMatch(/scope=|secret|fb1166563362604892/i);
+  });
+
+  it('knows the link the shop page hands back with', () => {
+    expect(isAppLink('fb1166563362604892://authorize?code=abc&state=S1')).toBe(true);
+    expect(isAppLink('FB1166563362604892://authorize#access_token=t')).toBe(true);
+    expect(isAppLink('sellercardphil://authorize')).toBe(false);
+    expect(isAppLink('https://gatheringmoss.shop/pages/skrybix-connect?code=abc')).toBe(false);
+    expect(isAppLink(null)).toBe(false);
+  });
+
+  it('reads what came back from the query string, the fragment, or both', () => {
+    expect(parseReturn('fb1166563362604892://authorize?code=abc%2Bdef&state=S1')).toEqual({ state: 'S1', accessToken: null, code: 'abc+def', error: null });
+    expect(parseReturn('fb1166563362604892://authorize#access_token=EAAB&state=S1&expires_in=5000')).toMatchObject({ state: 'S1', accessToken: 'EAAB' });
+    expect(parseReturn('fb1166563362604892://authorize?state=S1#access_token=EAAB')).toMatchObject({ state: 'S1', accessToken: 'EAAB' });
+    expect(parseReturn('fb1166563362604892://authorize?code=abc&state=S1#_=_')).toMatchObject({ code: 'abc', state: 'S1' });
+    expect(parseReturn('fb1166563362604892://authorize?error=access_denied&state=S1')).toMatchObject({ error: 'access_denied' });
+    expect(parseReturn('fb1166563362604892://authorize')).toEqual({ state: null, accessToken: null, code: null, error: null });
+  });
+
+  it('finishes from a token or a code only when the state is the one this app started', () => {
+    const ret = (url: string) => checkReturn(parseReturn(url), pending, now);
+    expect(ret('fb1166563362604892://authorize#access_token=EAAB&state=S1')).toEqual({ kind: 'token', token: 'EAAB' });
+    expect(ret('fb1166563362604892://authorize?code=abc&state=S1')).toEqual({ kind: 'code', code: 'abc' });
+    expect(ret('fb1166563362604892://authorize?code=abc&state=OTHER')).toEqual({ kind: 'mismatch' });
+    expect(ret('fb1166563362604892://authorize?code=abc')).toEqual({ kind: 'mismatch' });
+    expect(ret('fb1166563362604892://authorize?error=access_denied&state=S1')).toEqual({ kind: 'denied' });
+    expect(ret('fb1166563362604892://authorize?state=S1')).toEqual({ kind: 'empty' });
+  });
+
+  it('ignores an old link, with no sign in waiting for it or one that ran out', () => {
+    const link = parseReturn('fb1166563362604892://authorize#access_token=EAAB&state=S1');
+    expect(checkReturn(link, null, now)).toEqual({ kind: 'stale' });
+    expect(checkReturn(link, { state: 'S1', at: now - 16 * 60 * 1000 }, now)).toEqual({ kind: 'stale' });
+  });
+
+  it('can trade a code for a token with no secret, and says so plainly when Facebook will not', async () => {
+    const reply = (body: unknown, ok = true) => ({ ok, status: ok ? 200 : 400, json: async () => body }) as unknown as Response;
+    const fetchMock = vi.fn(async () => reply({ access_token: 'EAAB' }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await exchangeCode('abc')).toBe('EAAB');
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toContain('/v26.0/oauth/access_token?');
+    expect(url).toContain('client_id=1166563362604892');
+    expect(url).toContain(`redirect_uri=${encodeURIComponent(META_RETURN_URL)}`);
+    expect(url).not.toMatch(/secret/i);
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    vi.stubGlobal('fetch', vi.fn(async () => reply({ error: { code: 1, message: 'needs secret' } }, false)));
+    await expect(exchangeCode('abc')).rejects.toBeInstanceOf(MetaError);
+  });
+
+  it('carries no app secret anywhere in the demonstration', () => {
+    for (const f of ['src/core/metaDemo.ts', 'src/core/metaConfig.json', 'src/lib/metaGraph.ts', 'src/lib/metaSession.ts', 'src/screens/MetaConnect.tsx', 'src/app/authorize.tsx']) {
+      expect(readFileSync(join(__dirname, '..', f), 'utf8'), f).not.toMatch(/client_secret|app_secret|appsecret/i);
+    }
+  });
+
+  it('has a route for the incoming link, for the Phil build only', () => {
+    const route = readFileSync(join(__dirname, '..', 'src/app/authorize.tsx'), 'utf8');
+    expect(route).toMatch(/metaDemoEnabled\(\) \? <Finish \/> : <Redirect/);
+    expect(route).toMatch(/completeSignIn/);
   });
 });
 

@@ -17,6 +17,7 @@ export const META_COPY = {
   ],
   signIn: 'Connect with Facebook',
   signingIn: 'Opening Facebook',
+  refused: 'That sign in did not match the one this app started, so nothing was connected. Try again.',
   backedOut: 'The Facebook sign in was not finished. Nothing was connected.',
   loadingPages: 'Looking up your Pages',
   pickTitle: 'Choose a Page',

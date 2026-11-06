@@ -3,6 +3,8 @@
  * Authorization header, so a token is never part of an address. Nothing is logged.
  */
 import {
+  META_APP_ID,
+  META_RETURN_URL,
   MAX_PAGES,
   graphUrl,
   isExpired,
@@ -24,13 +26,13 @@ export class MetaError extends Error {
   }
 }
 
-async function call(token: string, method: 'GET' | 'POST' | 'DELETE', url: string, form?: Record<string, string>): Promise<unknown> {
+async function call(token: string | null, method: 'GET' | 'POST' | 'DELETE', url: string, form?: Record<string, string>): Promise<unknown> {
   let res: Response;
   try {
     res = await fetch(url, {
       method,
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
       },
       body: form ? new URLSearchParams(form).toString() : undefined,
@@ -109,4 +111,16 @@ export async function createComment(page: MetaPage, postId: string, message: str
   const id = (json as { id?: string } | null)?.id;
   if (!id) throw new MetaError('Facebook did not return the new comment.', false);
   return id;
+}
+
+/**
+ * Trades a returned code for a user token, with the app ID and the same return address and nothing
+ * else. This carries no app secret, so Facebook decides whether it will answer. The implicit return
+ * does not need it, and is the one this build asks for.
+ */
+export async function exchangeCode(code: string): Promise<string> {
+  const json = await call(null, 'GET', graphUrl('oauth/access_token', { client_id: META_APP_ID, redirect_uri: META_RETURN_URL, code }));
+  const token = (json as { access_token?: string } | null)?.access_token;
+  if (!token) throw new MetaError('Facebook did not return a token for that code.', false);
+  return token;
 }
