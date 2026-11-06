@@ -11,6 +11,7 @@ import { SETTINGS_COPY as C } from '../core/settingsCopy';
 import { stampText } from '../core/stamp';
 import { toDay } from '../core/text';
 import { defaultVenue, venuesOf, withVenues } from '../core/venues';
+import { META_COPY } from '../core/metaDemoCopy';
 import { isPhil } from '../core/variant';
 import { useBackup } from '../lib/backupContext';
 import { pickDataText } from '../lib/dataFile';
@@ -187,6 +188,16 @@ export default function SettingsScreen() {
           </>
         )}
       </Panel>
+
+      {isPhil() ? (
+        <>
+          <H>{META_COPY.settingsTitle}</H>
+          <Panel>
+            <Note>{META_COPY.settingsNote}</Note>
+            <Button title={META_COPY.settingsOpen} onPress={() => router.push('/meta')} />
+          </Panel>
+        </>
+      ) : null}
 
       <H>{C.dataTitle}</H>
       <Panel>

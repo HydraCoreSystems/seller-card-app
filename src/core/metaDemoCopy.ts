@@ -1,0 +1,52 @@
+/** Every word of the Facebook Page demonstration. House rules: plain words, US spelling, no dashes of any kind. */
+export const META_COPY = {
+  settingsTitle: 'Facebook Page connection',
+  settingsNote: 'A demonstration of connecting your own Facebook Page, for Meta’s app review.',
+  settingsOpen: 'Open the Page connection demo',
+
+  connectTitle: 'Connect your Page',
+  intro: 'Sign in with Facebook and choose one of your Pages. Skrybix only works with the Page you choose, and only with that Page’s own posts.',
+  usesTitle: 'What each permission is for',
+  uses: [
+    { name: 'pages_show_list', text: 'Shows the Pages you manage, so you can pick one.' },
+    { name: 'pages_manage_metadata', text: 'Turns on notices when something happens on your chosen Page, and turns them off when you disconnect.' },
+    { name: 'pages_read_engagement', text: 'Reads the recent posts on your Page’s own timeline.' },
+    { name: 'pages_read_user_content', text: 'Reads the comments people leave on those posts, with the commenter’s name and the time.' },
+  ],
+  signIn: 'Connect with Facebook',
+  signingIn: 'Opening Facebook',
+  backedOut: 'The Facebook sign in was not finished. Nothing was connected.',
+  loadingPages: 'Looking up your Pages',
+  pickTitle: 'Choose a Page',
+  pickNote: 'These are the Pages you manage. Pick the one to connect.',
+  noPages: 'Facebook did not list any Pages for this account. Sign in with the account that manages your Page.',
+  connectPage: 'Connect this Page',
+  connecting: 'Connecting',
+
+  connectedTitle: 'Connected Page',
+  connectedPage: (name: string) => name,
+  noticesOn: 'Notices are on for this Page.',
+  noticesNote: 'Facebook tells Skrybix when there is new activity on this Page. The words of a comment are read separately, from the post.',
+  seePosts: 'See recent posts',
+  disconnect: 'Disconnect and sign out',
+  disconnecting: 'Disconnecting',
+  disconnected: 'Disconnected. Notices are off and you are signed out.',
+  disconnectedPartly: 'You are signed out, but Facebook could not confirm that notices were turned off. Connect again and disconnect to finish.',
+
+  postsTitle: 'Recent posts',
+  postsNote: 'The latest posts on your Page’s own timeline. Tap a post to watch its comments.',
+  noPosts: 'No posts found on this Page yet.',
+  refresh: 'Refresh',
+
+  commentsTitle: 'Comments',
+  commentsNote: 'Comments in the order Facebook returned them, with the time Facebook recorded. The list refreshes by itself.',
+  noComments: 'No comments yet. New ones appear here by themselves.',
+  live: 'Watching for new comments',
+  unknownCommenter: 'Name not given',
+  sameSecond: (n: number) => `Same second as ${n === 2 ? 'one other comment' : `${n - 1} other comments`}. Order unresolved.`,
+  sameSecondNote: 'Facebook records time in whole seconds, so comments in the same second cannot be put in order. Skrybix does not guess.',
+
+  expired: 'Your Facebook sign in has run out. Connect again to keep going.',
+  failed: 'Facebook did not answer. Check your connection and try again.',
+  notHere: 'This demonstration is not part of this build.',
+} as const;
