@@ -8,7 +8,7 @@
 import * as AuthSession from 'expo-auth-session';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
-import { LOGIN_DIALOG, META_APP_ID, META_CONFIG_ID, META_REDIRECT_URI, type MetaPage } from '../core/metaDemo';
+import { LOGIN_DIALOG, META_APP_ID, META_CONFIG_ID, META_REDIRECT_URI, type DemoProgress, type MetaPage } from '../core/metaDemo';
 import { revokePermissions, unsubscribePage } from './metaGraph';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -19,6 +19,8 @@ export interface MetaSession {
   userToken: string;
   page: MetaPage | null;
   subscribed: boolean;
+  /** The demonstration sale on the chosen Page, once the seller has started it. */
+  demo?: DemoProgress;
 }
 
 export async function loadSession(): Promise<MetaSession | null> {
@@ -26,7 +28,7 @@ export async function loadSession(): Promise<MetaSession | null> {
     const raw = await SecureStore.getItemAsync(KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as MetaSession;
-    return s && typeof s.userToken === 'string' ? { userToken: s.userToken, page: s.page ?? null, subscribed: !!s.subscribed } : null;
+    return s && typeof s.userToken === 'string' ? { userToken: s.userToken, page: s.page ?? null, subscribed: !!s.subscribed, demo: s.demo } : null;
   } catch {
     return null;
   }

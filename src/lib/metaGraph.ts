@@ -94,3 +94,19 @@ export async function fetchComments(page: MetaPage, postId: string): Promise<Met
 export async function revokePermissions(userToken: string): Promise<void> {
   await call(userToken, 'DELETE', graphUrl('me/permissions'));
 }
+
+/** Posts a message on the Page's own timeline, as the Page. Needs pages_manage_posts. Returns the post id. */
+export async function createPost(page: MetaPage, message: string): Promise<string> {
+  const json = await call(page.token, 'POST', graphUrl(`${page.id}/feed`), { message });
+  const id = (json as { id?: string } | null)?.id;
+  if (!id) throw new MetaError('Facebook did not return the new post.', false);
+  return id;
+}
+
+/** Adds a comment under one of the Page's own posts, as the Page. Needs pages_manage_engagement. */
+export async function createComment(page: MetaPage, postId: string, message: string): Promise<string> {
+  const json = await call(page.token, 'POST', graphUrl(`${postId}/comments`), { message });
+  const id = (json as { id?: string } | null)?.id;
+  if (!id) throw new MetaError('Facebook did not return the new comment.', false);
+  return id;
+}

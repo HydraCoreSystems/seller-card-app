@@ -60,6 +60,7 @@ export default function Layout() {
           <Stack.Screen name="setup" options={{ title: 'Setup' }} />
           <Stack.Screen name="backup" options={{ title: 'Backup' }} />
           <Stack.Screen name="meta/index" options={{ title: 'Facebook Page' }} />
+          <Stack.Screen name="meta/create" options={{ title: 'Demonstration sale' }} />
           <Stack.Screen name="meta/posts" options={{ title: 'Page posts' }} />
           <Stack.Screen name="meta/comments" options={{ title: 'Comments' }} />
           <Stack.Screen name="paywall" options={{ title: 'Skrybix Pro', presentation: 'modal' }} />

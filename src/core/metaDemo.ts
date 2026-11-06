@@ -9,6 +9,10 @@
  * so nothing here touches groups. Meta times are whole seconds, so two comments in the same second
  * cannot be ordered by time. They are flagged as the same second, with the order unresolved, and
  * this file never invents an order for them.
+ *
+ * The one thing that writes is the demonstration sale: a post on the seller's chosen Page and one
+ * comment per lot under it. That runs only from the create screen, on the Page the seller picked,
+ * and only when the seller presses the button.
  */
 import { isPhil } from './variant';
 import config from './metaConfig.json';
@@ -175,3 +179,38 @@ export function showMetaTime(sec: number | null, iso: string): string {
   if (sec === null) return iso || 'Time not given';
   return new Date(sec * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
+
+export interface DemoLot {
+  number: number;
+  name: string;
+  price: number;
+}
+
+/**
+ * The demonstration sale. It says plainly that it is a demonstration, so no buyer is misled, and it
+ * never carries a checkout form link.
+ */
+export const DEMO_SALE: { post: string; lots: DemoLot[] } = {
+  post: [
+    'Skrybix demonstration, Grower Showcase.',
+    '',
+    'This post was made by the Skrybix app to show how a sale runs on my Page. Nothing here is for sale. Each lot is listed in the comments below.',
+  ].join('\n'),
+  lots: [
+    { number: 1, name: 'Hoya carnosa', price: 10 },
+    { number: 2, name: 'Hoya kerrii', price: 12 },
+    { number: 3, name: 'Hoya linearis', price: 15 },
+  ],
+};
+
+/** The comment that lists one lot under the sale post. */
+export const lotComment = (lot: DemoLot): string => `Lot ${lot.number}: ${lot.name}, $${lot.price}. Demonstration only.`;
+
+/** How far the demonstration sale has got on a Page, kept so a failed run finishes instead of posting twice. */
+export interface DemoProgress {
+  postId: string;
+  /** How many lot comments are already under the post. */
+  commented: number;
+}
+
+export const demoDone = (p: DemoProgress | null | undefined): boolean => !!p && p.commented >= DEMO_SALE.lots.length;

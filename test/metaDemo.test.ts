@@ -4,14 +4,17 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import {
+  DEMO_SALE,
   GRAPH_VERSION,
   META_APP_ID,
   META_CONFIG_ID,
   META_REDIRECT_URI,
   META_URL_SCHEME,
   arrange,
+  demoDone,
   graphUrl,
   isExpired,
+  lotComment,
   metaDemoEnabled,
   nextPage,
   parseGraphTime,
@@ -22,7 +25,8 @@ import {
 } from '../src/core/metaDemo';
 import { META_COPY } from '../src/core/metaDemoCopy';
 import { DASH_PATTERN } from '../src/core/text';
-import { MetaError, fetchComments, fetchPages, fetchPosts, subscribePage, unsubscribePage } from '../src/lib/metaGraph';
+import { MetaError, createComment, createPost, fetchComments, fetchPages, fetchPosts, subscribePage, unsubscribePage } from '../src/lib/metaGraph';
+import { runDemoSale } from '../src/lib/metaDemoSale';
 
 const keep = process.env.EXPO_PUBLIC_APP_VARIANT;
 afterEach(() => {
@@ -234,16 +238,25 @@ describe('where the demonstration lives', () => {
     expect(appConfig({ config }).scheme).toEqual(['sellercardphil', META_URL_SCHEME]);
   });
 
-  it('stays inside its scope: no Messenger, no groups, nothing that posts', () => {
-    const files = ['src/core/metaDemo.ts', 'src/lib/metaGraph.ts', 'src/lib/metaSession.ts', 'src/core/metaConfig.json'];
+  it('stays inside its scope: no Messenger and no groups', () => {
+    const files = ['src/core/metaDemo.ts', 'src/lib/metaGraph.ts', 'src/lib/metaSession.ts', 'src/lib/metaDemoSale.ts', 'src/core/metaConfig.json'];
     for (const f of files) {
       const text = readFileSync(join(__dirname, '..', f), 'utf8');
-      expect(text, f).not.toMatch(/pages_messaging|messenger|\/groups|group_id|pages_manage_posts|pages_manage_engagement/i);
+      expect(text, f).not.toMatch(/pages_messaging|messenger|\/groups|group_id/i);
     }
-    // Only reads, plus the subscription calls and the sign out.
-    const graph = readFileSync(join(__dirname, '..', 'src/lib/metaGraph.ts'), 'utf8');
-    expect([...graph.matchAll(/'(POST)'/g)].length).toBeGreaterThan(0);
-    expect(graph).not.toMatch(/\/feed/);
+  });
+
+  it('writes to Facebook only from the create screen, and the read screens never write', () => {
+    const read = (f: string) => readFileSync(join(__dirname, '..', f), 'utf8');
+    const callers = ['src/screens/MetaConnect.tsx', 'src/screens/MetaPosts.tsx', 'src/screens/MetaComments.tsx', 'src/screens/MetaCreate.tsx', 'src/lib/metaSession.ts', 'src/lib/metaDemoSale.ts'];
+    const writers = callers.filter((f) => /createPost|createComment|runDemoSale/.test(read(f)));
+    // The create screen asks, the run helper does the two writes. Nothing else may.
+    expect(writers.sort()).toEqual(['src/lib/metaDemoSale.ts', 'src/screens/MetaCreate.tsx']);
+    // The one place the run starts is a button press.
+    const create = read('src/screens/MetaCreate.tsx');
+    expect(create.match(/runDemoSale\(/g)?.length).toBe(1);
+    expect(create).toMatch(/onPress=\{create\}/);
+    expect(create).not.toMatch(/useEffect\([^)]*runDemoSale/);
   });
 
   it('keeps the demonstration out of the paste flow, the claim reader and the close flow', () => {
@@ -267,8 +280,97 @@ describe('the words on screen', () => {
     for (const w of words) expect(w, w).not.toMatch(DASH_PATTERN);
   });
 
-  it('names no permission this build does not use', () => {
+  it('names exactly the permissions this build uses', () => {
     const names = META_COPY.uses.map((u) => u.name);
-    expect(names).toEqual(['pages_show_list', 'pages_manage_metadata', 'pages_read_engagement', 'pages_read_user_content']);
+    expect(names).toEqual(['pages_show_list', 'pages_manage_metadata', 'pages_read_engagement', 'pages_read_user_content', 'pages_manage_posts', 'pages_manage_engagement']);
+  });
+});
+
+describe('the demonstration sale', () => {
+  const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as unknown as Response;
+  const page = { id: 'PAGE1', name: 'Gathering Moss', token: 'PAGETOKEN' };
+
+  it('says it is a demonstration, lists three lots, and never carries a form link', () => {
+    expect(DEMO_SALE.lots).toHaveLength(3);
+    expect(DEMO_SALE.post).toMatch(/demonstration/i);
+    expect(DEMO_SALE.post).not.toMatch(/https?:|docs\.google|form/i);
+    for (const lot of DEMO_SALE.lots) {
+      const text = lotComment(lot);
+      expect(text).toContain(`Lot ${lot.number}:`);
+      expect(text).toMatch(/Demonstration only\./);
+      expect(text).not.toMatch(DASH_PATTERN);
+    }
+    expect(DEMO_SALE.post).not.toMatch(DASH_PATTERN);
+  });
+
+  it('posts to the Page’s own timeline and comments under the new post, as the Page', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reply({ id: 'PAGE1_77' }))
+      .mockResolvedValueOnce(reply({ id: 'PAGE1_77_1' }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await createPost(page, 'Hello')).toBe('PAGE1_77');
+    expect(await createComment(page, 'PAGE1_77', 'Lot 1')).toBe('PAGE1_77_1');
+    const [postUrl, postInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(postUrl).toBe('https://graph.facebook.com/v26.0/PAGE1/feed');
+    expect(postInit.method).toBe('POST');
+    expect(postInit.body).toBe('message=Hello');
+    expect((postInit.headers as Record<string, string>).Authorization).toBe('Bearer PAGETOKEN');
+    expect((fetchMock.mock.calls[1] as unknown as [string])[0]).toBe('https://graph.facebook.com/v26.0/PAGE1_77/comments');
+  });
+
+  it('runs the whole sale in order: the post, then one comment per lot, saving after each step', async () => {
+    const fetchMock = vi.fn(async (url: string) => reply({ id: url.endsWith('/feed') ? 'PAGE1_77' : `c${fetchMock.mock.calls.length}` }));
+    vi.stubGlobal('fetch', fetchMock);
+    const saved: unknown[] = [];
+    const done = await runDemoSale(page, null, (p) => void saved.push(p));
+    expect(done).toEqual({ postId: 'PAGE1_77', commented: 3 });
+    expect(saved).toEqual([
+      { postId: 'PAGE1_77', commented: 0 },
+      { postId: 'PAGE1_77', commented: 1 },
+      { postId: 'PAGE1_77', commented: 2 },
+      { postId: 'PAGE1_77', commented: 3 },
+    ]);
+    const urls = fetchMock.mock.calls.map((c) => (c as unknown as [string])[0]);
+    expect(urls).toEqual([
+      'https://graph.facebook.com/v26.0/PAGE1/feed',
+      'https://graph.facebook.com/v26.0/PAGE1_77/comments',
+      'https://graph.facebook.com/v26.0/PAGE1_77/comments',
+      'https://graph.facebook.com/v26.0/PAGE1_77/comments',
+    ]);
+    const bodies = fetchMock.mock.calls.map((c) => (c as unknown as [string, RequestInit])[1].body);
+    expect(decodeURIComponent(String(bodies[1])).replace(/\+/g, ' ')).toBe(`message=${lotComment(DEMO_SALE.lots[0])}`);
+    expect(demoDone(done)).toBe(true);
+  });
+
+  it('carries on after a failure without posting the sale a second time', async () => {
+    const fail = { ok: false, status: 500, json: async () => ({ error: { code: 2, message: 'try later' } }) } as unknown as Response;
+    const fetchMock = vi.fn().mockResolvedValueOnce(reply({ id: 'PAGE1_77' })).mockResolvedValueOnce(reply({ id: 'c1' })).mockResolvedValueOnce(fail);
+    vi.stubGlobal('fetch', fetchMock);
+    let kept = null as { postId: string; commented: number } | null;
+    await expect(runDemoSale(page, null, (p) => void (kept = p))).rejects.toBeInstanceOf(MetaError);
+    expect(kept).toEqual({ postId: 'PAGE1_77', commented: 1 });
+    expect(demoDone(kept)).toBe(false);
+
+    const again = vi.fn(async () => reply({ id: 'cx' }));
+    vi.stubGlobal('fetch', again);
+    const done = await runDemoSale(page, kept, (p) => void (kept = p));
+    expect(done).toEqual({ postId: 'PAGE1_77', commented: 3 });
+    const urls = again.mock.calls.map((c) => (c as unknown as [string])[0]);
+    expect(urls).toHaveLength(2);
+    expect(urls.every((u) => u.endsWith('/PAGE1_77/comments'))).toBe(true);
+  });
+
+  it('writes nothing when the sale is already complete', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const done = await runDemoSale(page, { postId: 'PAGE1_77', commented: 3 }, () => undefined);
+    expect(done.commented).toBe(3);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses to call it done when Facebook returns no id', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => reply({})));
+    await expect(createPost(page, 'x')).rejects.toBeInstanceOf(MetaError);
   });
 });

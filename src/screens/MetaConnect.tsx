@@ -105,7 +105,8 @@ export default function MetaConnect() {
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink }}>{C.connectedPage(connected.name)}</Text>
             {session?.subscribed ? <Text style={{ color: colors.moss, fontWeight: '600', marginTop: 4 }}>{C.noticesOn}</Text> : null}
             <Note>{C.noticesNote}</Note>
-            <Button title={C.seePosts} onPress={() => router.push('/meta/posts')} />
+            <Button title={C.createSale} onPress={() => router.push('/meta/create')} />
+            <Button kind="secondary" title={C.seePosts} onPress={() => router.push('/meta/posts')} style={{ marginTop: 8 }} />
           </Panel>
           <Button kind="secondary" title={busy ?? C.disconnect} disabled={!!busy} onPress={signOut} />
         </>
