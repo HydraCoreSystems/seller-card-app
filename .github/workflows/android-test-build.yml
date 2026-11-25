@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Which version to build. Phil installs beside the closed test one.'
+        type: choice
+        default: closedTest
+        options: [closedTest, phil]
 
 permissions:
   contents: write
@@ -32,6 +38,7 @@ jobs:
     timeout-minutes: 60
     env:
       EXPO_NO_TELEMETRY: 1
+      EXPO_PUBLIC_APP_VARIANT: ${{ inputs.variant == 'phil' && 'phil' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,7 +60,7 @@ jobs:
       - name: Name the APK
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/release/app-release.apk "out/seller-card-app-test-${GITHUB_SHA::7}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "out/seller-card-app-${{ inputs.variant == 'phil' && 'phil' || 'test' }}-${GITHUB_SHA::7}.apk"
           ls -la out
       - uses: actions/upload-artifact@v4
         with:
