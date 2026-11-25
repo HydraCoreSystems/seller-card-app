@@ -83,6 +83,7 @@ export default function Home() {
       />
       <Row style={{ justifyContent: 'space-between' }}>
         <Button kind="quiet" title="Pick all for sale" onPress={() => setPicked(available.map((p) => p.id))} />
+        <Button kind="quiet" title="Start with no plants" onPress={() => { setPicking(false); setPicked([]); router.push('/sale/new'); }} />
         <Button kind="quiet" title="Use a Sale Sheet" onPress={() => { setPicking(false); setPicked([]); router.push('/sheet'); }} />
         <Button kind="quiet" title="Cancel" onPress={() => { setPicking(false); setPicked([]); }} />
       </Row>

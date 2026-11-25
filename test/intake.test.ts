@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseThread, showTime, SCREENSHOT_TIME, trackClaims } from '../src/core/claims';
-import { EMPTY_DRAFT, commentsFromScreens, looksLikeThread, mergeIntoThread, readIntake, serializeThread, unreadableName, type IntakeDraft } from '../src/core/intake';
+import { EMPTY_DRAFT, commentsFromScreens, leftOutCount, leftOutLines, looksLikeThread, mergeIntoThread, readIntake, serializeThread, unreadableName, type IntakeDraft } from '../src/core/intake';
 import { DASH_PATTERN } from '../src/core/text';
 
 const SELLER = 'Rowan Ellery';
@@ -236,5 +236,104 @@ describe('the intake copy', () => {
   it('has no dashes of any kind', () => {
     const all = Object.values(INTAKE_COPY).map((v) => (typeof v === 'function' ? v(2) : v));
     for (const t of [...all, INTAKE_COPY.someFailed(1)]) expect(DASH_PATTERN.test(t), t).toBe(false);
+  });
+});
+
+// The four shapes the audit of November 21, 2026 reproduced against the shipping code. The audit file itself was
+// not available when these were written, so each is built from the brief's description of the shape.
+describe('audit probes: text as a phone recognizer returns it', () => {
+  it('probe 1: a furniture row glued to a claim line no longer swallows the next buyer', () => {
+    const screens = [[
+      'Rowan Ellery Author',
+      'Lot 1: Hoya carnosa $25',
+      '2d Like Reply',
+      'Jada Winslow',
+      'sold 3m Like Reply',
+      'Marcus Bell',
+      'next 2m Like Reply',
+    ]];
+    const r = read(screens);
+    expect(queue(r, 1)).toEqual([['Jada Winslow', 'claim'], ['Marcus Bell', 'backup']]);
+    expect(r.flagged).toHaveLength(0);
+  });
+
+  it('probe 1b: furniture glued to the front of a name line', () => {
+    const r = read([[
+      'Rowan Ellery Author',
+      'Lot 1: Hoya carnosa $25',
+      '2d Like Reply',
+      'Jada Winslow',
+      'sold',
+      '3m Like Reply Marcus Bell',
+      'next',
+      '2m Like Reply',
+    ]]);
+    expect(queue(r, 1)).toEqual([['Jada Winslow', 'claim'], ['Marcus Bell', 'backup']]);
+  });
+
+  it('probe 2: a lone lot thread of bare sold comments can be placed on a lot in one step', () => {
+    const screens = [['Jada Winslow', 'sold', '3m Like Reply', 'Marcus Bell', 'sold', '2m Like Reply']];
+    const before = read(screens);
+    expect(before.flagged.map((f) => f.why)).toEqual(['lot', 'lot']);
+    expect(before.report.lots.every((l) => !l.queue.length)).toBe(true);
+    const after = readIntake(draft(screens, { lot: 7 }), opts);
+    expect(after.flagged).toHaveLength(0);
+    expect(queue(after, 7)).toEqual([['Jada Winslow', 'claim'], ['Marcus Bell', 'claim']]);
+  });
+
+  it('probe 3: one misread letter on a claim word still reads as a claim', () => {
+    for (const word of ['so1d', 'soId', 'sol d'.replace(' ', ''), 'dlbs', 'rnine', 'clalm', 'ciaim']) {
+      const r = read([['Rowan Ellery Author', 'Lot 1: Hoya $5', '2d Like Reply', 'Jada Winslow', word, '3m Like Reply']]);
+      expect(queue(r, 1), word).toEqual([['Jada Winslow', 'claim']]);
+    }
+  });
+
+  it('probe 3b: ordinary words one letter from a claim word are not claims', () => {
+    for (const word of ['gold', 'mind', 'line', 'text', 'Beautiful plant']) {
+      const r = read([['Rowan Ellery Author', 'Lot 1: Hoya $5', '2d Like Reply', 'Jada Winslow', word, '3m Like Reply']]);
+      expect(queue(r, 1) ?? [], word).toEqual([]);
+    }
+  });
+
+  it('probe 4: a badge glued to the name line keeps working', () => {
+    const r = read([['Rowan Ellery Author', 'Lot 1: Hoya $5', '2d Like Reply', 'Top fan Jada Winslow'.replace('Top fan ', ''), 'sold', '3m Like Reply']]);
+    expect(queue(r, 1)).toEqual([['Jada Winslow', 'claim']]);
+  });
+});
+
+describe('no silent drops', () => {
+  const screens = [['Rowan Ellery Author', 'Lot 1: Hoya $5', '2d Like Reply', 'Jada Winslow', 'sold', '3m Like Reply', 'Marcus Bell', 'wow so pretty', '2m Like Reply', 'Dana Price', 'zzzz', '1m Like Reply']];
+
+  it('shows read comments that were not taken for claims', () => {
+    const r = read(screens);
+    expect(r.talk.map((c) => c.author)).toEqual(['Marcus Bell', 'Dana Price']);
+  });
+
+  it('a talk comment can be added as a claim by hand and leaves the talk list', () => {
+    const r0 = read(screens);
+    const origin = r0.talk[0].origin;
+    const r = read(screens, { added: { [origin]: { name: 'Marcus Bell', lot: 1, kind: 'next' } } });
+    expect(queue(r, 1)).toEqual([['Jada Winslow', 'claim'], ['Marcus Bell', 'backup']]);
+    expect(r.talk.map((c) => c.author)).toEqual(['Dana Price']);
+  });
+
+  it('counts and names what is left out', () => {
+    const lone = [['Jada Winslow', 'sold', '3m Like Reply', 'Marcus Bell', 'sold', '2m Like Reply']];
+    const r = read(lone);
+    expect(leftOutCount(draft(lone), r)).toBe(2);
+    expect(leftOutLines(draft(lone), opts)).toEqual(['Jada Winslow: sold', 'Marcus Bell: sold']);
+    const skipped = draft(lone, { removed: [0], skipped: [0] });
+    expect(leftOutCount(skipped, readIntake(skipped, opts))).toBe(2);
+    expect(leftOutLines(skipped, opts)).toEqual(['Jada Winslow: sold', 'Marcus Bell: sold']);
+  });
+});
+
+describe('readout for a test report', () => {
+  it('lists the raw lines per screenshot and the result', async () => {
+    const { readoutText } = await import('../src/core/intake');
+    const text = readoutText(draft([['Rowan Ellery Author', 'Lot 1: Hoya $5', '2d Like Reply', 'Jada Winslow', 'sold', '3m Like Reply']]), opts);
+    expect(text).toContain('Screenshot 1 raw lines:');
+    expect(text).toContain('  Jada Winslow');
+    expect(text).toContain('Lot 1: Jada Winslow');
   });
 });

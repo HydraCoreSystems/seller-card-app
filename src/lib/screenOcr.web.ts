@@ -4,6 +4,7 @@ export const ocrAvailable = false;
 export interface ScreenRead {
   screens: string[][];
   failed: number;
+  unavailable: boolean;
 }
 
 export async function readScreenshots(): Promise<ScreenRead | null> {

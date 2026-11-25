@@ -214,7 +214,39 @@ function cardBody(lines: string[]): string {
   return [first, ...rest].join('\n');
 }
 
-function parseCopied(lines: string[], sellerName: string): ThreadComment[] {
+const TIME_TOKEN = '(?:\\d+\\s?(?:s|m|h|d|w|y|min|mins|hr|hrs|wk|wks)|just now)';
+// Furniture glued to the end of a line: "sold 3m Like Reply".
+const FURNITURE_TAIL = new RegExp(`^(.*\\S)\\s+(${TIME_TOKEN}\\s+(?:Like|Reply)(?:\\s+(?:Like|Reply|Share|Edited))*(?:\\s+\\d+)?)\\s*$`, 'i');
+// Furniture glued to the front of the next line: "3m Like Reply Marcus Bell".
+const FURNITURE_HEAD = new RegExp(`^(${TIME_TOKEN}\\s+(?:(?:Like|Reply|Share|Edited)\\s+)+|Like\\s+Reply\\s+)(?=\\S)`, 'i');
+
+/**
+ * What a phone recognizer hands back groups text by blocks, not by lines, so the Like and Reply row often
+ * comes glued to the comment before it or the name after it. This puts the furniture back on its own line.
+ */
+export function unglueFurniture(line: string): string[] {
+  const out: string[] = [];
+  let rest = line.trim();
+  for (let guard = 0; guard < 6 && rest; guard += 1) {
+    const head = rest.match(FURNITURE_HEAD);
+    if (head && rest.length > head[0].length) {
+      out.push(head[1].trim());
+      rest = rest.slice(head[0].length).trim();
+      continue;
+    }
+    const tail = rest.match(FURNITURE_TAIL);
+    if (tail) {
+      out.push(...unglueFurniture(tail[1]), tail[2].trim());
+      return out;
+    }
+    break;
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
+function parseCopied(rawLines: string[], sellerName: string): ThreadComment[] {
+  const lines = rawLines.flatMap(unglueFurniture);
   const seller = norm(sellerName);
   const out: ThreadComment[] = [];
   let block: string[] = [];
@@ -382,11 +414,50 @@ export function lotsNamed(body: string, maxLot?: number): number[] {
 
 type Intent = 'claim' | 'backup' | 'release' | null;
 
+/**
+ * Letters a phone recognizer swaps for each other, folded to one shape. "so1d", "soId" and "sold" all fold the
+ * same, while "gold" does not fold to "sold", so a real word is not mistaken for a claim.
+ */
+function ocrFold(token: string): string {
+  return token
+    .toLowerCase()
+    .replace(/rn/g, 'm')
+    .replace(/[1|!i]/g, 'l')
+    .replace(/[0q]/g, 'o')
+    .replace(/[5$]/g, 's')
+    .replace(/[^a-z]/g, '');
+}
+
+const FOLDED_INTENT: Record<string, Intent> = Object.fromEntries(
+  [
+    ['claim', 'claim'],
+    ['claimed', 'claim'],
+    ['sold', 'claim'],
+    ['mine', 'claim'],
+    ['dibs', 'claim'],
+    ['next', 'backup'],
+    ['backup', 'backup'],
+  ].map(([w, i]) => [ocrFold(w), i as Intent]),
+);
+
+/** A short comment with one claim word the recognizer misread, like "so1d" or "dlbs". */
+function misreadIntent(words: string): Intent {
+  const tokens = words.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > 5) return null;
+  for (const t of tokens) {
+    const bare = t.replace(/^[^\w$|!]+|[^\w$|!]+$/g, '');
+    if (bare.length < 4) continue;
+    const hit = FOLDED_INTENT[ocrFold(bare)];
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function intentOf(words: string): Intent {
   if (RELEASE_WORD.test(words)) return 'release';
   if (BACKUP_WORD.test(words)) return 'backup';
   if (CLAIM_WORD.test(words) || isBareLotList(words)) return 'claim';
-  return null;
+  return misreadIntent(words);
 }
 
 /**

@@ -1,16 +1,25 @@
-import { extractTextFromImage, isSupported } from 'expo-text-extractor';
+import { linesFromBoxes } from '../core/ocrLayout';
+import { nativeOcr } from './ocrModule';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { joinSlices, planTiles } from '../core/ocrTiles';
 
 /** True when this device can read text out of a picture. It all happens on the device. */
-export const ocrAvailable: boolean = isSupported;
+export const ocrAvailable: boolean = !!nativeOcr?.isSupported;
+
+/** Reads one picture and returns its lines in reading order, top to bottom. Throws when the reader itself fails. */
+async function extractTextFromImage(uri: string): Promise<string[]> {
+  if (!nativeOcr) throw new Error('The text reader is not part of this build.');
+  return linesFromBoxes(await nativeOcr.recognize(uri));
+}
 
 export interface ScreenRead {
   /** What was read from each screenshot, in the order the seller picked them. */
   screens: string[][];
   /** How many screenshots the device could not read. Their place stays, empty, so the order holds. */
   failed: number;
+  /** True when the reader itself failed on every screenshot, so the pictures are not the problem. */
+  unavailable: boolean;
 }
 
 const hasText = (lines: string[]) => lines.some((l) => l.trim().length > 0);
@@ -66,5 +75,5 @@ export async function readScreenshots(): Promise<ScreenRead | null> {
       failed += 1;
     }
   }
-  return { screens, failed };
+  return { screens, failed, unavailable: failed === result.assets.length };
 }

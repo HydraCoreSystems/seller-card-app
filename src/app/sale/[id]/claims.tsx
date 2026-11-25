@@ -7,14 +7,15 @@ import { priceIn } from '../../../core/rundown';
 import { formatPrice, plantDisplayName, toDay } from '../../../core/text';
 import type { Lot } from '../../../core/types';
 import { claimOptions, readClaims } from '../../../core/claimReport';
-import { EMPTY_DRAFT, looksLikeThread, mergeIntoThread, readIntake, type IntakeDraft } from '../../../core/intake';
-import { INTAKE_COPY as IC } from '../../../core/intakeCopy';
+import { EMPTY_DRAFT, leftOutCount, leftOutLines, looksLikeThread, mergeIntoThread, readIntake, type IntakeDraft } from '../../../core/intake';
+import { HAND_COPY as HC, INTAKE_COPY as IC } from '../../../core/intakeCopy';
+import { appendHandClaim, handClaimReady } from '../../../core/handClaim';
 import { clipboardText } from '../../../lib/clipboardText';
 import { ocrAvailable, readScreenshots } from '../../../lib/screenOcr';
 import { IntakeReview } from '../../../ui/IntakeReview';
 import { lotRecorded, useSale, useStore } from '../../../lib/store';
 import { useSizeClass } from '../../../ui/layout';
-import { Button, H, Note, Panel, Row, Screen, colors, styles } from '../../../ui/kit';
+import { Button, Choice, Field, H, Note, Panel, Row, Screen, colors, styles } from '../../../ui/kit';
 
 export default function ClaimsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +26,9 @@ export default function ClaimsScreen() {
   const [shown, setShown] = useState(sale?.claimText ?? '');
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [buyerName, setBuyerName] = useState('');
+  const [handLot, setHandLot] = useState('');
+  const [handNote, setHandNote] = useState<string | null>(null);
 
   // A thread copied from Facebook, waiting on the clipboard. Checked when the screen opens and whenever the app comes back to the front.
   const saved = sale?.claimText ?? '';
@@ -77,6 +81,18 @@ export default function ClaimsScreen() {
     );
   };
 
+  const addByHand = (kind: 'claim' | 'next') => {
+    const lot = Number(handLot || (sale.lots.length === 1 ? sale.lots[0].number : 0));
+    if (!handClaimReady(buyerName, lot)) return;
+    const next = appendHandClaim(text, { buyer: buyerName, lot, kind });
+    setText(next);
+    setShown(next);
+    store.saveSale({ ...sale, claimText: next });
+    setHandNote(HC.added(buyerName.trim(), lot, kind === 'next'));
+    setBuyerName('');
+  };
+  const handLotNumber = Number(handLot || (sale.lots.length === 1 ? sale.lots[0].number : 0)) || null;
+
   const read = () => {
     setShown(text);
     store.saveSale({ ...sale, claimText: text });
@@ -99,8 +115,12 @@ export default function ClaimsScreen() {
     try {
       const got = await readScreenshots();
       if (!got) return;
+      if (got.unavailable) {
+        setStatus(IC.unavailable);
+        return;
+      }
       if (got.screens.every((s) => s.length === 0)) {
-        setStatus(IC.nothingRead);
+        setStatus(IC.noText);
         return;
       }
       // More screenshots after an unfinished batch come after it, because they arrived after it.
@@ -108,7 +128,7 @@ export default function ClaimsScreen() {
       store.saveSale({ ...sale, intakeDraft: { ...base, screens: [...base.screens, ...got.screens] } });
       if (got.failed) setStatus(IC.someFailed(got.failed));
     } catch {
-      setStatus(IC.nothingRead);
+      setStatus(IC.unavailable);
     } finally {
       setBusy(null);
     }
@@ -116,15 +136,42 @@ export default function ClaimsScreen() {
   const changeDraft = (next: IntakeDraft) => store.saveSale({ ...sale, intakeDraft: next });
   const saveDraft = () => {
     if (!draft) return;
-    const merged = mergeIntoThread(sale.claimText, readIntake(draft, options), sellerName ?? '');
+    const intake = readIntake(draft, options);
+    const merged = mergeIntoThread(sale.claimText, intake, sellerName ?? '');
+    // What the seller leaves out is counted and kept on the sale, so a loss shows up now and not in a buyer message.
+    const count = leftOutCount(draft, intake);
+    const was = sale.intakeLeftOut;
+    const intakeLeftOut = count ? { count: (was?.count ?? 0) + count, lines: [...(was?.lines ?? []), ...leftOutLines(draft, options)] } : was;
     setText(merged);
     setShown(merged);
-    store.saveSale({ ...sale, claimText: merged, intakeDraft: undefined });
-    setStatus(IC.saved);
+    store.saveSale({ ...sale, claimText: merged, intakeDraft: undefined, intakeLeftOut });
+    setStatus(count ? `${IC.saved} ${IC.leftOutSaved(count)}` : IC.saved);
   };
 
   const thread = (
     <>
+      <Panel>
+        <H>{HC.title}</H>
+        {sale.lots.length ? (
+          <>
+            <Note>{HC.note}</Note>
+            <Field label={HC.nameLabel} value={buyerName} onChangeText={setBuyerName} placeholder={HC.namePlaceholder} autoCapitalize="words" />
+            <Choice
+              label={HC.lotLabel}
+              value={handLot || (sale.lots.length === 1 ? String(sale.lots[0].number) : '')}
+              options={sale.lots.map((l) => ({ value: String(l.number), label: String(l.number) }))}
+              onChange={setHandLot}
+            />
+            <Row>
+              <Button title={HC.add} disabled={!handClaimReady(buyerName, handLotNumber)} onPress={() => addByHand('claim')} style={{ flex: 2 }} />
+              <Button kind="secondary" title={HC.addNext} disabled={!handClaimReady(buyerName, handLotNumber)} onPress={() => addByHand('next')} style={{ flex: 1 }} />
+            </Row>
+            {handNote ? <Note>{handNote}</Note> : null}
+          </>
+        ) : (
+          <Note tone="warn">{HC.needLots}</Note>
+        )}
+      </Panel>
       {clip && clip.trim() !== saved.trim() && !draft ? (
         <>
           <Button title={IC.clipboard} onPress={fromClipboard} />
@@ -137,7 +184,12 @@ export default function ClaimsScreen() {
           <Note>{IC.screenshotsNote}</Note>
         </>
       ) : null}
-      {status ? <Note tone={status === IC.saved ? undefined : 'warn'}>{status}</Note> : null}
+      {status ? <Note tone={status.startsWith(IC.saved) ? undefined : 'warn'}>{status}</Note> : null}
+      {sale.intakeLeftOut?.count ? (
+        <Note tone="warn">
+          {IC.leftOutSaved(sale.intakeLeftOut.count)} {sale.intakeLeftOut.lines.slice(0, 6).join(' | ')}
+        </Note>
+      ) : null}
       {draft ? (
         <IntakeReview
           draft={draft}

@@ -18,7 +18,7 @@ import { lotRecorded, useSale, useStore } from '../../../lib/store';
 import { FirstSaleChecklist } from '../../../ui/FirstSaleChecklist';
 import { LotCard } from '../../../ui/phil';
 import { Grid } from '../../../ui/layout';
-import { Button, CardText, Choice, Field, H, Note, Row, Screen, T, Thumb, colors } from '../../../ui/kit';
+import { Button, CardText, Choice, Field, H, Note, Panel, Row, Screen, T, Thumb, colors } from '../../../ui/kit';
 import { getStamped } from '../../../ui/StampedPhoto';
 import { WhenPicker, isComplete } from '../../../ui/WhenPicker';
 
@@ -32,6 +32,9 @@ export default function SaleScreen() {
   const profile = resolveProfile(store.profile, sale);
   const room = venueOf(store.profile, sale);
   const announcement = announcementFor(store.profile, sale, store.pro);
+  // Who is first in line on each lot, so a seller mid sale sees it on the lot itself.
+  const leaders = new Map<number, string>();
+  for (const entry of readClaims(sale.claimText, sale, store.profile)?.lots ?? []) if (entry.queue[0]) leaders.set(entry.lot, entry.queue[0].author);
   const allPhotos = sale.lots.flatMap((l) => photosOf(l));
 
   const saveAll = async () => {
@@ -58,6 +61,14 @@ export default function SaleScreen() {
           </Row>
         }
       >
+        <Panel>
+          <H>While the sale runs</H>
+          <Row>
+            <Button title="Record a claim" onPress={() => router.push(`/sale/${sale.id}/claims`)} style={{ flex: 1 }} />
+            <Button kind="secondary" title="Add a lot" onPress={() => router.push(`/sale/${sale.id}/lot`)} style={{ flex: 1 }} />
+          </Row>
+          <Note>The lots below show who is first in line on each one.</Note>
+        </Panel>
         <FirstSaleChecklist sale={sale} />
         {isPhil() ? <Note>Room: {room.name}</Note> : null}
         <Field
@@ -122,7 +133,7 @@ export default function SaleScreen() {
                 name={plantDisplayName(lot.name, lot.noid) || 'Unnamed'}
                 price={lot.price === null ? null : `${sale.kind === 'auction' ? 'Opening bid ' : ''}${formatPrice(lot.price)}`}
                 soldTo={record ? record.buyer : null}
-                note={memory ? priceMemoryLine(memory) : null}
+                note={memory ? priceMemoryLine(memory) : !record && leaders.get(lot.number) ? `First in line: ${leaders.get(lot.number)}` : null}
                 onPress={() => router.push({ pathname: '/sale/[id]/post', params: { id: sale.id, lot: String(lot.number) } })}
               />
             );
@@ -158,6 +169,7 @@ export default function SaleScreen() {
                       ? 'No price yet'
                       : `${sale.kind === 'auction' ? 'Opening bid ' : ''}${formatPrice(lot.price)}`}
                 </Text>
+                {!record && leaders.get(lot.number) ? <Text style={{ color: colors.moss, fontWeight: '600', fontSize: 13 }}>First in line: {leaders.get(lot.number)}</Text> : null}
                 {memory ? <Text style={{ color: colors.soft, fontSize: 12 }}>{priceMemoryLine(memory)}</Text> : null}
               </View>
             </Pressable>

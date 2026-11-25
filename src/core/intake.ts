@@ -1,5 +1,6 @@
 import {
   isConnectorExport,
+  lotHeading,
   SCREENSHOT_TIME,
   parseThread,
   trackComments,
@@ -29,8 +30,12 @@ export interface IntakeDraft {
   screens: string[][];
   /** Comments the seller took off the list, by origin. */
   removed: number[];
+  /** The ones in `removed` the seller skipped instead of taking off a claim list, kept so the loss is counted. */
+  skipped?: number[];
   /** Comments the seller filled in by hand, by origin. They keep their place. */
   added: Record<number, { name: string; lot: number; kind: 'claim' | 'next' }>;
+  /** The lot this batch is about, for claims that name none. Set when a screenshot shows a lot's replies without its card. */
+  lot?: number;
 }
 
 export const EMPTY_DRAFT: IntakeDraft = { screens: [], removed: [], added: {} };
@@ -65,7 +70,7 @@ export function commentsFromScreens(screens: string[][], sellerName = ''): Intak
 export interface Flagged {
   comment: IntakeComment;
   /** The name could not be read, or the lot could not be told. */
-  why: 'name' | 'lot';
+  why: 'name' | 'lot' | 'talk';
 }
 
 export interface Intake {
@@ -74,6 +79,8 @@ export interface Intake {
   report: ClaimReport;
   /** Held out of the list until the seller adds them by hand or skips them. */
   flagged: Flagged[];
+  /** Read from a screenshot and kept, but not taken for a claim. Shown so a misread claim word cannot hide. */
+  talk: IntakeComment[];
   /** Which screenshot each claim came from, by comment index in `kept`. */
   screenOf: (commentIndex: number) => number;
 }
@@ -98,8 +105,15 @@ export function readIntake(draft: IntakeDraft, options: ClaimOptions = {}): Inta
       kept.push(c);
     }
   }
-  const numbered = kept.map((c, i) => ({ ...c, index: i }));
-  const report = trackComments(numbered, options);
+  let numbered = kept.map((c, i) => ({ ...c, index: i }));
+  let report = trackComments(numbered, options);
+
+  // A batch that belongs to one lot: every claim like comment that named none goes to that lot.
+  if (draft.lot !== undefined && report.unplaced.length) {
+    const lotted = new Set(report.unplaced.map((c) => (c as IntakeComment).origin));
+    numbered = numbered.map((c) => (lotted.has(c.origin) ? { ...c, body: `${c.body} lot ${draft.lot}` } : c));
+    report = trackComments(numbered, options);
+  }
 
   // A comment that sounds like a claim but names no lot waits for the seller to say which lot.
   const unplaced = new Set(report.unplaced.map((c) => (c as IntakeComment).origin));
@@ -107,7 +121,25 @@ export function readIntake(draft: IntakeDraft, options: ClaimOptions = {}): Inta
     ...held.map((comment) => ({ comment, why: 'name' as const })),
     ...numbered.filter((c) => unplaced.has(c.origin)).map((comment) => ({ comment, why: 'lot' as const })),
   ].sort((a, b) => a.comment.origin - b.comment.origin);
-  return { kept: numbered, report, flagged, screenOf: (i) => numbered[i]?.screen ?? 0 };
+  const counted = new Set<number>();
+  for (const l of report.lots) for (const c of [...l.queue, ...l.released]) counted.add(c.commentIndex);
+  for (const c of report.unplaced) counted.add(c.index);
+  const talk = numbered.filter((c) => !c.fromSeller && !counted.has(c.index) && lotHeading(c.body) === null);
+  return { kept: numbered, report, flagged, talk, screenOf: (i) => numbered[i]?.screen ?? 0 };
+}
+
+/** How many comments the seller will be leaving out if they save now: skipped ones plus any still flagged. */
+export function leftOutCount(draft: IntakeDraft, intake: Intake): number {
+  return (draft.skipped ?? []).length + intake.flagged.length;
+}
+
+/** The comments being left out, as short lines, so what was dropped can be seen later. */
+export function leftOutLines(draft: IntakeDraft, options: ClaimOptions = {}): string[] {
+  const skipped = new Set(draft.skipped ?? []);
+  const held = new Set(readIntake(draft, options).flagged.map((f) => f.comment.origin));
+  return commentsFromScreens(draft.screens, options.sellerName ?? '')
+    .filter((c) => skipped.has(c.origin) || held.has(c.origin))
+    .map((c) => [c.author, c.body].filter(Boolean).join(': ').replace(/\s+/g, ' ').slice(0, 120));
 }
 
 /** The thread as text the app already reads, with the comments in the order they sit. */
@@ -145,4 +177,14 @@ export function looksLikeThread(text: string | null | undefined, options: ClaimO
   if (t.length < 8 || t.length > 400_000 || t === saved.trim()) return false;
   const report = trackComments(parseThread(t, options.sellerName ?? ''), options);
   return report.lots.some((l) => l.queue.length > 0) || report.unplaced.length > 0;
+}
+
+/** What the phone read from each screenshot, then what the app made of it, as plain text for a test report. */
+export function readoutText(draft: IntakeDraft, options: ClaimOptions = {}): string {
+  const intake = readIntake(draft, options);
+  const raw = draft.screens.map((blocks, i) => [`Screenshot ${i + 1} raw lines:`, ...linesOf(blocks).map((l) => `  ${l}`)].join('\n'));
+  const parsed = intake.report.lots.map((l) => `Lot ${l.lot}: ${l.queue.map((c) => `${c.author}${c.kind === 'backup' ? ' (next)' : ''}`).join(', ') || 'no claims'}`);
+  const flagged = intake.flagged.map((f) => `Flagged (${f.why}): ${f.comment.author}: ${f.comment.body}`);
+  const talk = intake.talk.map((c) => `Read as talk: ${c.author}: ${c.body}`);
+  return [...raw, 'Read result:', ...parsed, ...flagged, ...talk].join('\n');
 }

@@ -150,6 +150,8 @@ export interface Sale {
   claimText?: string;
   /** Claims read from screenshots and waiting for the seller to check them. Kept on the sale so a knock out loses nothing. */
   intakeDraft?: IntakeDraft;
+  /** Comments read from screenshots that the seller saved without, so a loss stays visible. */
+  intakeLeftOut?: { count: number; lines: string[] };
   /** YYYY-MM-DD, set when the seller closes the sale from the rundown. */
   closedAt?: string;
   /** Lots nobody claimed, as they stood when the sale closed. */

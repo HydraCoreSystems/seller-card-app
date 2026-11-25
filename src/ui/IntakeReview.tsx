@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { showTime } from '../core/claims';
-import { readIntake, type Flagged, type IntakeDraft } from '../core/intake';
+import { leftOutCount, readIntake, readoutText, type Flagged, type IntakeDraft } from '../core/intake';
 import { INTAKE_COPY as C } from '../core/intakeCopy';
 import type { ClaimOptions } from '../core/claims';
-import { Button, Choice, Field, H, Note, Panel, Row, colors } from './kit';
+import { Button, Choice, Field, H, Note, Panel, Row, colors, useCopy } from './kit';
 
 /**
  * The claims read from screenshots, for the seller to confirm or trim before they are saved. The order is
@@ -27,10 +27,34 @@ export function IntakeReview({
   onDiscard: () => void;
 }) {
   const intake = readIntake(draft, options);
+  const [copied, copy] = useCopy();
+  const skip = (origin: number) => onChange({ ...draft, removed: [...draft.removed, origin], skipped: [...(draft.skipped ?? []), origin] });
+  const noLot = intake.flagged.filter((f) => f.why === 'lot');
+  const left = leftOutCount(draft, intake);
+  const hasQueue = intake.report.lots.some((l) => l.queue.length);
+  const TALK_CAP = 30;
   return (
     <>
       <H>{C.reviewTitle}</H>
       <Note>{C.reviewNote}</Note>
+      {Platform.OS === 'android' && draft.screens.length > 1 ? <Note tone="warn">{C.androidOrder}</Note> : null}
+      {noLot.length ? (
+        <Panel>
+          <Text style={{ color: colors.warn, fontWeight: '700', marginBottom: 2 }}>{C.batchTitle}</Text>
+          <Note>{C.batchNote}</Note>
+          <Choice
+            label={C.batchLabel}
+            value=""
+            options={lotNumbers.map((n) => ({ value: String(n), label: String(n) }))}
+            onChange={(v) => onChange({ ...draft, lot: Number(v) })}
+          />
+        </Panel>
+      ) : draft.lot !== undefined ? (
+        <Panel>
+          <Note>{C.batchPlaced(draft.lot)}</Note>
+          <Button kind="quiet" title={C.batchUndo} onPress={() => onChange({ ...draft, lot: undefined })} />
+        </Panel>
+      ) : null}
       {intake.report.lots.every((l) => !l.queue.length) ? <Note>{C.noClaims}</Note> : null}
       {intake.report.lots.map((entry) =>
         entry.queue.length ? (
@@ -69,13 +93,28 @@ export function IntakeReview({
           <H>{C.flaggedTitle}</H>
           <Note>{C.flaggedNote}</Note>
           {intake.flagged.map((f) => (
-            <FlaggedRow key={f.comment.origin} flagged={f} lotNumbers={lotNumbers} onAdd={(added) => onChange({ ...draft, added: { ...draft.added, [f.comment.origin]: added } })} onSkip={() => onChange({ ...draft, removed: [...draft.removed, f.comment.origin] })} />
+            <FlaggedRow key={f.comment.origin} flagged={f} lotNumbers={lotNumbers} onAdd={(added) => onChange({ ...draft, added: { ...draft.added, [f.comment.origin]: added } })} onSkip={() => skip(f.comment.origin)} />
           ))}
         </>
       ) : null}
 
+      {intake.talk.length ? (
+        <>
+          <H>{C.talkTitle}</H>
+          <Note>{C.talkNote}</Note>
+          {intake.talk.slice(0, TALK_CAP).map((c) => (
+            <FlaggedRow key={c.origin} flagged={{ comment: c, why: 'talk' }} lotNumbers={lotNumbers} onAdd={(added) => onChange({ ...draft, added: { ...draft.added, [c.origin]: added } })} onSkip={() => skip(c.origin)} />
+          ))}
+          {intake.talk.length > TALK_CAP ? <Note>{C.talkMore(intake.talk.length - TALK_CAP)}</Note> : null}
+        </>
+      ) : null}
+
+      {left ? <Note tone="warn">{C.leftOut(left)}</Note> : null}
+      {!hasQueue && intake.flagged.length ? <Note>Put the flagged claims on a lot above and Save will be ready.</Note> : null}
+
+      <Button kind="quiet" title={copied === 'readout' ? '✓ Copied' : C.copyReadout} onPress={() => copy('readout', readoutText(draft, options))} />
       <Row style={{ marginVertical: 12 }}>
-        <Button title={C.save} onPress={onSave} style={{ flex: 2 }} disabled={!intake.report.lots.some((l) => l.queue.length)} />
+        <Button title={C.save} onPress={onSave} style={{ flex: 2 }} disabled={!hasQueue} />
         <Button kind="secondary" title={C.discard} onPress={onDiscard} style={{ flex: 1 }} />
       </Row>
     </>
@@ -95,12 +134,12 @@ function FlaggedRow({
 }) {
   const { comment, why } = flagged;
   // A readable name is kept. An unreadable one starts empty, because the app does not guess it.
-  const [name, setName] = useState(why === 'lot' ? comment.author : '');
+  const [name, setName] = useState(why === 'name' ? '' : comment.author);
   const [lot, setLot] = useState<string>('');
   const ready = name.trim() !== '' && lot !== '';
   return (
     <Panel>
-      <Text style={{ color: colors.warn, fontWeight: '700', marginBottom: 2 }}>{why === 'name' ? C.whyName : C.whyLot}</Text>
+      <Text style={{ color: colors.warn, fontWeight: '700', marginBottom: 2 }}>{why === 'name' ? C.whyName : why === 'talk' ? C.whyTalk : C.whyLot}</Text>
       <Text style={{ color: colors.ink }}>{[comment.author, comment.body].filter(Boolean).join(': ')}</Text>
       <Text style={{ color: colors.soft, fontSize: 12, marginBottom: 8 }}>{C.screenLabel(comment.screen + 1)}</Text>
       <Field label={C.nameLabel} value={name} onChangeText={setName} />
